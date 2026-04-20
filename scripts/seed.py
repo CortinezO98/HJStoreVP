@@ -1,0 +1,183 @@
+"""
+seed.py — Datos iniciales para HJStoreVP
+Ejecutar: python scripts/seed.py
+"""
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+
+from app.db.session import SessionLocal, engine, Base
+from app.models.models import (
+    User, UserRole, Location, LocationType,
+    Category, Product, Inventory
+)
+from app.core.security import hash_password
+from app.core.config import settings
+from decimal import Decimal
+
+
+def seed():
+    # Crear todas las tablas si no existen
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+
+    try:
+        print("🌱 Iniciando seed de datos...")
+
+        # ── 1. UBICACIONES ───────────────────────────────────────────
+        if not db.query(Location).first():
+            locations = [
+                Location(name="Tienda Web", type=LocationType.WEB, active=True),
+                Location(name="Punto Físico 1 — Centro",    type=LocationType.PHYSICAL, address="Calle 10 #5-23, Barranquilla", active=True),
+                Location(name="Punto Físico 2 — Norte",     type=LocationType.PHYSICAL, address="Cra 53 #82-15, Barranquilla", active=True),
+                Location(name="Punto Físico 3 — Sur",       type=LocationType.PHYSICAL, address="Calle 30 #14-20, Barranquilla", active=True),
+                Location(name="Punto Físico 4 — Occidente", type=LocationType.PHYSICAL, address="Cra 38 #45-10, Barranquilla", active=True),
+            ]
+            db.add_all(locations)
+            db.flush()
+            print(f"  ✅ {len(locations)} ubicaciones creadas")
+        else:
+            print("  ⏭️  Ubicaciones ya existen")
+
+        # ── 2. USUARIOS ──────────────────────────────────────────────
+        if not db.query(User).filter(User.email == settings.FIRST_ADMIN_EMAIL).first():
+            admin = User(
+                email=settings.FIRST_ADMIN_EMAIL,
+                full_name="Administrador HJStoreVP",
+                hashed_password=hash_password(settings.FIRST_ADMIN_PASSWORD),
+                role=UserRole.SUPER_ADMIN,
+                active=True,
+            )
+            db.add(admin)
+
+            # Vendedores de prueba para cada punto físico
+            web_loc = db.query(Location).filter(Location.type == LocationType.WEB).first()
+            physical_locs = db.query(Location).filter(
+                Location.type == LocationType.PHYSICAL
+            ).all()
+
+            sellers = []
+            for i, loc in enumerate(physical_locs, 1):
+                seller = User(
+                    email=f"vendedor{i}@hjstorevp.com",
+                    full_name=f"Vendedor Punto {i}",
+                    hashed_password=hash_password("Vendedor123!"),
+                    role=UserRole.SELLER,
+                    location_id=loc.id,
+                    active=True,
+                )
+                sellers.append(seller)
+            db.add_all(sellers)
+            db.flush()
+            print(f"  ✅ Admin y {len(sellers)} vendedores creados")
+        else:
+            print("  ⏭️  Usuarios ya existen")
+
+        # ── 3. CATEGORÍAS ────────────────────────────────────────────
+        if not db.query(Category).first():
+            from python_slugify import slugify
+            cats_data = [
+                ("Gorras",    "Gorras y sombreros de todo tipo"),
+                ("Perfumes",  "Fragancias para dama y caballero"),
+                ("Relojes",   "Relojes casuales y de vestir"),
+                ("Bolsos",    "Bolsos, carteras y maletines"),
+                ("Canguros",  "Canguros y riñoneras"),
+            ]
+            categories = []
+            for name, desc in cats_data:
+                cat = Category(
+                    name=name,
+                    slug=slugify(name),
+                    description=desc,
+                    active=True,
+                    sort_order=cats_data.index((name, desc)),
+                )
+                categories.append(cat)
+            db.add_all(categories)
+            db.flush()
+            print(f"  ✅ {len(categories)} categorías creadas")
+        else:
+            print("  ⏭️  Categorías ya existen")
+
+        # ── 4. PRODUCTOS DE EJEMPLO ──────────────────────────────────
+        if not db.query(Product).first():
+            from python_slugify import slugify
+
+            cat_gorras   = db.query(Category).filter(Category.slug == "gorras").first()
+            cat_perfumes = db.query(Category).filter(Category.slug == "perfumes").first()
+            cat_relojes  = db.query(Category).filter(Category.slug == "relojes").first()
+            cat_bolsos   = db.query(Category).filter(Category.slug == "bolsos").first()
+            cat_canguros = db.query(Category).filter(Category.slug == "canguros").first()
+
+            web_loc = db.query(Location).filter(Location.type == LocationType.WEB).first()
+            phys_locs = db.query(Location).filter(Location.type == LocationType.PHYSICAL).all()
+
+            products_data = [
+                # (name, sku, cost, margin, category, featured)
+                ("Gorra HJ Classic Negra",        "GOR-001", Decimal("25000"),  Decimal("60"), cat_gorras,   True),
+                ("Gorra HJ Classic Blanca",       "GOR-002", Decimal("25000"),  Decimal("60"), cat_gorras,   False),
+                ("Gorra HJ Snapback Azul",        "GOR-003", Decimal("30000"),  Decimal("55"), cat_gorras,   False),
+                ("Perfume HJ Gold 100ml",         "PER-001", Decimal("80000"),  Decimal("70"), cat_perfumes, True),
+                ("Perfume HJ Silver 50ml",        "PER-002", Decimal("50000"),  Decimal("65"), cat_perfumes, False),
+                ("Reloj HJ Sport Negro",          "REL-001", Decimal("120000"), Decimal("50"), cat_relojes,  True),
+                ("Reloj HJ Clásico Dorado",       "REL-002", Decimal("150000"), Decimal("50"), cat_relojes,  False),
+                ("Bolso HJ Dama Camel",           "BOL-001", Decimal("90000"),  Decimal("55"), cat_bolsos,   True),
+                ("Bolso HJ Dama Negro",           "BOL-002", Decimal("90000"),  Decimal("55"), cat_bolsos,   False),
+                ("Canguro HJ Urban Negro",        "CAN-001", Decimal("35000"),  Decimal("60"), cat_canguros, False),
+                ("Canguro HJ Urban Gris",         "CAN-002", Decimal("35000"),  Decimal("60"), cat_canguros, False),
+            ]
+
+            products = []
+            for name, sku, cost, margin, cat, featured in products_data:
+                sale_price = round(cost * (1 + margin / 100), 2)
+                slug = slugify(name)
+                prod = Product(
+                    name=name,
+                    slug=slug,
+                    sku=sku,
+                    cost_price=cost,
+                    margin_pct=margin,
+                    sale_price=sale_price,
+                    category_id=cat.id if cat else None,
+                    featured=featured,
+                    active=True,
+                    stock_min_alert=5,
+                )
+                products.append(prod)
+            db.add_all(products)
+            db.flush()
+
+            # Asignar stock inicial a cada ubicación
+            all_locs = [web_loc] + phys_locs
+            for prod in products:
+                for loc in all_locs:
+                    inv = Inventory(
+                        product_id=prod.id,
+                        location_id=loc.id,
+                        qty_available=20,
+                        qty_reserved=0,
+                    )
+                    db.add(inv)
+
+            print(f"  ✅ {len(products)} productos creados con stock inicial (20 uds por ubicación)")
+        else:
+            print("  ⏭️  Productos ya existen")
+
+        db.commit()
+        print("\n🎉 Seed completado exitosamente!")
+        print(f"\n📋 Credenciales:")
+        print(f"   Admin     → {settings.FIRST_ADMIN_EMAIL} / {settings.FIRST_ADMIN_PASSWORD}")
+        print(f"   Vendedor1 → vendedor1@hjstorevp.com / Vendedor123!")
+        print(f"   Vendedor2 → vendedor2@hjstorevp.com / Vendedor123!")
+        print(f"\n🔗 API Docs → http://localhost:8000/docs")
+
+    except Exception as e:
+        db.rollback()
+        print(f"\n❌ Error en seed: {e}")
+        raise
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    seed()

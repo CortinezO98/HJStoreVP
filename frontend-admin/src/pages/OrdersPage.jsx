@@ -1,0 +1,1 @@
+export default function OrdersPage() { return ( <div><h1 className="text-2xl font-bold text-gray-900 mb-2">OrdersPage</h1><p className="text-gray-500 text-sm">Módulo en desarrollo — Fase 2</p></div> ) }
