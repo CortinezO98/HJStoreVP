@@ -6,6 +6,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
+from slugify import slugify
+
 from app.db.session import SessionLocal, engine, Base
 from app.models.models import (
     User, UserRole, Location, LocationType,
@@ -75,8 +77,7 @@ def seed():
 
         # ── 3. CATEGORÍAS ────────────────────────────────────────────
         if not db.query(Category).first():
-            from python_slugify import slugify
-            cats_data = [
+        cats_data = [
                 ("Gorras",    "Gorras y sombreros de todo tipo"),
                 ("Perfumes",  "Fragancias para dama y caballero"),
                 ("Relojes",   "Relojes casuales y de vestir"),
@@ -101,8 +102,6 @@ def seed():
 
         # ── 4. PRODUCTOS DE EJEMPLO ──────────────────────────────────
         if not db.query(Product).first():
-            from python_slugify import slugify
-
             cat_gorras   = db.query(Category).filter(Category.slug == "gorras").first()
             cat_perfumes = db.query(Category).filter(Category.slug == "perfumes").first()
             cat_relojes  = db.query(Category).filter(Category.slug == "relojes").first()

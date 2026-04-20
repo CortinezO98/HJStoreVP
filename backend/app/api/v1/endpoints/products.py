@@ -6,7 +6,7 @@ from app.db.session import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.models import Product, ProductImage, Category, User
 from app.schemas.schemas import ProductCreate, ProductUpdate, ProductOut, ProductListOut
-from python_slugify import slugify
+from slugify import slugify
 
 router = APIRouter(prefix="/products", tags=["Productos"])
 
