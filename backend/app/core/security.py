@@ -4,6 +4,13 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
+# Fix compatibilidad passlib 1.7.4 + bcrypt 4.x
+import bcrypt as _bcrypt_module
+if not hasattr(_bcrypt_module, '__about__'):
+    class _FakeAbout:
+        __version__ = '4.0.1'
+    _bcrypt_module.__about__ = _FakeAbout()
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
