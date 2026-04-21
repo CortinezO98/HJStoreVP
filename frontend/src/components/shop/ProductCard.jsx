@@ -37,7 +37,13 @@ export default function ProductCard({ product }) {
   const handleBuyNow = (e) => {
     e.preventDefault()
     if (isOutOfStock) return
-    addItem(product)
+
+    const ok = addItem(product)
+    if (!ok) {
+      toast.error('No hay suficiente stock disponible')
+      return
+    }
+
     navigate('/checkout')
   }
 
