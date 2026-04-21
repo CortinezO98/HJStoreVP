@@ -61,6 +61,7 @@ export default function ProductPage() {
         category: categorySlug || undefined,
         per_page: 8,
       })
+
       return Array.isArray(res.data)
         ? res.data.filter((p) => p.id !== product.id).slice(0, 4)
         : []
@@ -72,7 +73,7 @@ export default function ProductPage() {
     if (!product) return []
 
     const productImages = Array.isArray(product.images)
-      ? product.images
+      ? [...product.images]
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
           .map((img) => ({
             id: img.id,
@@ -82,13 +83,20 @@ export default function ProductPage() {
       : []
 
     const fallbackPrimary = product.primary_image
-      ? [{ id: 'primary', url: buildImageUrl(product.primary_image), alt: product.name }]
+      ? [
+          {
+            id: 'primary',
+            url: buildImageUrl(product.primary_image),
+            alt: product.name,
+          },
+        ]
       : []
 
     return productImages.length ? productImages : fallbackPrimary
   }, [product])
 
   const mainImage = selectedImage || images[0]?.url || null
+
   const availableStockRaw = product?.total_stock ?? product?.stock ?? null
   const availableStock =
     availableStockRaw === null || availableStockRaw === undefined
@@ -97,11 +105,13 @@ export default function ProductPage() {
 
   const isOutOfStock = availableStock !== null && availableStock <= 0
   const isLowStock = availableStock !== null && availableStock > 0 && availableStock <= 5
+
   const cartQty = product?.id ? getItemQty(product.id) : 0
   const maxQtyAllowed =
     availableStock === null ? 99 : Math.max(availableStock - cartQty, 0)
 
   const handleDecrease = () => setQty((prev) => Math.max(1, prev - 1))
+
   const handleIncrease = () =>
     setQty((prev) => {
       if (maxQtyAllowed <= 0) return prev
@@ -250,11 +260,12 @@ export default function ProductPage() {
               <span className="text-3xl md:text-4xl font-black text-brand-700">
                 {formatCOP(product.sale_price)}
               </span>
-              {product.cost_price && Number(product.sale_price) > Number(product.cost_price) && (
-                <span className="text-sm text-gray-400 line-through mb-1">
-                  {formatCOP(Number(product.sale_price) * 1.15)}
-                </span>
-              )}
+              {product.cost_price &&
+                Number(product.sale_price) > Number(product.cost_price) && (
+                  <span className="text-sm text-gray-400 line-through mb-1">
+                    {formatCOP(Number(product.sale_price) * 1.15)}
+                  </span>
+                )}
             </div>
 
             <p
@@ -327,9 +338,11 @@ export default function ProductPage() {
                     >
                       <Minus size={16} />
                     </button>
+
                     <div className="w-14 text-center font-bold text-gray-900">
                       {qty}
                     </div>
+
                     <button
                       type="button"
                       onClick={handleIncrease}
@@ -372,7 +385,9 @@ export default function ProductPage() {
       {relatedProducts.length > 0 && (
         <section className="mt-16">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">También te puede gustar</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              También te puede gustar
+            </h2>
             <Link
               to={categorySlug ? `/catalogo?categoria=${categorySlug}` : '/catalogo'}
               className="text-sm text-brand-600 hover:text-brand-700 font-medium"

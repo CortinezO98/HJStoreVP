@@ -2,36 +2,83 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '../services/api'
 
+const getAvailableStock = (product) => {
+  const raw = product?.total_stock ?? product?.stock ?? null
+  return raw === null || raw === undefined ? null : Number(raw)
+}
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
+      accessToken: localStorage.getItem('access_token'),
+      refreshToken: localStorage.getItem('refresh_token'),
+      isAuthenticated: !!localStorage.getItem('access_token'),
 
       login: async (email, password) => {
         const { data } = await authApi.login({ email, password })
+
         localStorage.setItem('access_token', data.access_token)
         localStorage.setItem('refresh_token', data.refresh_token)
 
         set({
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+          isAuthenticated: true,
           user: {
             id: data.user_id,
             fullName: data.full_name,
             role: data.user_role,
           },
-          accessToken: data.access_token,
-          refreshToken: data.refresh_token,
-          isAuthenticated: true,
         })
 
         return data
       },
 
+      register: async (payload) => {
+        const { data } = await authApi.register(payload)
+
+        localStorage.setItem('access_token', data.access_token)
+        localStorage.setItem('refresh_token', data.refresh_token)
+
+        set({
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+          isAuthenticated: true,
+          user: {
+            id: data.user_id,
+            fullName: data.full_name,
+            role: data.user_role,
+          },
+        })
+
+        return data
+      },
+
+      loadMe: async () => {
+        try {
+          const { data } = await authApi.me()
+          set({
+            user: {
+              id: data.id,
+              fullName: data.full_name,
+              role: data.role,
+              email: data.email,
+              phone: data.phone,
+            },
+            isAuthenticated: true,
+          })
+          return data
+        } catch (error) {
+          get().logout()
+          throw error
+        }
+      },
+
       logout: () => {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+
         set({
           user: null,
           accessToken: null,
@@ -49,18 +96,13 @@ export const useAuthStore = create(
     }),
     {
       name: 'hjstore-auth',
-      partialize: (s) => ({
-        user: s.user,
-        isAuthenticated: s.isAuthenticated,
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
 )
-
-const getAvailableStock = (product) => {
-  const raw = product?.total_stock ?? product?.stock ?? null
-  return raw === null || raw === undefined ? null : Number(raw)
-}
 
 export const useCartStore = create(
   persist(
@@ -68,8 +110,8 @@ export const useCartStore = create(
       items: [],
 
       getItemQty: (productId) => {
-        const found = get().items.find((i) => i.product.id === productId)
-        return found ? found.qty : 0
+        const item = get().items.find((i) => i.product.id === productId)
+        return item ? item.qty : 0
       },
 
       canAdd: (product, qtyToAdd = 1) => {
@@ -95,7 +137,11 @@ export const useCartStore = create(
           set({
             items: items.map((i) =>
               i.product.id === product.id
-                ? { ...i, qty: i.qty + qty, product: { ...i.product, ...product } }
+                ? {
+                    ...i,
+                    qty: i.qty + qty,
+                    product: { ...i.product, ...product },
+                  }
                 : i
             ),
           })
@@ -108,10 +154,11 @@ export const useCartStore = create(
         return true
       },
 
-      removeItem: (productId) =>
+      removeItem: (productId) => {
         set({
           items: get().items.filter((i) => i.product.id !== productId),
-        }),
+        })
+      },
 
       updateQty: (productId, qty) => {
         const item = get().items.find((i) => i.product.id === productId)
@@ -144,7 +191,10 @@ export const useCartStore = create(
         set({
           items: get().items.map((i) =>
             i.product.id === product.id
-              ? { ...i, product: { ...i.product, ...product } }
+              ? {
+                  ...i,
+                  product: { ...i.product, ...product },
+                }
               : i
           ),
         })

@@ -63,6 +63,7 @@ export const authApi = {
   login: (data) => apiClient.post('/auth/login', data),
   refresh: (data) => apiClient.post('/auth/refresh', data),
   me: () => apiClient.get('/auth/me'),
+  register: (data) => apiClient.post('/auth/register', data),
 }
 
 // ── INVENTARIO ───────────────────────────────────────────────────────────────
@@ -77,9 +78,17 @@ export const inventoryApi = {
 // ── ÓRDENES ──────────────────────────────────────────────────────────────────
 export const ordersApi = {
   createWeb: (data) => apiClient.post('/orders/web', data),
+  myOrders: () => apiClient.get('/orders/my-orders'),
   list: (params) => apiClient.get('/orders', { params }),
   updateStatus: (id, status) =>
     apiClient.patch(`/orders/${id}/status`, null, { params: { status } }),
+}
+
+// ── PAGOS ────────────────────────────────────────────────────────────────────
+export const paymentsApi = {
+  methods: () => apiClient.get('/payments/methods'),
+  createCheckout: (data) => apiClient.post('/payments/create-checkout', data),
+  confirmDemo: (data) => apiClient.post('/payments/confirm-demo', data),
 }
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
