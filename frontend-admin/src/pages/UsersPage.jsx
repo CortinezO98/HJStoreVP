@@ -1,335 +1,522 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, ToggleLeft, ToggleRight, Shield, MapPin, User as UserIcon } from 'lucide-react'
-import { apiClient } from '../services/api'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+    Plus,
+    Search,
+    UserCog,
+    ShieldCheck,
+    Store,
+    Mail,
+    Phone,
+    CheckCircle,
+    XCircle,
+    Pencil,
+    X,
+} from 'lucide-react'
+import { usersApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
 import toast from 'react-hot-toast'
 
-const ROLE_LABELS = {
-    super_admin: { label: 'Super Admin', color: 'badge-red' },
-    admin:       { label: 'Admin',       color: 'badge-blue' },
-    seller:      { label: 'Vendedor',    color: 'badge-green' },
-    customer:    { label: 'Cliente',     color: 'badge-gray' },
+function roleLabel(role) {
+    switch (role) {
+        case 'super_admin':
+        return 'Super Admin'
+        case 'admin':
+        return 'Administrador'
+        case 'seller':
+        return 'Vendedor'
+        case 'customer':
+        return 'Cliente'
+        default:
+        return role || '—'
+    }
+}
+
+function roleBadge(role) {
+    switch (role) {
+        case 'super_admin':
+        return 'bg-purple-100 text-purple-700'
+        case 'admin':
+        return 'bg-brand-100 text-brand-700'
+        case 'seller':
+        return 'bg-blue-100 text-blue-700'
+        case 'customer':
+        return 'bg-gray-100 text-gray-700'
+        default:
+        return 'bg-gray-100 text-gray-700'
+    }
+}
+
+function statusBadge(active) {
+    return active
+        ? 'bg-green-100 text-green-700'
+        : 'bg-red-100 text-red-700'
     }
 
-    function UserModal({ user, locations, onClose }) {
-    const qc = useQueryClient()
-    const { user: currentUser } = useAuthStore()
-    const isEdit = !!user?.id
-    const isSuperAdmin = currentUser?.role === 'super_admin'
+    function UserFormModal({ userItem, locations, onClose }) {
+    const isEdit = !!userItem
+    const queryClient = useQueryClient()
 
     const [form, setForm] = useState({
-        full_name:   user?.full_name   || '',
-        email:       user?.email       || '',
-        password:    '',
-        role:        user?.role        || 'seller',
-        phone:       user?.phone       || '',
-        location_id: user?.location_id || '',
-        active:      user?.active ?? true,
+        full_name: userItem?.full_name || '',
+        email: userItem?.email || '',
+        phone: userItem?.phone || '',
+        password: '',
+        role: userItem?.role || 'seller',
+        location_id: userItem?.location_id ? String(userItem.location_id) : '',
+        active: userItem?.active ?? true,
     })
-
-    const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
     const mutation = useMutation({
-        mutationFn: (data) => isEdit
-        ? apiClient.put(`/users/${user.id}`, data).then(r => r.data)
-        : apiClient.post('/users', data).then(r => r.data),
+        mutationFn: async () => {
+        if (!form.full_name || !form.email || !form.role) {
+            throw new Error('Completa los campos obligatorios')
+        }
+
+        if (!isEdit && !form.password) {
+            throw new Error('La contraseña es obligatoria al crear un usuario')
+        }
+
+        if (form.role === 'seller' && !form.location_id) {
+            throw new Error('Debes asignar un punto físico al vendedor')
+        }
+
+        const payload = {
+            full_name: form.full_name,
+            email: form.email,
+            phone: form.phone || null,
+            role: form.role,
+            location_id: form.role === 'seller' ? Number(form.location_id) : null,
+            active: Boolean(form.active),
+        }
+
+        if (!isEdit || form.password) {
+            payload.password = form.password
+        }
+
+        if (isEdit) {
+            const { data } = await usersApi.update(userItem.id, payload)
+            return data
+        }
+
+        const { data } = await usersApi.create(payload)
+        return data
+        },
         onSuccess: () => {
-        qc.invalidateQueries({ queryKey: ['users'] })
         toast.success(isEdit ? 'Usuario actualizado' : 'Usuario creado')
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] })
         onClose()
         },
-        onError: (e) => toast.error(e.response?.data?.detail || 'Error al guardar'),
+        onError: (error) => {
+        toast.error(error?.response?.data?.detail || error.message || 'Error guardando usuario')
+        },
     })
 
-    const handleSubmit = (e) => {
-        e.preventDefault()
-        const payload = {
-        full_name: form.full_name,
-        email: form.email,
-        role: form.role,
-        phone: form.phone || undefined,
-        location_id: form.location_id ? parseInt(form.location_id) : undefined,
-        }
-        if (!isEdit) payload.password = form.password
-        else if (form.password) payload.password = form.password
-        if (isEdit) payload.active = form.active
-        mutation.mutate(payload)
-    }
-
-    const needsLocation = form.role === 'seller'
-
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h2 className="font-bold text-gray-900 text-lg">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 className="text-lg font-bold text-gray-900">
                 {isEdit ? 'Editar usuario' : 'Nuevo usuario'}
-            </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                Administra accesos del panel y vendedores por punto físico
+                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+            <button
+                onClick={onClose}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+                Cerrar
+            </button>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+                <label className="block text-sm text-gray-600 mb-1">Nombre completo *</label>
                 <input
-                className="input" required value={form.full_name}
-                onChange={e => set('full_name', e.target.value)}
-                placeholder="Juan Pérez"
+                className="input"
+                value={form.full_name}
+                onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))}
+                placeholder="Ej: José Jorge Cortines Osorio"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico *</label>
+                <label className="block text-sm text-gray-600 mb-1">Correo *</label>
                 <input
-                type="email" className="input" required value={form.email}
-                onChange={e => set('email', e.target.value)}
-                placeholder="correo@hjstorevp.com"
-                disabled={isEdit}
+                type="email"
+                className="input"
+                value={form.email}
+                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                placeholder="usuario@correo.com"
                 />
-                {isEdit && <p className="text-xs text-gray-400 mt-1">El correo no se puede cambiar</p>}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                {isEdit ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña *'}
+                <label className="block text-sm text-gray-600 mb-1">Teléfono</label>
+                <input
+                className="input"
+                value={form.phone}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="3001234567"
+                />
+            </div>
+
+            <div>
+                <label className="block text-sm text-gray-600 mb-1">
+                {isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña *'}
                 </label>
                 <input
-                type="password" className="input"
-                required={!isEdit}
+                type="password"
+                className="input"
                 value={form.password}
-                onChange={e => set('password', e.target.value)}
-                placeholder={isEdit ? 'Dejar vacío para no cambiar' : 'Mínimo 8 caracteres'}
-                minLength={form.password ? 8 : undefined}
+                onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                placeholder={isEdit ? 'Solo si deseas cambiarla' : 'Contraseña temporal'}
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
+            <div>
+                <label className="block text-sm text-gray-600 mb-1">Rol *</label>
                 <select
-                    className="input" value={form.role}
-                    onChange={e => { set('role', e.target.value); if (e.target.value !== 'seller') set('location_id', '') }}
+                className="input"
+                value={form.role}
+                onChange={(e) =>
+                    setForm((p) => ({
+                    ...p,
+                    role: e.target.value,
+                    location_id: e.target.value === 'seller' ? p.location_id : '',
+                    }))
+                }
                 >
-                    <option value="seller">Vendedor</option>
-                    <option value="admin">Admin</option>
-                    {isSuperAdmin && <option value="super_admin">Super Admin</option>}
-                    <option value="customer">Cliente</option>
+                <option value="admin">Administrador</option>
+                <option value="seller">Vendedor</option>
                 </select>
-                </div>
-                <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                <input
-                    className="input" value={form.phone}
-                    onChange={e => set('phone', e.target.value)}
-                    placeholder="+57 300 000 0000"
-                />
-                </div>
             </div>
 
-            {needsLocation && (
-                <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Punto físico asignado *
-                </label>
+            {form.role === 'seller' && (
+                <div className="md:col-span-2">
+                <label className="block text-sm text-gray-600 mb-1">Punto físico *</label>
                 <select
-                    className="input" required={needsLocation}
+                    className="input"
                     value={form.location_id}
-                    onChange={e => set('location_id', e.target.value)}
+                    onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
                 >
-                    <option value="">Selecciona un punto...</option>
-                    {locations.filter(l => l.type === 'physical').map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
+                    <option value="">Selecciona un punto</option>
+                    {locations
+                    .filter((loc) => String(loc.type).toLowerCase() === 'physical')
+                    .map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                        {loc.name}
+                        </option>
                     ))}
                 </select>
                 </div>
             )}
 
-            {isEdit && (
-                <label className="flex items-center gap-2 cursor-pointer">
+            <div className="md:col-span-2">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                 <input
-                    type="checkbox" checked={form.active}
-                    onChange={e => set('active', e.target.checked)}
-                    className="rounded"
+                    type="checkbox"
+                    checked={form.active}
+                    onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
                 />
-                <span className="text-sm font-medium text-gray-700">Usuario activo</span>
+                Usuario activo
                 </label>
-            )}
-
-            <div className="flex gap-3 pt-2">
-                <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-                <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1">
-                {mutation.isPending ? 'Guardando...' : (isEdit ? 'Guardar cambios' : 'Crear usuario')}
-                </button>
             </div>
-            </form>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+            <button onClick={onClose} className="btn-secondary">
+                Cancelar
+            </button>
+            <button
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending}
+                className="btn-primary flex items-center gap-2"
+            >
+                {mutation.isPending ? 'Guardando...' : <><CheckCircle size={16} /> Guardar usuario</>}
+            </button>
+            </div>
         </div>
         </div>
     )
 }
 
 export default function UsersPage() {
-    const qc = useQueryClient()
-    const [modal, setModal] = useState(null)
-    const [filterRole, setFilterRole] = useState('')
-    const { user: currentUser } = useAuthStore()
+    const { user } = useAuthStore()
+    const [search, setSearch] = useState('')
+    const [roleFilter, setRoleFilter] = useState('')
+    const [statusFilter, setStatusFilter] = useState('')
+    const [selectedUser, setSelectedUser] = useState(null)
+    const [showCreate, setShowCreate] = useState(false)
+
+    const isSuperAdmin = user?.role === 'super_admin'
+    const isAdmin = user?.role === 'admin' || isSuperAdmin
 
     const { data: users = [], isLoading } = useQuery({
-        queryKey: ['users', filterRole],
-        queryFn: () => apiClient.get('/users', {
-        params: filterRole ? { role: filterRole } : {}
-        }).then(r => r.data),
+        queryKey: ['admin-users'],
+        queryFn: () => usersApi.list().then((r) => r.data),
+        enabled: isAdmin,
     })
 
     const { data: locations = [] } = useQuery({
-        queryKey: ['locations'],
-        queryFn: () => apiClient.get('/locations').then(r => r.data),
+        queryKey: ['admin-user-locations'],
+        queryFn: () => locationsApi.list().then((r) => r.data),
+        enabled: isAdmin,
     })
 
-    const toggleMutation = useMutation({
-        mutationFn: ({ id, active }) => apiClient.put(`/users/${id}`, { active: !active }),
-        onSuccess: () => {
-        qc.invalidateQueries({ queryKey: ['users'] })
-        toast.success('Usuario actualizado')
-        },
-        onError: (e) => toast.error(e.response?.data?.detail || 'Error'),
-    })
+    const locationMap = useMemo(() => {
+        const map = new Map()
+        locations.forEach((loc) => map.set(Number(loc.id), loc.name))
+        return map
+    }, [locations])
+
+    const filteredUsers = useMemo(() => {
+        return users.filter((u) => {
+        const term = search.trim().toLowerCase()
+        const matchesSearch = !term
+            ? true
+            : `${u.full_name || ''} ${u.email || ''} ${u.phone || ''}`
+                .toLowerCase()
+                .includes(term)
+
+        const matchesRole = roleFilter ? String(u.role) === String(roleFilter) : true
+
+        const matchesStatus =
+            statusFilter === ''
+            ? true
+            : statusFilter === 'active'
+            ? Boolean(u.active)
+            : !Boolean(u.active)
+
+        return matchesSearch && matchesRole && matchesStatus
+        })
+    }, [users, search, roleFilter, statusFilter])
+
+    const stats = useMemo(() => {
+        return {
+        total: users.length,
+        admins: users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length,
+        sellers: users.filter((u) => u.role === 'seller').length,
+        active: users.filter((u) => u.active).length,
+        }
+    }, [users])
+
+    if (!isAdmin) {
+        return (
+        <div className="card">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Usuarios</h1>
+            <p className="text-sm text-gray-500">
+            Este módulo está disponible solo para administradores.
+            </p>
+        </div>
+        )
+    }
 
     return (
-        <div>
-        <div className="flex items-center justify-between mb-6">
+        <div className="space-y-6">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
             <div>
             <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-            <p className="text-sm text-gray-500 mt-1">{users.length} usuarios registrados</p>
+            <p className="text-sm text-gray-500 mt-1">
+                Administra administradores y vendedores de puntos físicos
+            </p>
             </div>
-            <button onClick={() => setModal('create')} className="btn-primary flex items-center gap-2">
-            <Plus size={16} /> Nuevo usuario
+
+            <button
+            onClick={() => setShowCreate(true)}
+            className="btn-primary flex items-center gap-2"
+            >
+            <Plus size={16} />
+            Nuevo usuario
             </button>
         </div>
 
-        {/* Filtro por rol */}
-        <div className="card mb-4 flex gap-2 flex-wrap">
-            {[
-            { value: '', label: 'Todos' },
-            { value: 'super_admin', label: 'Super Admin' },
-            { value: 'admin', label: 'Admin' },
-            { value: 'seller', label: 'Vendedores' },
-            { value: 'customer', label: 'Clientes' },
-            ].map(opt => (
-            <button
-                key={opt.value}
-                onClick={() => setFilterRole(opt.value)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                filterRole === opt.value
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card">
+            <p className="text-sm text-gray-500">Total usuarios</p>
+            <p className="text-2xl font-black text-gray-900 mt-2">{stats.total}</p>
+            </div>
+            <div className="card">
+            <p className="text-sm text-gray-500">Administradores</p>
+            <p className="text-2xl font-black text-brand-700 mt-2">{stats.admins}</p>
+            </div>
+            <div className="card">
+            <p className="text-sm text-gray-500">Vendedores</p>
+            <p className="text-2xl font-black text-blue-700 mt-2">{stats.sellers}</p>
+            </div>
+            <div className="card">
+            <p className="text-sm text-gray-500">Activos</p>
+            <p className="text-2xl font-black text-green-700 mt-2">{stats.active}</p>
+            </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="card">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                className="input pl-9"
+                placeholder="Buscar por nombre, correo o teléfono..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                />
+            </div>
+
+            <select
+                className="input"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
             >
-                {opt.label}
-            </button>
-            ))}
+                <option value="">Todos los roles</option>
+                <option value="admin">Administrador</option>
+                <option value="super_admin">Super Admin</option>
+                <option value="seller">Vendedor</option>
+                <option value="customer">Cliente</option>
+            </select>
+
+            <select
+                className="input"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+            >
+                <option value="">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+            </select>
+            </div>
         </div>
 
         {/* Tabla */}
-        <div className="card overflow-hidden p-0">
+        <div className="card p-0 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-bold text-gray-900">Listado de usuarios</h2>
+            <p className="text-xs text-gray-500 mt-1">
+                {filteredUsers.length} usuarios encontrados
+            </p>
+            </div>
+
             <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[1000px] text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th className="text-left px-4 py-3 text-gray-500 font-semibold">Usuario</th>
-                    <th className="text-left px-4 py-3 text-gray-500 font-semibold">Rol</th>
+                    <th className="text-left px-4 py-3 text-gray-500 font-semibold">Contacto</th>
+                    <th className="text-center px-4 py-3 text-gray-500 font-semibold">Rol</th>
                     <th className="text-left px-4 py-3 text-gray-500 font-semibold">Punto físico</th>
-                    <th className="text-left px-4 py-3 text-gray-500 font-semibold">Teléfono</th>
                     <th className="text-center px-4 py-3 text-gray-500 font-semibold">Estado</th>
-                    <th className="text-center px-4 py-3 text-gray-500 font-semibold">Acciones</th>
+                    <th className="text-center px-4 py-3 text-gray-500 font-semibold">Acción</th>
                 </tr>
                 </thead>
+
                 <tbody>
                 {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
+                    Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className="border-b border-gray-50">
-                        {Array.from({ length: 6 }).map((_, j) => (
+                        {Array.from({ length: 6 }).map((__, j) => (
                         <td key={j} className="px-4 py-3">
                             <div className="h-4 bg-gray-100 rounded animate-pulse" />
                         </td>
                         ))}
                     </tr>
                     ))
-                ) : users.map(u => {
-                    const roleInfo = ROLE_LABELS[u.role] || { label: u.role, color: 'badge-gray' }
-                    const isMe = u.id === currentUser?.id
-
-                    return (
-                    <tr key={u.id} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${!u.active ? 'opacity-50' : ''}`}>
+                ) : filteredUsers.length === 0 ? (
+                    <tr>
+                    <td colSpan={6} className="px-4 py-16 text-center">
+                        <UserCog size={40} className="mx-auto mb-3 text-gray-200" />
+                        <p className="text-gray-400 text-sm">No hay usuarios para este filtro</p>
+                    </td>
+                    </tr>
+                ) : (
+                    filteredUsers.map((u) => (
+                    <tr
+                        key={u.id}
+                        className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                    >
                         <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-brand-700 font-bold text-xs">
-                                {u.full_name?.[0]?.toUpperCase() || '?'}
-                            </span>
-                            </div>
-                            <div>
-                            <p className="font-medium text-gray-900 text-sm">
-                                {u.full_name}
-                                {isMe && <span className="ml-2 text-xs text-brand-500 font-normal">(tú)</span>}
+                        <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 line-clamp-1">
+                            {u.full_name}
                             </p>
-                            <p className="text-xs text-gray-400">{u.email}</p>
+                            <p className="text-xs text-gray-500 mt-1">ID: {u.id}</p>
+                        </div>
+                        </td>
+
+                        <td className="px-4 py-3">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-gray-700">
+                            <Mail size={13} className="text-brand-600" />
+                            <span className="text-xs">{u.email}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-700">
+                            <Phone size={13} className="text-brand-600" />
+                            <span className="text-xs">{u.phone || 'Sin teléfono'}</span>
                             </div>
                         </div>
                         </td>
-                        <td className="px-4 py-3">
-                        <span className={roleInfo.color}>{roleInfo.label}</span>
+
+                        <td className="px-4 py-3 text-center">
+                        <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge(u.role)}`}
+                        >
+                            {u.role === 'seller' ? (
+                            <Store size={12} />
+                            ) : (
+                            <ShieldCheck size={12} />
+                            )}
+                            {roleLabel(u.role)}
+                        </span>
                         </td>
-                        <td className="px-4 py-3">
-                        {u.location_name ? (
-                            <div className="flex items-center gap-1.5 text-gray-600">
-                            <MapPin size={13} className="text-brand-500" />
-                            <span className="text-xs">{u.location_name}</span>
-                            </div>
-                        ) : (
-                            <span className="text-gray-300 text-xs">—</span>
-                        )}
+
+                        <td className="px-4 py-3 text-gray-700">
+                        {u.role === 'seller'
+                            ? locationMap.get(Number(u.location_id)) || 'Sin asignar'
+                            : 'No aplica'}
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
-                        {u.phone || '—'}
+
+                        <td className="px-4 py-3 text-center">
+                        <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(u.active)}`}
+                        >
+                            {u.active ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                            {u.active ? 'Activo' : 'Inactivo'}
+                        </span>
                         </td>
+
                         <td className="px-4 py-3 text-center">
                         <button
-                            onClick={() => !isMe && toggleMutation.mutate({ id: u.id, active: u.active })}
-                            disabled={isMe}
-                            className={`flex items-center gap-1 mx-auto text-xs font-medium ${
-                            isMe ? 'cursor-not-allowed opacity-40' :
-                            u.active ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'
-                            }`}
+                            onClick={() => setSelectedUser(u)}
+                            className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 text-xs font-semibold"
                         >
-                            {u.active
-                            ? <><ToggleRight size={18} className="text-green-500" /> Activo</>
-                            : <><ToggleLeft size={18} /> Inactivo</>
-                            }
-                        </button>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                        <button
-                            onClick={() => setModal(u)}
-                            className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                            title="Editar usuario"
-                        >
-                            <Pencil size={15} />
+                            <Pencil size={13} />
+                            Editar
                         </button>
                         </td>
                     </tr>
-                    )
-                })}
+                    ))
+                )}
                 </tbody>
             </table>
             </div>
         </div>
 
-        {modal && (
-            <UserModal
-            user={modal === 'create' ? null : modal}
+        {showCreate && (
+            <UserFormModal
             locations={locations}
-            onClose={() => setModal(null)}
+            onClose={() => setShowCreate(false)}
+            />
+        )}
+
+        {selectedUser && (
+            <UserFormModal
+            userItem={selectedUser}
+            locations={locations}
+            onClose={() => setSelectedUser(null)}
             />
         )}
         </div>

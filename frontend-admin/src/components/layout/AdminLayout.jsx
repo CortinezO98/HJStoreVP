@@ -1,30 +1,101 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Package, Tag, Layers, ShoppingBag,
-  Globe, MapPin, Users, BarChart2, LogOut, Menu, X, Bell
+  LayoutDashboard,
+  Package,
+  Tag,
+  Layers,
+  ShoppingBag,
+  Globe,
+  MapPin,
+  Users,
+  BarChart2,
+  LogOut,
+  Menu,
+  X,
+  Bell,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
 import toast from 'react-hot-toast'
 
 const NAV_ITEMS = [
-  { to: '/',            icon: LayoutDashboard, label: 'Dashboard',       roles: ['super_admin','admin','seller'] },
-  { to: '/productos',   icon: Package,         label: 'Productos',       roles: ['super_admin','admin'] },
-  { to: '/categorias',  icon: Tag,             label: 'Categorías',      roles: ['super_admin','admin'] },
-  { to: '/inventario',  icon: Layers,          label: 'Inventario',      roles: ['super_admin','admin','seller'] },
-  { to: '/pedidos',     icon: ShoppingBag,     label: 'Ventas físicas',  roles: ['super_admin','admin','seller'] },
-  { to: '/pedidos-web', icon: Globe,           label: 'Pedidos web',     roles: ['super_admin','admin'] },
-  { to: '/puntos',      icon: MapPin,          label: 'Puntos físicos',  roles: ['super_admin','admin'] },
-  { to: '/usuarios',    icon: Users,           label: 'Usuarios',        roles: ['super_admin','admin'] },
-  { to: '/reportes',    icon: BarChart2,       label: 'Reportes',        roles: ['super_admin','admin'] },
+  {
+    to: '/',
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    roles: ['super_admin', 'admin', 'seller'],
+  },
+  {
+    to: '/productos',
+    icon: Package,
+    label: 'Productos',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/categorias',
+    icon: Tag,
+    label: 'Categorías',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/inventario',
+    icon: Layers,
+    label: 'Inventario',
+    roles: ['super_admin', 'admin', 'seller'],
+  },
+  {
+    to: '/pedidos',
+    icon: ShoppingBag,
+    label: 'Ventas físicas',
+    roles: ['super_admin', 'admin', 'seller'],
+  },
+  {
+    to: '/pedidos-web',
+    icon: Globe,
+    label: 'Pedidos web',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/puntos',
+    icon: MapPin,
+    label: 'Puntos físicos',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/usuarios',
+    icon: Users,
+    label: 'Usuarios',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/reportes',
+    icon: BarChart2,
+    label: 'Reportes',
+    roles: ['super_admin', 'admin'],
+  },
 ]
 
-export default function AdminLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, logout } = useAuthStore()
-  const navigate = useNavigate()
+function roleLabel(role) {
+  switch (role) {
+    case 'super_admin':
+      return 'Super Admin'
+    case 'admin':
+      return 'Administrador'
+    case 'seller':
+      return 'Vendedor'
+    default:
+      return role || 'Usuario'
+  }
+}
 
-  const visibleNav = NAV_ITEMS.filter(item => item.roles.includes(user?.role))
+export default function AdminLayout() {
+  const navigate = useNavigate()
+  const { user, logout } = useAuthStore()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const navItems = useMemo(() => {
+    return NAV_ITEMS.filter((item) => item.roles.includes(user?.role))
+  }, [user?.role])
 
   const handleLogout = () => {
     logout()
@@ -32,97 +103,160 @@ export default function AdminLayout() {
     navigate('/login')
   }
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-brand-800">
-        <span className="text-xl font-black text-white">
-          HJ<span className="text-brand-400">Store</span><span className="text-brand-300">VP</span>
-        </span>
-        <p className="text-xs text-brand-400 mt-0.5">Panel de administración</p>
-      </div>
+  return (
+    <div className="min-h-screen bg-gray-100 flex">
+      {/* Sidebar desktop */}
+      <aside className="hidden lg:flex lg:w-72 bg-white border-r border-gray-100 flex-col">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h1 className="text-xl font-black text-gray-900">HJ Store Admin</h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Panel administrativo contable
+          </p>
+        </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {visibleNav.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-brand-600 text-white'
-                  : 'text-brand-200 hover:bg-brand-800 hover:text-white'
-              }`
-            }
-          >
-            <Icon size={17} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="px-4 py-4 border-t border-brand-800">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-            {user?.fullName?.[0]?.toUpperCase() || 'A'}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">{user?.fullName}</p>
-            <p className="text-xs text-brand-400 capitalize">{user?.role?.replace('_', ' ')}</p>
+        <div className="px-4 py-4 border-b border-gray-100">
+          <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4">
+            <p className="text-sm font-semibold text-gray-900">
+              {user?.fullName || 'Usuario'}
+            </p>
+            <p className="text-xs text-brand-700 mt-1">
+              {roleLabel(user?.role)}
+            </p>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-brand-300 hover:bg-brand-800 hover:text-white transition-colors"
-        >
-          <LogOut size={16} /> Cerrar sesión
-        </button>
-      </div>
-    </div>
-  )
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
-      {/* Sidebar desktop */}
-      <aside className="hidden lg:flex lg:w-60 flex-col bg-brand-950 flex-shrink-0">
-        <SidebarContent />
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`
+                }
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          })}
+        </nav>
+
+        <div className="p-3 border-t border-gray-100">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={18} />
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
 
       {/* Sidebar mobile overlay */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-64 bg-brand-950 flex flex-col z-50">
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="absolute top-4 right-4 text-brand-300 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-            <SidebarContent />
-          </div>
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="absolute left-0 top-0 h-full w-72 bg-white border-r border-gray-100 flex flex-col">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-black text-gray-900">HJ Store Admin</h1>
+                <p className="text-xs text-gray-500 mt-1">
+                  Panel administrativo contable
+                </p>
+              </div>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="px-4 py-4 border-b border-gray-100">
+              <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4">
+                <p className="text-sm font-semibold text-gray-900">
+                  {user?.fullName || 'Usuario'}
+                </p>
+                <p className="text-xs text-brand-700 mt-1">
+                  {roleLabel(user?.role)}
+                </p>
+              </div>
+            </div>
+
+            <nav className="flex-1 px-3 py-4 space-y-1">
+              {navItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/'}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-brand-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`
+                    }
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </NavLink>
+                )
+              })}
+            </nav>
+
+            <div className="p-3 border-t border-gray-100">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut size={18} />
+                Cerrar sesión
+              </button>
+            </div>
+          </aside>
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex items-center gap-3 ml-auto">
-            <button className="relative p-2 text-gray-500 hover:text-gray-700">
+      <div className="flex-1 min-w-0">
+        {/* Topbar */}
+        <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+            >
+              <Menu size={18} />
+            </button>
+
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Operación del negocio</h2>
+              <p className="text-xs text-gray-500">
+                Tienda web + puntos físicos conectados
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button className="p-2 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">
               <Bell size={18} />
             </button>
-            <span className="text-sm font-medium text-gray-900 hidden sm:block">{user?.fullName}</span>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="p-4 md:p-6">
           <Outlet />
         </main>
       </div>

@@ -2,14 +2,14 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-
-from app.db.session import get_db
-from app.core.deps import require_admin
-from app.models.models import Product, Category, Inventory, ProductImage, User
-from app.schemas.schemas import ProductCreate, ProductUpdate, ProductOut
+from sqlalchemy.orm import Session, joinedload
 from slugify import slugify
+
+from app.core.deps import require_admin
+from app.db.session import get_db
+from app.models.models import Category, Inventory, Product, ProductImage, User
+from app.schemas.schemas import ProductCreate, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["Productos"])
 
@@ -23,8 +23,10 @@ def unique_slug(db: Session, name: str, exclude_id: int | None = None) -> str:
         q = db.query(Product).filter(Product.slug == slug)
         if exclude_id:
             q = q.filter(Product.id != exclude_id)
+
         if not q.first():
             return slug
+
         slug = f"{base}-{counter}"
         counter += 1
 
@@ -35,7 +37,7 @@ def serialize_product_list_row(row) -> dict:
         "name": row.name,
         "slug": row.slug,
         "sku": row.sku,
-        "sale_price": float(row.sale_price),
+        "sale_price": float(row.sale_price or 0),
         "active": row.active,
         "featured": row.featured,
         "category_id": row.category_id,
@@ -43,10 +45,13 @@ def serialize_product_list_row(row) -> dict:
         "category_slug": row.category_slug,
         "primary_image": row.primary_image,
         "total_stock": int(row.total_stock or 0),
+        "cost_price": float(row.cost_price or 0),
+        "margin_pct": float(row.margin_pct or 0),
+        "stock_min_alert": row.stock_min_alert,
     }
 
 
-@router.get("")
+@router.get("/")
 def list_products(
     search: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
@@ -86,6 +91,9 @@ def list_products(
             Product.slug,
             Product.sku,
             Product.sale_price,
+            Product.cost_price,
+            Product.margin_pct,
+            Product.stock_min_alert,
             Product.active,
             Product.featured,
             Product.category_id,
@@ -105,15 +113,13 @@ def list_products(
     if search:
         like = f"%{search.strip()}%"
         q = q.filter(
-            Product.name.ilike(like) |
-            Product.sku.ilike(like) |
-            Product.description.ilike(like)
+            Product.name.ilike(like)
+            | Product.sku.ilike(like)
+            | Product.description.ilike(like)
         )
 
     if category:
-        q = q.join(Category, Category.id == Product.category_id).filter(
-            Category.slug == category
-        )
+        q = q.filter(Category.slug == category)
 
     if featured is True:
         q = q.filter(Product.featured == True)
@@ -157,6 +163,7 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
     )
 
     product = None
+
     if slug_or_id.isdigit():
         product = q.filter(Product.id == int(slug_or_id)).first()
 
@@ -169,10 +176,13 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
     total_stock = sum((inv.qty_available or 0) for inv in product.inventory)
     primary_image = None
 
-    sorted_images = sorted(product.images, key=lambda x: (0 if x.is_primary else 1, x.sort_order, x.id))
+    sorted_images = sorted(
+        product.images,
+        key=lambda x: (0 if x.is_primary else 1, x.sort_order, x.id),
+    )
+
     if sorted_images:
-        primary = sorted_images[0]
-        primary_image = primary.url
+        primary_image = sorted_images[0].url
 
     return {
         "id": product.id,
@@ -190,16 +200,18 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
             "parent_id": product.category.parent_id,
             "active": product.category.active,
             "sort_order": product.category.sort_order,
-        } if product.category else None,
-        "cost_price": float(product.cost_price),
-        "margin_pct": float(product.margin_pct),
-        "sale_price": float(product.sale_price),
+        }
+        if product.category
+        else None,
+        "cost_price": float(product.cost_price or 0),
+        "margin_pct": float(product.margin_pct or 0),
+        "sale_price": float(product.sale_price or 0),
         "stock_min_alert": product.stock_min_alert,
         "active": product.active,
         "featured": product.featured,
         "attributes": product.attributes or {},
         "primary_image": primary_image,
-        "total_stock": total_stock,
+        "total_stock": int(total_stock or 0),
         "images": [
             {
                 "id": img.id,
@@ -214,7 +226,7 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
     }
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_product(
     data: ProductCreate,
     db: Session = Depends(get_db),
@@ -228,6 +240,12 @@ def create_product(
         if not category:
             raise HTTPException(status_code=404, detail="Categoría no encontrada")
 
+    sale_price = (
+        data.sale_price
+        if data.sale_price is not None
+        else round(data.cost_price * (1 + data.margin_pct / 100), 2)
+    )
+
     product = Product(
         name=data.name,
         slug=unique_slug(db, data.name),
@@ -236,12 +254,13 @@ def create_product(
         category_id=data.category_id,
         cost_price=data.cost_price,
         margin_pct=data.margin_pct,
-        sale_price=data.sale_price,
+        sale_price=sale_price,
         stock_min_alert=data.stock_min_alert,
         featured=data.featured,
         active=True,
         attributes=data.attributes,
     )
+
     db.add(product)
     db.commit()
     db.refresh(product)
@@ -251,7 +270,10 @@ def create_product(
         "name": product.name,
         "slug": product.slug,
         "sku": product.sku,
-        "sale_price": float(product.sale_price),
+        "sale_price": float(product.sale_price or 0),
+        "cost_price": float(product.cost_price or 0),
+        "margin_pct": float(product.margin_pct or 0),
+        "stock_min_alert": product.stock_min_alert,
         "active": product.active,
         "featured": product.featured,
     }
@@ -272,6 +294,16 @@ def update_product(
         product.name = data.name
         product.slug = unique_slug(db, data.name, exclude_id=product_id)
 
+    if data.sku is not None:
+        existing_sku = (
+            db.query(Product)
+            .filter(Product.sku == data.sku, Product.id != product_id)
+            .first()
+        )
+        if existing_sku:
+            raise HTTPException(status_code=400, detail="Ya existe un producto con ese SKU")
+        product.sku = data.sku
+
     if data.description is not None:
         product.description = data.description
 
@@ -290,6 +322,9 @@ def update_product(
 
     if data.cost_price is not None or data.margin_pct is not None:
         product.sale_price = round(product.cost_price * (1 + product.margin_pct / 100), 2)
+
+    if data.sale_price is not None:
+        product.sale_price = data.sale_price
 
     if data.stock_min_alert is not None:
         product.stock_min_alert = data.stock_min_alert
@@ -311,7 +346,10 @@ def update_product(
         "name": product.name,
         "slug": product.slug,
         "sku": product.sku,
-        "sale_price": float(product.sale_price),
+        "sale_price": float(product.sale_price or 0),
+        "cost_price": float(product.cost_price or 0),
+        "margin_pct": float(product.margin_pct or 0),
+        "stock_min_alert": product.stock_min_alert,
         "active": product.active,
         "featured": product.featured,
     }
