@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     API_V1_STR: str = "/api/v1"
+    API_BASE_URL: str = "http://localhost:8000"
 
     # ─── Seguridad ─────────────────────────────────────────────
     SECRET_KEY: str = secrets.token_urlsafe(32)
@@ -46,26 +47,42 @@ class Settings(BaseSettings):
     DO_SPACES_BUCKET: Optional[str] = None
     DO_SPACES_ENDPOINT: Optional[str] = None
 
+    # ─── Wompi ─────────────────────────────────────────────────
+    # Sandbox: https://developers.wompi.co
+    # Producción: https://comercios.wompi.co
+    WOMPI_PUBLIC_KEY: Optional[str] = None
+    WOMPI_PRIVATE_KEY: Optional[str] = None
+    WOMPI_EVENTS_SECRET: Optional[str] = None
+    WOMPI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
+
+    # ─── Sistecréditos ─────────────────────────────────────────
+    # Solicitar credenciales en: https://www.sistecréditos.com/aliados
+    # Variables que te pasarán:
+    #   SISTECREDITOS_API_KEY  → Llave de API
+    #   SISTECREDITOS_STORE_ID → ID de tu tienda
+    #   SISTECREDITOS_SECRET   → Secreto para verificar webhooks
+    SISTECREDITOS_API_KEY: Optional[str] = None
+    SISTECREDITOS_STORE_ID: Optional[str] = None
+    SISTECREDITOS_SECRET: Optional[str] = None
+    SISTECREDITOS_ENV: str = "sandbox"   # "sandbox" o "production"
+    SISTECREDITOS_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
+
+    # ─── Addi ──────────────────────────────────────────────────
+    # Solicitar credenciales en: https://www.addi.com/colombia/aliados
+    # Variables que te pasarán:
+    #   ADDI_CLIENT_ID     → Client ID de OAuth2
+    #   ADDI_CLIENT_SECRET → Client Secret de OAuth2
+    ADDI_CLIENT_ID: Optional[str] = None
+    ADDI_CLIENT_SECRET: Optional[str] = None
+    ADDI_ENV: str = "sandbox"   # "sandbox" o "production"
+    ADDI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
+
     # ─── Email ─────────────────────────────────────────────────
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM: str = "noreply@hjstorevp.com"
-
-    # ─── Pasarela de pago — Wompi ──────────────────────────────
-    # Sandbox (pruebas):  https://developers.wompi.co/docs/en/getting-started
-    # Producción:         https://comercios.wompi.co
-    #
-    # Agregar al .env cuando tengas las credenciales:
-    #   WOMPI_PUBLIC_KEY=pub_test_XXXXXXXXXXXXXXXXXXXX
-    #   WOMPI_PRIVATE_KEY=prv_test_XXXXXXXXXXXXXXXXXXXX
-    #   WOMPI_EVENTS_SECRET=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-    #   WOMPI_REDIRECT_URL=https://tudominio.com/pago-confirmado
-    WOMPI_PUBLIC_KEY: Optional[str] = None
-    WOMPI_PRIVATE_KEY: Optional[str] = None
-    WOMPI_EVENTS_SECRET: Optional[str] = None
-    WOMPI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
 
     # ─── Primer admin ──────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@hjstorevp.com"

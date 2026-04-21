@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ShoppingBag, MapPin, CheckCircle, ArrowLeft, Truck, CreditCard, Loader } from 'lucide-react'
+import {
+  ShoppingBag, MapPin, CheckCircle, ArrowLeft,
+  CreditCard, Loader, ChevronRight, Info
+} from 'lucide-react'
 import { useCartStore } from '../../store'
 import { apiClient } from '../../services/api'
+import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -21,20 +25,68 @@ const DEPARTAMENTOS = [
   'San Andrés','Santander','Sucre','Tolima','Valle del Cauca','Vaupés','Vichada',
 ]
 
+// ── Configuración visual de cada método de pago ──────────────────────────────
+const PAYMENT_METHODS = {
+  wompi: {
+    name: 'Wompi',
+    description: 'Tarjeta débito, crédito o PSE',
+    color: 'border-[#00C48C] bg-[#00C48C]',
+    textColor: 'text-[#00C48C]',
+    borderSelected: 'border-[#00C48C]',
+    disabledNote: 'Sin configurar — modo demo',
+    fields: [],
+  },
+  sistecreditos: {
+    name: 'Sistecréditos',
+    description: 'Crédito a cuotas · Sin tarjeta de crédito',
+    color: 'border-blue-600 bg-blue-600',
+    textColor: 'text-blue-600',
+    borderSelected: 'border-blue-600',
+    disabledNote: 'Sin configurar — modo demo',
+    fields: [
+      { key: 'customer_phone', label: 'Teléfono celular', placeholder: '3001234567', required: true },
+      { key: 'customer_id',    label: 'Número de cédula', placeholder: '10000000',   required: true },
+    ],
+  },
+  addi: {
+    name: 'Addi',
+    description: 'Crédito instantáneo con tu cédula',
+    color: 'border-orange-500 bg-orange-500',
+    textColor: 'text-orange-500',
+    borderSelected: 'border-orange-500',
+    disabledNote: 'Sin configurar — modo demo',
+    fields: [
+      { key: 'customer_phone', label: 'Teléfono celular', placeholder: '3001234567', required: true },
+    ],
+  },
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const { items, total, clearCart } = useCartStore()
-  const [step, setStep] = useState('form')  // 'form' | 'payment' | 'confirmed'
+  const [step, setStep] = useState('form')
   const [loading, setLoading] = useState(false)
   const [createdOrder, setCreatedOrder] = useState(null)
   const [paymentInfo, setPaymentInfo] = useState(null)
+  const [selectedMethod, setSelectedMethod] = useState('wompi')
+  const [extraFields, setExtraFields] = useState({
+    customer_phone: '',
+    customer_id: '',
+  })
 
   const [form, setForm] = useState({
     full_name: '', phone: '', address_line1: '',
     address_line2: '', city: '', department: 'Atlántico', postal_code: '',
   })
-
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Cargar métodos disponibles desde el backend
+  const { data: methods = [] } = useQuery({
+    queryKey: ['payment-methods'],
+    queryFn: () => apiClient.get('/payments/methods').then(r => r.data),
+  })
+
+  const getMethodStatus = (id) => methods.find(m => m.id === id) || { enabled: false }
 
   if (items.length === 0 && step === 'form') {
     return (
@@ -48,9 +100,103 @@ export default function CheckoutPage() {
     )
   }
 
-  // ── PASO 1: Crear orden ───────────────────────────────────────────────────
+  // ── Pantalla de confirmación ──────────────────────────────────────────────
+  if (step === 'confirmed') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle size={40} className="text-green-600" />
+        </div>
+        <h1 className="text-3xl font-black text-gray-900 mb-2">¡Pago confirmado!</h1>
+        <p className="font-mono font-bold text-gray-700 mb-8">{createdOrder?.order_number}</p>
+        <div className="flex gap-3">
+          <Link to="/" className="btn-secondary flex-1">Inicio</Link>
+          <Link to="/mi-cuenta" className="btn-primary flex-1">Mis pedidos</Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Pantalla de selección de pago ─────────────────────────────────────────
+  if (step === 'payment' && paymentInfo) {
+    const methodConfig = PAYMENT_METHODS[paymentInfo.method] || PAYMENT_METHODS.wompi
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CreditCard size={28} className="text-brand-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Completa tu pago</h1>
+          <p className="text-gray-500 mt-1 font-mono font-bold">{createdOrder?.order_number}</p>
+          <p className="text-3xl font-black text-brand-700 mt-2">{formatCOP(paymentInfo.amount)}</p>
+        </div>
+
+        <div className="space-y-4">
+          {/* Botón pagar */}
+          <button
+            onClick={() => window.location.href = paymentInfo.checkout_url}
+            className={`w-full ${methodConfig.color} text-white rounded-2xl p-5 flex items-center justify-between hover:opacity-90 transition-opacity`}
+          >
+            <div className="text-left">
+              <p className="font-bold text-lg">{methodConfig.name}</p>
+              <p className="text-sm opacity-80">
+                {paymentInfo.enabled ? methodConfig.description : methodConfig.disabledNote}
+              </p>
+            </div>
+            <ChevronRight size={24} />
+          </button>
+
+          {/* Demo: confirmar sin pago */}
+          {!paymentInfo.enabled && (
+            <button
+              onClick={async () => {
+                setLoading(true)
+                try {
+                  await apiClient.post('/payments/confirm-demo', {
+                    order_number: createdOrder.order_number,
+                    method: paymentInfo.method,
+                  })
+                  setStep('confirmed')
+                } catch {
+                  toast.error('Error al confirmar pago demo')
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              disabled={loading}
+              className="w-full btn-secondary flex items-center justify-center gap-2 py-4 rounded-2xl"
+            >
+              {loading ? <Loader size={18} className="animate-spin" /> : <CheckCircle size={18} className="text-green-600" />}
+              Confirmar sin pago (modo desarrollo)
+            </button>
+          )}
+
+          <div className="flex items-start gap-2 text-xs text-gray-400 px-1">
+            <Info size={13} className="mt-0.5 flex-shrink-0" />
+            <p>
+              {paymentInfo.enabled
+                ? 'Serás redirigido a la página segura del proveedor para completar el pago.'
+                : `⚠️ Credenciales de ${methodConfig.name} no configuradas. Actívalas en el .env.`
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Formulario de dirección y método de pago ──────────────────────────────
   const handleCreateOrder = async (e) => {
     e.preventDefault()
+
+    const methodFields = PAYMENT_METHODS[selectedMethod]?.fields || []
+    for (const field of methodFields) {
+      if (field.required && !extraFields[field.key]) {
+        toast.error(`El campo "${field.label}" es requerido para ${PAYMENT_METHODS[selectedMethod].name}`)
+        return
+      }
+    }
+
     setLoading(true)
     try {
       const { data: order } = await apiClient.post('/orders/web', {
@@ -67,9 +213,11 @@ export default function CheckoutPage() {
       setCreatedOrder(order)
       clearCart()
 
-      // Iniciar pago con Wompi
       const { data: payment } = await apiClient.post('/payments/initiate', {
         order_number: order.order_number,
+        method: selectedMethod,
+        customer_phone: extraFields.customer_phone || form.phone || undefined,
+        customer_id: extraFields.customer_id || undefined,
       })
 
       setPaymentInfo(payment)
@@ -81,110 +229,6 @@ export default function CheckoutPage() {
     }
   }
 
-  // ── PASO 2: Ir a pagar con Wompi ─────────────────────────────────────────
-  const handleGoToWompi = () => {
-    window.location.href = paymentInfo.checkout_url
-  }
-
-  // ── PASO 2b: Confirmar pago demo (solo desarrollo) ───────────────────────
-  const handleDemoConfirm = async () => {
-    setLoading(true)
-    try {
-      await apiClient.post('/payments/confirm-demo', {
-        order_number: createdOrder.order_number,
-      })
-      setStep('confirmed')
-    } catch (err) {
-      toast.error('Error al confirmar pago demo')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // ── PANTALLA: Pago confirmado ────────────────────────────────────────────
-  if (step === 'confirmed') {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle size={40} className="text-green-600" />
-        </div>
-        <h1 className="text-3xl font-black text-gray-900 mb-2">¡Pago confirmado!</h1>
-        <p className="text-gray-500 mb-2">Tu pedido está en proceso</p>
-        <p className="text-sm font-mono font-bold text-gray-700 mb-8">
-          {createdOrder?.order_number}
-        </p>
-        <div className="flex gap-3">
-          <Link to="/" className="btn-secondary flex-1">Ir al inicio</Link>
-          <Link to="/mi-cuenta" className="btn-primary flex-1">Ver mis pedidos</Link>
-        </div>
-      </div>
-    )
-  }
-
-  // ── PANTALLA: Opciones de pago ───────────────────────────────────────────
-  if (step === 'payment' && paymentInfo) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CreditCard size={28} className="text-brand-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Elige cómo pagar</h1>
-          <p className="text-gray-500 mt-2">
-            Orden <span className="font-mono font-bold text-gray-700">{createdOrder?.order_number}</span>
-          </p>
-          <p className="text-2xl font-black text-brand-700 mt-1">
-            {formatCOP(paymentInfo.amount)}
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {/* Wompi — Tarjeta / PSE */}
-          <button
-            onClick={handleGoToWompi}
-            className="w-full bg-[#00C48C] hover:bg-[#00A876] text-white rounded-2xl p-5 flex items-center justify-between transition-colors group"
-          >
-            <div className="text-left">
-              <p className="font-bold text-lg">Pagar con Wompi</p>
-              <p className="text-sm opacity-80">
-                {paymentInfo.wompi_enabled
-                  ? 'Tarjeta débito, crédito o PSE'
-                  : 'Modo demo — sin cargo real'
-                }
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <CreditCard size={24} />
-            </div>
-          </button>
-
-          {/* Solo en desarrollo: botón de confirmar sin pago real */}
-          {!paymentInfo.wompi_enabled && (
-            <button
-              onClick={handleDemoConfirm}
-              disabled={loading}
-              className="w-full btn-secondary flex items-center justify-center gap-2 py-4 rounded-2xl"
-            >
-              {loading
-                ? <Loader size={18} className="animate-spin" />
-                : <CheckCircle size={18} className="text-green-600" />
-              }
-              Confirmar sin pago (modo desarrollo)
-            </button>
-          )}
-
-          <p className="text-xs text-gray-400 text-center pt-2">
-            {paymentInfo.wompi_enabled
-              ? 'Serás redirigido a la página segura de Wompi para completar el pago.'
-              : '⚠️ Sin credenciales de Wompi. Agrega WOMPI_PUBLIC_KEY al .env para activar pagos reales.'
-            }
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // ── PANTALLA: Formulario de dirección ────────────────────────────────────
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex items-center gap-3 mb-8">
@@ -196,6 +240,8 @@ export default function CheckoutPage() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         <form onSubmit={handleCreateOrder} className="flex-1 space-y-6">
+
+          {/* Dirección */}
           <div className="card">
             <h2 className="font-bold text-gray-900 text-lg mb-5 flex items-center gap-2">
               <MapPin size={18} className="text-brand-600" /> Dirección de entrega
@@ -241,19 +287,63 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Método de pago preview */}
+          {/* Método de pago */}
           <div className="card">
             <h2 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
               <CreditCard size={18} className="text-brand-600" /> Método de pago
             </h2>
-            <div className="flex items-center gap-4 p-4 border-2 border-[#00C48C] bg-green-50 rounded-xl">
-              <div className="w-10 h-10 bg-[#00C48C] rounded-xl flex items-center justify-center flex-shrink-0">
-                <CreditCard size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">Wompi — Pago seguro</p>
-                <p className="text-xs text-gray-500">Tarjeta débito, crédito o PSE · Colombia</p>
-              </div>
+
+            <div className="space-y-3">
+              {Object.entries(PAYMENT_METHODS).map(([id, config]) => {
+                const status = getMethodStatus(id)
+                const isSelected = selectedMethod === id
+                return (
+                  <label
+                    key={id}
+                    className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      isSelected ? config.borderSelected + ' bg-gray-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio" name="payment_method"
+                      value={id} checked={isSelected}
+                      onChange={() => setSelectedMethod(id)}
+                      className="mt-1 accent-brand-600"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-900">{config.name}</p>
+                        {!status.enabled && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                            Demo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">{config.description}</p>
+
+                      {/* Campos extra según el método */}
+                      {isSelected && config.fields.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          {config.fields.map(field => (
+                            <div key={field.key}>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">
+                                {field.label} {field.required && '*'}
+                              </label>
+                              <input
+                                className="input text-sm"
+                                placeholder={field.placeholder}
+                                value={extraFields[field.key]}
+                                onChange={e => setExtraFields(f => ({ ...f, [field.key]: e.target.value }))}
+                                required={isSelected && field.required}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
             </div>
           </div>
 
@@ -266,7 +356,7 @@ export default function CheckoutPage() {
           </button>
         </form>
 
-        {/* Resumen */}
+        {/* Resumen lateral */}
         <div className="lg:w-80 flex-shrink-0">
           <div className="card sticky top-20">
             <h2 className="font-bold text-gray-900 text-lg mb-4">Tu pedido</h2>
