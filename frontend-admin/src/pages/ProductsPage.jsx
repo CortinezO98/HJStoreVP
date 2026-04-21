@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, ToggleLeft, ToggleRight, Search } from 'lucide-react'
+import { Plus, Pencil, ToggleLeft, ToggleRight, Search, Image } from 'lucide-react'
 import { productsApi } from '../services/api'
+import ProductImages from '../components/products/ProductImages'
 import toast from 'react-hot-toast'
 
+const API_URL = import.meta.env.VITE_API_URL || ''
+
 function formatCOP(n) {
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n)
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency', currency: 'COP', maximumFractionDigits: 0
+  }).format(n)
 }
 
 function ProductModal({ product, onClose }) {
@@ -38,7 +43,7 @@ function ProductModal({ product, onClose }) {
     onError: (e) => toast.error(e.response?.data?.detail || 'Error al guardar'),
   })
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -54,34 +59,58 @@ function ProductModal({ product, onClose }) {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900 text-lg">{isEdit ? 'Editar' : 'Nuevo'} producto</h2>
+          <h2 className="font-bold text-gray-900 text-lg">
+            {isEdit ? 'Editar' : 'Nuevo'} producto
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
         </div>
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-              <input className="input" required value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Nombre del producto" />
+              <input
+                className="input" required value={form.name}
+                onChange={e => set('name', e.target.value)}
+                placeholder="Nombre del producto"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
-              <input className="input font-mono" required value={form.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())} placeholder="GOR-001" />
+              <input
+                className="input font-mono" required value={form.sku}
+                onChange={e => set('sku', e.target.value.toUpperCase())}
+                placeholder="GOR-001"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Stock mínimo</label>
-              <input type="number" className="input" min={0} value={form.stock_min_alert} onChange={(e) => set('stock_min_alert', e.target.value)} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Stock mínimo alerta</label>
+              <input
+                type="number" className="input" min={0}
+                value={form.stock_min_alert}
+                onChange={e => set('stock_min_alert', e.target.value)}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Precio de costo (COP) *</label>
-              <input type="number" className="input" required min={0} value={form.cost_price} onChange={(e) => set('cost_price', e.target.value)} placeholder="50000" />
+              <input
+                type="number" className="input" required min={0}
+                value={form.cost_price}
+                onChange={e => set('cost_price', e.target.value)}
+                placeholder="50000"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">% de ganancia *</label>
-              <input type="number" className="input" required min={0} max={999} value={form.margin_pct} onChange={(e) => set('margin_pct', e.target.value)} placeholder="50" />
+              <input
+                type="number" className="input" required min={0} max={999}
+                value={form.margin_pct}
+                onChange={e => set('margin_pct', e.target.value)}
+                placeholder="50"
+              />
             </div>
           </div>
 
-          {/* Preview precio de venta */}
           {salePrice && (
             <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between">
               <span className="text-sm text-green-700 font-medium">Precio de venta calculado</span>
@@ -91,11 +120,20 @@ function ProductModal({ product, onClose }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-            <textarea className="input resize-none" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Descripción del producto..." />
+            <textarea
+              className="input resize-none" rows={3}
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="Descripción del producto..."
+            />
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} className="rounded" />
+            <input
+              type="checkbox" checked={form.featured}
+              onChange={e => set('featured', e.target.checked)}
+              className="rounded"
+            />
             <span className="text-sm font-medium text-gray-700">Producto destacado</span>
           </label>
 
@@ -114,11 +152,12 @@ function ProductModal({ product, onClose }) {
 export default function ProductsPage() {
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
-  const [modal, setModal] = useState(null) // null | 'create' | product object
+  const [modal, setModal] = useState(null)       // null | 'create' | product obj
+  const [imagesModal, setImagesModal] = useState(null) // null | product obj
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['products', 'admin', search],
-    queryFn: () => productsApi.list({ search: search || undefined, per_page: 100 }).then((r) => r.data),
+    queryFn: () => productsApi.list({ search: search || undefined, per_page: 100 }).then(r => r.data),
   })
 
   const toggleMutation = useMutation({
@@ -129,8 +168,17 @@ export default function ProductsPage() {
     },
   })
 
+  const getPrimaryImage = (product) => {
+    if (product.primary_image) {
+      const url = product.primary_image
+      return url.startsWith('http') ? url : `${API_URL}${url}`
+    }
+    return null
+  }
+
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
@@ -141,7 +189,7 @@ export default function ProductsPage() {
         </button>
       </div>
 
-      {/* Buscar */}
+      {/* Búsqueda */}
       <div className="card mb-4">
         <div className="relative max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -149,7 +197,7 @@ export default function ProductsPage() {
             className="input pl-9"
             placeholder="Buscar por nombre o SKU..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
           />
         </div>
       </div>
@@ -160,6 +208,7 @@ export default function ProductsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                <th className="text-left px-4 py-3 text-gray-500 font-semibold w-16">Foto</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">Producto</th>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">SKU</th>
                 <th className="text-right px-4 py-3 text-gray-500 font-semibold">Costo</th>
@@ -173,15 +222,30 @@ export default function ProductsPage() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-100 rounded animate-pulse" />
                       </td>
                     ))}
                   </tr>
                 ))
-              ) : products?.map((p) => (
+              ) : products?.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  {/* Miniatura */}
+                  <td className="px-4 py-2">
+                    <div
+                      onClick={() => setImagesModal(p)}
+                      className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:ring-2 hover:ring-brand-400 transition-all flex items-center justify-center"
+                      title="Gestionar imágenes"
+                    >
+                      {getPrimaryImage(p) ? (
+                        <img src={getPrimaryImage(p)} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Image size={16} className="text-gray-300" />
+                      )}
+                    </div>
+                  </td>
+
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900">{p.name}</div>
                     {p.featured && <span className="badge-blue text-[10px] mt-0.5">Destacado</span>}
@@ -191,11 +255,15 @@ export default function ProductsPage() {
                   <td className="px-4 py-3 text-right">
                     <span className="badge-green">{p.margin_pct}%</span>
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-brand-700">{formatCOP(p.sale_price)}</td>
+                  <td className="px-4 py-3 text-right font-bold text-brand-700">
+                    {formatCOP(p.sale_price)}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => toggleMutation.mutate({ id: p.id, active: p.active })}
-                      className={`flex items-center gap-1 mx-auto text-xs font-medium ${p.active ? 'text-green-600' : 'text-gray-400'}`}
+                      className={`flex items-center gap-1 mx-auto text-xs font-medium ${
+                        p.active ? 'text-green-600' : 'text-gray-400'
+                      }`}
                     >
                       {p.active
                         ? <><ToggleRight size={18} className="text-green-500" /> Activo</>
@@ -204,12 +272,22 @@ export default function ProductsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setModal(p)}
-                      className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                    >
-                      <Pencil size={15} />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => setImagesModal(p)}
+                        className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Gestionar imágenes"
+                      >
+                        <Image size={15} />
+                      </button>
+                      <button
+                        onClick={() => setModal(p)}
+                        className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                        title="Editar producto"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -218,11 +296,20 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal crear/editar */}
       {modal && (
         <ProductModal
           product={modal === 'create' ? null : modal}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {/* Modal imágenes */}
+      {imagesModal && (
+        <ProductImages
+          productId={imagesModal.id}
+          productName={imagesModal.name}
+          onClose={() => setImagesModal(null)}
         />
       )}
     </div>
