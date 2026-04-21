@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl, validator
+from pydantic import validator
 from typing import List, Optional
 import secrets
 
@@ -37,11 +37,9 @@ class Settings(BaseSettings):
         return v
 
     # ─── Almacenamiento ────────────────────────────────────────
-    STORAGE_BACKEND: str = "local"  # local | s3
+    STORAGE_BACKEND: str = "local"
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
-
-    # DO Spaces / S3
     DO_SPACES_KEY: Optional[str] = None
     DO_SPACES_SECRET: Optional[str] = None
     DO_SPACES_REGION: Optional[str] = "nyc3"
@@ -55,10 +53,19 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM: str = "noreply@hjstorevp.com"
 
-    # ─── Pasarela de pago ──────────────────────────────────────
+    # ─── Pasarela de pago — Wompi ──────────────────────────────
+    # Sandbox (pruebas):  https://developers.wompi.co/docs/en/getting-started
+    # Producción:         https://comercios.wompi.co
+    #
+    # Agregar al .env cuando tengas las credenciales:
+    #   WOMPI_PUBLIC_KEY=pub_test_XXXXXXXXXXXXXXXXXXXX
+    #   WOMPI_PRIVATE_KEY=prv_test_XXXXXXXXXXXXXXXXXXXX
+    #   WOMPI_EVENTS_SECRET=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    #   WOMPI_REDIRECT_URL=https://tudominio.com/pago-confirmado
     WOMPI_PUBLIC_KEY: Optional[str] = None
     WOMPI_PRIVATE_KEY: Optional[str] = None
     WOMPI_EVENTS_SECRET: Optional[str] = None
+    WOMPI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
 
     # ─── Primer admin ──────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@hjstorevp.com"

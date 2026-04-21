@@ -18,8 +18,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await login(form.email, form.password)
-      toast.success(`Bienvenido, ${data.full_name}!`)
-      // Si es admin/seller, redirigir al panel
+      toast.success(`Bienvenido/a, ${data.full_name}!`)
       if (['super_admin', 'admin', 'seller'].includes(data.user_role)) {
         window.location.href = 'http://localhost:5174'
       } else {
@@ -33,8 +32,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-950 to-brand-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
+
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-block">
@@ -50,29 +50,27 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Correo electrónico
               </label>
               <input
-                type="email"
-                required
+                type="email" required
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={e => setForm({ ...form, email: e.target.value })}
                 placeholder="tu@correo.com"
                 className="input"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Contraseña
               </label>
               <div className="relative">
                 <input
-                  type={showPass ? 'text' : 'password'}
-                  required
+                  type={showPass ? 'text' : 'password'} required
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
                   placeholder="••••••••"
                   className="input pr-10"
                 />
@@ -87,22 +85,20 @@ export default function LoginPage() {
             </div>
 
             <button
-              type="submit"
-              disabled={loading}
+              type="submit" disabled={loading}
               className="btn-primary w-full flex items-center justify-center gap-2 text-base"
             >
-              {loading ? (
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <><LogIn size={18} /> Ingresar</>
-              )}
+              {loading
+                ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <><LogIn size={18} /> Ingresar</>
+              }
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             ¿No tienes cuenta?{' '}
             <Link to="/registro" className="text-brand-600 hover:text-brand-700 font-medium">
-              Regístrate
+              Regístrate gratis
             </Link>
           </p>
         </div>
