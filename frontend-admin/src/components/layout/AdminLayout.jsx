@@ -1,20 +1,22 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Package, Layers, ShoppingBag,
-  MapPin, Users, BarChart2, LogOut, Menu, X, Bell
+  LayoutDashboard, Package, Tag, Layers, ShoppingBag,
+  Globe, MapPin, Users, BarChart2, LogOut, Menu, X, Bell
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '../../store'
 import toast from 'react-hot-toast'
 
 const NAV_ITEMS = [
-  { to: '/',           icon: LayoutDashboard, label: 'Dashboard',      roles: ['super_admin','admin','seller'] },
-  { to: '/productos',  icon: Package,         label: 'Productos',      roles: ['super_admin','admin'] },
-  { to: '/inventario', icon: Layers,          label: 'Inventario',     roles: ['super_admin','admin','seller'] },
-  { to: '/pedidos',    icon: ShoppingBag,     label: 'Pedidos',        roles: ['super_admin','admin','seller'] },
-  { to: '/puntos',     icon: MapPin,          label: 'Puntos Físicos', roles: ['super_admin','admin'] },
-  { to: '/usuarios',   icon: Users,           label: 'Usuarios',       roles: ['super_admin','admin'] },
-  { to: '/reportes',   icon: BarChart2,       label: 'Reportes',       roles: ['super_admin','admin'] },
+  { to: '/',            icon: LayoutDashboard, label: 'Dashboard',       roles: ['super_admin','admin','seller'] },
+  { to: '/productos',   icon: Package,         label: 'Productos',       roles: ['super_admin','admin'] },
+  { to: '/categorias',  icon: Tag,             label: 'Categorías',      roles: ['super_admin','admin'] },
+  { to: '/inventario',  icon: Layers,          label: 'Inventario',      roles: ['super_admin','admin','seller'] },
+  { to: '/pedidos',     icon: ShoppingBag,     label: 'Ventas físicas',  roles: ['super_admin','admin','seller'] },
+  { to: '/pedidos-web', icon: Globe,           label: 'Pedidos web',     roles: ['super_admin','admin'] },
+  { to: '/puntos',      icon: MapPin,          label: 'Puntos físicos',  roles: ['super_admin','admin'] },
+  { to: '/usuarios',    icon: Users,           label: 'Usuarios',        roles: ['super_admin','admin'] },
+  { to: '/reportes',    icon: BarChart2,       label: 'Reportes',        roles: ['super_admin','admin'] },
 ]
 
 export default function AdminLayout() {
@@ -22,7 +24,7 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
 
-  const visibleNav = NAV_ITEMS.filter((item) => item.roles.includes(user?.role))
+  const visibleNav = NAV_ITEMS.filter(item => item.roles.includes(user?.role))
 
   const handleLogout = () => {
     logout()
@@ -32,7 +34,6 @@ export default function AdminLayout() {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className="px-5 py-5 border-b border-brand-800">
         <span className="text-xl font-black text-white">
           HJ<span className="text-brand-400">Store</span><span className="text-brand-300">VP</span>
@@ -40,8 +41,7 @@ export default function AdminLayout() {
         <p className="text-xs text-brand-400 mt-0.5">Panel de administración</p>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {visibleNav.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -56,13 +56,12 @@ export default function AdminLayout() {
               }`
             }
           >
-            <Icon size={18} />
+            <Icon size={17} />
             {label}
           </NavLink>
         ))}
       </nav>
 
-      {/* User info */}
       <div className="px-4 py-4 border-t border-brand-800">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -108,7 +107,6 @@ export default function AdminLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Topbar */}
         <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -120,13 +118,10 @@ export default function AdminLayout() {
             <button className="relative p-2 text-gray-500 hover:text-gray-700">
               <Bell size={18} />
             </button>
-            <div className="text-sm text-gray-500">
-              <span className="font-medium text-gray-900">{user?.fullName}</span>
-            </div>
+            <span className="text-sm font-medium text-gray-900 hidden sm:block">{user?.fullName}</span>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
