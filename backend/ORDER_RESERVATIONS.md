@@ -52,11 +52,20 @@ cd backend
 python scripts/audit_expired_reservations.py
 ```
 
-El comando lista candidatos sin modificar datos. **No programar un cron
-que cancele automáticamente** sin verificar cada estado en Wompi/Addi/
-Sistecréditos: la confirmación puede llegar tarde. El siguiente desarrollo
-debe incorporar conciliación con el proveedor, reintentos, límites de
-vencimiento e idempotencia con eventos de pasarela verificables.
+El comando lista candidatos sin modificar datos. Para hacer una liberación
+controlada **solo de pedidos vencidos que nunca iniciaron un pago**:
+
+```bash
+cd backend
+python scripts/audit_expired_reservations.py --apply
+```
+
+Esta acción opt-in vuelve a comprobar la situación dentro de una transacción
+con bloqueo de fila y deja intactos los pedidos con `payment_method` registrado.
+Antes de usar `--apply`, validar la copia de seguridad y ejecutar dry-run.
+**No programar un cron que cancele todos los pedidos pendientes** sin verificar
+estado con Wompi/Addi/Sistecréditos: las confirmaciones pueden llegar tarde.
+La conciliación automática con proveedor sigue pendiente.
 
 ## Pruebas de aceptación
 
