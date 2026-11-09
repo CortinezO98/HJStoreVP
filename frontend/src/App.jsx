@@ -1,4 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import StoreErrorBoundary from './components/shop/StoreErrorBoundary'
+import ScrollToTop from './components/shop/ScrollToTop'
 import { useAuthStore } from './store'
 
 import ShopLayout               from './components/layout/ShopLayout'
@@ -13,14 +15,20 @@ import AccountPage              from './pages/shop/AccountPage'
 import PaymentConfirmationPage  from './pages/shop/PaymentConfirmationPage'
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const location = useLocation()
+  if (!isAuthenticated) {
+    const next = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?next=${next}`} replace />
+  }
   return children
 }
 
 export default function App() {
   return (
-    <Routes>
+    <StoreErrorBoundary>
+      <ScrollToTop />
+      <Routes>
       <Route element={<ShopLayout />}>
         <Route path="/"                    element={<HomePage />} />
         <Route path="/catalogo"            element={<CatalogPage />} />
@@ -38,6 +46,7 @@ export default function App() {
       <Route path="/login"    element={<LoginPage />} />
       <Route path="/registro" element={<RegisterPage />} />
       <Route path="*"         element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </StoreErrorBoundary>
   )
 }
