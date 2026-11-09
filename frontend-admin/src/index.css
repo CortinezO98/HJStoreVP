@@ -139,3 +139,8 @@
   .admin-main .fixed.inset-0 { padding: 10px; }
   .admin-main .fixed.inset-0 > div { max-height: calc(100dvh - 20px); }
 }
+
+
+@layer components {
+  .admin-dashboard-no-data { @apply flex flex-col items-center justify-center text-center px-5 py-12 rounded-xl border border-dashed border-slate-200 text-slate-400; min-height: 228px; background: #fafbfe; }
+}
