@@ -1,214 +1,117 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, Truck } from 'lucide-react'
+import { Trash2, ShoppingBag, ArrowRight, Truck, ShieldCheck } from 'lucide-react'
 import { useCartStore, useAuthStore } from '../../store'
+import { PageHeading, EmptyState, QuantityStepper } from '../../components/shop/StoreUI'
 import toast from 'react-hot-toast'
 
-function formatCOP(amount) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Number(amount || 0))
-}
+const API_URL = import.meta.env.VITE_API_URL || ''
+const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
+  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
+}).format(Number(amount) || 0)
 
-function getAvailableStock(product) {
-  const raw = product?.total_stock ?? product?.stock ?? null
-  return raw === null || raw === undefined ? null : Number(raw)
+function imageUrl(product) {
+  const value = product.primary_image
+  return value ? (value.startsWith('http') ? value : `${API_URL}${value}`) : null
 }
 
 export default function CartPage() {
-  const { items, removeItem, updateQty, clearCart, total } = useCartStore()
-  const { isAuthenticated } = useAuthStore()
+  const items = useCartStore((state) => state.items)
+  const removeItem = useCartStore((state) => state.removeItem)
+  const updateQty = useCartStore((state) => state.updateQty)
+  const clearCart = useCartStore((state) => state.clearCart)
+  const total = useCartStore((state) => state.total())
+  const authenticated = useAuthStore((state) => state.isAuthenticated)
   const navigate = useNavigate()
 
-  if (items.length === 0) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-24 text-center">
-        <ShoppingBag size={64} className="text-gray-200 mx-auto mb-6" />
-        <h2 className="text-2xl font-bold text-gray-700 mb-2">Tu carrito está vacío</h2>
-        <p className="text-gray-400 mb-8">Agrega productos desde el catálogo</p>
-        <Link to="/catalogo" className="btn-primary inline-flex items-center gap-2">
-          Ver catálogo <ArrowRight size={16} />
-        </Link>
-      </div>
-    )
+  const goCheckout = () => {
+    if (items.some(({ product, qty }) => !Number.isSafeInteger(qty) || qty <= 0 ||
+      !Number.isFinite(Number(product.sale_price)) || Number(product.sale_price) < 0 ||
+      (product.total_stock != null && qty > Number(product.total_stock)))) {
+      toast.error('Hay productos con cantidad o disponibilidad inválida')
+      return
+    }
+    navigate(authenticated ? '/checkout' : '/login?next=%2Fcheckout')
   }
 
-  const handleCheckout = () => {
-    if (!isAuthenticated) {
-      navigate('/login?next=/checkout')
-    } else {
-      navigate('/checkout')
-    }
-  }
-
-  const handleQtyChange = (productId, newQty) => {
-    const ok = updateQty(productId, newQty)
-    if (!ok) {
-      toast.error('No puedes superar el stock disponible')
-    }
+  const changeQty = (id, qty) => {
+    if (!updateQty(id, qty)) toast.error('La cantidad supera las existencias disponibles')
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Mi carrito</h1>
+    <div className="store-container store-section">
+      <PageHeading eyebrow="TU SELECCIÓN" title="MI CARRITO"
+        description="Revisa los artículos y las cantidades antes de continuar.">
+        {items.length > 0 && <span className="text-sm text-neutral-500">{items.length} referencias</span>}
+      </PageHeading>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="flex-1 space-y-4">
-          {items.map(({ product, qty }) => {
-            const availableStock = getAvailableStock(product)
-            const lowStock = availableStock !== null && availableStock <= 5 && availableStock > 0
-            const outOfStock = availableStock !== null && availableStock <= 0
-
-            return (
-              <div key={product.id} className="card flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="w-24 h-24 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0">
-                  {product.primary_image ? (
-                    <img
-                      src={product.primary_image}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ShoppingBag size={26} className="text-gray-300" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 line-clamp-2">{product.name}</p>
-                  <p className="text-xs text-gray-400 mt-1">SKU: {product.sku}</p>
-                  <p className="text-brand-700 font-bold mt-2">{formatCOP(product.sale_price)}</p>
-
-                  {availableStock !== null && (
-                    <p
-                      className={`text-xs mt-1 font-medium ${
-                        outOfStock
-                          ? 'text-red-500'
-                          : lowStock
-                          ? 'text-amber-600'
-                          : 'text-green-600'
-                      }`}
-                    >
-                      {outOfStock
-                        ? 'Producto agotado'
-                        : lowStock
-                        ? `Solo quedan ${availableStock} unidades`
-                        : `Disponible: ${availableStock}`}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end gap-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleQtyChange(product.id, qty - 1)}
-                      className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-
-                    <span className="w-10 text-center font-semibold text-sm">{qty}</span>
-
-                    <button
-                      onClick={() => handleQtyChange(product.id, qty + 1)}
-                      className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                      disabled={availableStock !== null && qty >= availableStock}
-                    >
-                      <Plus size={14} />
+      {items.length === 0 ? (
+        <EmptyState title="TU CARRITO ESTÁ VACÍO"
+          description="Todavía no has agregado productos. Explora la colección y encuentra tu próximo favorito." />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px] gap-10 xl:gap-14 items-start">
+          <section aria-label="Productos del carrito" className="min-w-0">
+            {items.map(({ product, qty }) => {
+              const available = product.total_stock ?? product.stock ?? null
+              const max = available === null ? 99 : Math.max(1, Number(available))
+              const photo = imageUrl(product)
+              return (
+                <article key={product.id} className="store-order-item">
+                  <Link to={`/producto/${product.slug}`} className="shrink-0 block">
+                    {photo ? <img loading="lazy" src={photo} alt={product.name} className="store-order-img"/> :
+                      <span className="store-order-img flex items-center justify-center text-neutral-400"><ShoppingBag size={28}/></span>}
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/producto/${product.slug}`} className="font-bold text-sm sm:text-base text-black hover:underline">{product.name}</Link>
+                    <p className="text-xs text-neutral-500 mt-2">SKU: {product.sku}</p>
+                    <p className="text-sm text-neutral-600 mt-2">{formatCOP(product.sale_price)} / unidad</p>
+                    {available !== null && Number(available) < qty &&
+                      <p className="text-xs text-red-700 mt-2" role="alert">Stock insuficiente: {available} disponibles</p>}
+                  </div>
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end gap-4">
+                    <p className="font-black text-base whitespace-nowrap">{formatCOP(Number(product.sale_price) * qty)}</p>
+                    <QuantityStepper value={qty} onChange={(next) => changeQty(product.id, next)}
+                      max={max} min={1} label={`Cantidad de ${product.name}`}/>
+                    <button type="button" onClick={() => removeItem(product.id)}
+                      className="inline-flex gap-1 items-center text-xs text-neutral-500 hover:text-red-700 min-h-11"
+                      aria-label={`Eliminar ${product.name} del carrito`}>
+                      <Trash2 size={15}/> ELIMINAR
                     </button>
                   </div>
+                </article>
+              )
+            })}
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-8">
+              <Link to="/catalogo" className="store-inline-link inline-flex items-center gap-2"><ArrowRight className="rotate-180" size={16}/> SEGUIR COMPRANDO</Link>
+              <button type="button" className="text-xs font-bold uppercase tracking-wider text-red-700 underline underline-offset-4 min-h-11"
+                onClick={clearCart}>Vaciar carrito</button>
+            </div>
+          </section>
 
-                  <div className="text-right min-w-[110px]">
-                    <p className="font-bold text-gray-900">
-                      {formatCOP(Number(product.sale_price) * qty)}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => removeItem(product.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-
-          <div className="flex justify-between items-center pt-2">
-            <button
-              onClick={clearCart}
-              className="text-sm text-red-500 hover:text-red-600 transition-colors"
-            >
-              Vaciar carrito
+          <aside aria-label="Resumen de la compra" className="store-responsive-summary">
+            <h2 className="text-xl font-black uppercase">RESUMEN DEL PEDIDO</h2>
+            <div className="flex justify-between gap-3 border-b border-neutral-200 py-6 text-sm">
+              <span className="text-neutral-500">Subtotal</span>
+              <strong>{formatCOP(total)}</strong>
+            </div>
+            <div className="flex justify-between gap-3 border-b border-neutral-200 py-5 text-sm">
+              <span className="text-neutral-500">Envío</span>
+              <span>Por confirmar</span>
+            </div>
+            <p className="text-xs text-neutral-500 leading-6 py-4">El valor del envío se confirma antes de finalizar tu compra.</p>
+            <div className="flex justify-between items-center border-t border-neutral-200 pt-5 mb-6">
+              <strong className="uppercase text-sm">Subtotal</strong>
+              <strong className="text-2xl">{formatCOP(total)}</strong>
+            </div>
+            <button type="button" onClick={goCheckout} className="store-button store-button-dark w-full">
+              CONTINUAR AL PAGO <ArrowRight size={17}/>
             </button>
-
-            <Link
-              to="/catalogo"
-              className="text-sm text-brand-600 hover:text-brand-700 transition-colors"
-            >
-              Seguir comprando
-            </Link>
-          </div>
+            <div className="flex flex-col gap-3 mt-7 text-xs text-neutral-500">
+              <span className="inline-flex gap-2 items-center"><ShieldCheck size={16}/> Tu pedido se verifica antes del pago</span>
+              <span className="inline-flex gap-2 items-center"><Truck size={16}/> Envíos en Colombia</span>
+            </div>
+          </aside>
         </div>
-
-        <div className="lg:w-96 flex-shrink-0">
-          <div className="card sticky top-20">
-            <h2 className="font-bold text-gray-900 text-lg mb-4">Resumen del pedido</h2>
-
-            <div className="space-y-2 pb-4 border-b border-gray-100">
-              {items.map(({ product, qty }) => (
-                <div key={product.id} className="flex justify-between text-sm gap-3">
-                  <span className="text-gray-500 line-clamp-1 flex-1">
-                    {product.name} ×{qty}
-                  </span>
-                  <span className="font-medium">
-                    {formatCOP(Number(product.sale_price) * qty)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3 py-4 border-b border-gray-100">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Envío</span>
-                <span className="font-medium text-green-600">Calculado al pagar</span>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <ShieldCheck size={14} className="text-brand-600" />
-                Pago seguro
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Truck size={14} className="text-brand-600" />
-                Envíos a todo Colombia
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center py-4">
-              <span className="font-bold text-gray-900">Total</span>
-              <span className="font-bold text-2xl text-brand-700">
-                {formatCOP(total())}
-              </span>
-            </div>
-
-            <button
-              onClick={handleCheckout}
-              className="btn-primary w-full flex items-center justify-center gap-2 text-base"
-            >
-              Proceder al pago <ArrowRight size={18} />
-            </button>
-
-            <p className="text-xs text-gray-400 text-center mt-3">
-              Compra protegida y proceso de pago confiable
-            </p>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
