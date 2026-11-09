@@ -386,3 +386,27 @@ class OrderStockReservation(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class ShippingRate(Base, TimestampMixin):
+    """Tarifa comercial configurada, no cotización automática de transportadora.
+
+    El costo que se cobra se obtiene SIEMPRE del servidor.
+    Una ciudad nula aplica a todo un departamento.
+    """
+    __tablename__ = "shipping_rates"
+    __table_args__ = (
+        Index("ix_shipping_rates_region", "department_key", "city_key", "active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    department_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    city_key: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    carrier: Mapped[str] = mapped_column(String(120), nullable=False)
+    service: Mapped[str] = mapped_column(String(120), nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    days_min: Mapped[int] = mapped_column(Integer, nullable=False)
+    days_max: Mapped[int] = mapped_column(Integer, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
