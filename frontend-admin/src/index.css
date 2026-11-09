@@ -117,3 +117,25 @@
   .admin-dashboard-chart-inner { min-width: 440px; }
   .admin-sidebar-link { min-height: 48px; }
 }
+
+
+/* Tables, search areas and dialogs across all nine existing modules. */
+@layer components {
+  .admin-main table { @apply border-separate border-spacing-0; }
+  .admin-main table thead { @apply bg-slate-50; }
+  .admin-main table thead th { @apply text-[11px] uppercase tracking-wide font-bold text-slate-500 whitespace-nowrap; }
+  .admin-main table tbody tr { @apply hover:bg-slate-50/70 transition-colors; }
+  .admin-main table tbody td { @apply text-slate-700; }
+  .admin-main .overflow-x-auto { overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #b5bfd0 transparent; }
+  .admin-main input[type="search"] { @apply min-w-0; }
+  .admin-main input, .admin-main select, .admin-main textarea { max-width: 100%; }
+  .admin-main input:disabled, .admin-main select:disabled { @apply bg-slate-50 text-slate-500; }
+  .admin-main .fixed.inset-0 { overflow-y: auto; }
+  .admin-main .fixed.inset-0 > div { max-height: calc(100dvh - 32px); overflow-y: auto; }
+  .admin-main button:disabled { cursor: not-allowed; }
+}
+@media (max-width: 639px) {
+  .admin-main .card { padding: 16px; }
+  .admin-main .fixed.inset-0 { padding: 10px; }
+  .admin-main .fixed.inset-0 > div { max-height: calc(100dvh - 20px); }
+}
