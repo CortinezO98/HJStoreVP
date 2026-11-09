@@ -45,7 +45,15 @@ export const useAuthStore = create(
 
       isSeller: () => get().user?.role === 'seller',
     }),
-    { name: 'hjstore-auth', partialize: (s) => ({ user: s.user }) }
+    {
+      name: 'hjstore-auth',
+      partialize: (s) => ({ user: s.user }),
+      // No confiar en un isAuthenticated antiguo persistido en localStorage.
+      merge: (persisted, current) => ({
+        ...current,
+        user: persisted?.user ?? null,
+      }),
+    }
   )
 )
 
