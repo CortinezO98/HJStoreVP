@@ -20,9 +20,15 @@ export default function LoginPage() {
     if (loading) return
     setLoading(true)
     try {
-      await login(form.email.trim(), form.password)
+      const account = await login(form.email.trim(), form.password)
       setForm((previous) => ({ ...previous, password: '' }))
       toast.success('Sesión iniciada correctamente')
+      // Conservar el flujo original: las cuentas administrativas usan su propio panel.
+      if (['super_admin', 'admin', 'seller'].includes(account.user_role)) {
+        const adminUrl = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
+        window.location.assign(adminUrl)
+        return
+      }
       navigate(next, { replace: true })
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'No pudimos iniciar sesión. Revisa tus datos.')
