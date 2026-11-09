@@ -69,6 +69,17 @@ function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand' }) {
 
 function MiniBarChart({ data = [], valueKey = 'total_sales', labelKey = 'month_name' }) {
   const max = Math.max(...data.map((d) => Number(d[valueKey] || 0)), 1)
+  const hasSales = data.some((item) => Number(item[valueKey] || 0) > 0)
+
+  if (!hasSales) {
+    return (
+      <div className="admin-dashboard-no-data" role="status">
+        <BarChart3 size={33} strokeWidth={1.4} aria-hidden="true" />
+        <p className="font-semibold text-slate-700 mt-3">Aún no hay ventas registradas en este período</p>
+        <p className="text-xs text-slate-500 mt-1">La gráfica aparecerá cuando se registren ventas.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="admin-dashboard-chart"><div className="admin-dashboard-chart-inner flex items-end gap-2 h-56">
@@ -235,7 +246,7 @@ export default function DashboardPage() {
         <div>
           <p className="admin-dashboard-overline">RESUMEN EJECUTIVO · HJSTOREVP</p>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Dashboard contable</h1>
-        <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
           Resumen comercial y financiero de tienda web + puntos físicos
           </p>
         </div>
