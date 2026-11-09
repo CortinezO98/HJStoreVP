@@ -50,7 +50,9 @@ def commit_reservations(db: Session, order: Order) -> bool:
     return True
 
 
-def cancel_web_order(db: Session, order: Order, reason: str) -> bool:
+def cancel_web_order(
+    db: Session, order: Order, reason: str, *, provider_confirmed_failure: bool = False
+) -> bool:
     """Devuelve stock exactamente una vez y cancela una orden PENDING.
 
     Rechaza pedidos heredados sin rastro de la ubicación reservada:
@@ -62,6 +64,11 @@ def cancel_web_order(db: Session, order: Order, reason: str) -> bool:
     if order.status != OrderStatus.PENDING:
         raise HTTPException(
             status_code=409, detail="Solo se pueden cancelar pedidos pendientes"
+        )
+    if order.payment_method and not provider_confirmed_failure:
+        raise HTTPException(
+            status_code=409,
+            detail="Existe un pago iniciado; confirmar primero el estado en la pasarela",
         )
 
     records = _reservations(db, order)
