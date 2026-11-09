@@ -103,7 +103,7 @@ async def get_sistecreditos_transaction(transaction_id: str) -> dict:
 def verify_sistecreditos_webhook(payload: str, signature: str) -> bool:
     """Verifica la firma del webhook de Sistecréditos."""
     if not settings.SISTECREDITOS_SECRET:
-        return True
+        return False
     expected = hmac.new(
         settings.SISTECREDITOS_SECRET.encode(),
         payload.encode(),
@@ -212,7 +212,7 @@ async def get_addi_application(application_id: str) -> dict:
 def verify_addi_webhook(payload: str, signature: str) -> bool:
     """Verifica la firma del webhook de Addi."""
     if not settings.ADDI_CLIENT_SECRET:
-        return True
+        return False
     expected = hmac.new(
         settings.ADDI_CLIENT_SECRET.encode(),
         payload.encode(),
