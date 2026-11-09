@@ -1,5 +1,10 @@
 import axios from 'axios'
 
+// Eliminar tokens antiguos guardados de forma persistente por versiones previas.
+// Los nuevos tokens solo permanecen durante la sesión de la pestaña.
+localStorage.removeItem('access_token')
+localStorage.removeItem('refresh_token')
+
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 export const apiClient = axios.create({
