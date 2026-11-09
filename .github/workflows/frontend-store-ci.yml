@@ -23,6 +23,8 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm install
+      - name: Preserve admin and store navigation contract
+        run: node scripts/check-functional-contract.mjs
       - name: Lint store
         run: npm run lint
       - name: Build store
