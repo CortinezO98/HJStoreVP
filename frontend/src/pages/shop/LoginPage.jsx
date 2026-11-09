@@ -1,112 +1,73 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
-import { useAuthStore } from '../../store'
+import { Eye, EyeOff, LockKeyhole } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuthStore } from '../../store'
+import AuthShell from '../../components/shop/AuthShell'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
-  const [showPass, setShowPass] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuthStore()
+  const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const next = searchParams.get('next') || '/'
+  const nextParam = searchParams.get('next')
+  const next = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/mi-cuenta'
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const submit = async (event) => {
+    event.preventDefault()
+    if (loading) return
     setLoading(true)
     try {
-      const data = await login(form.email, form.password)
-      toast.success(`Bienvenido/a, ${data.full_name}!`)
-      if (['super_admin', 'admin', 'seller'].includes(data.user_role)) {
-        window.location.href = 'http://localhost:5174'
-      } else {
-        navigate(next)
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Correo o contraseña incorrectos')
+      await login(form.email.trim(), form.password)
+      setForm((previous) => ({ ...previous, password: '' }))
+      toast.success('Sesión iniciada correctamente')
+      navigate(next, { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'No pudimos iniciar sesión. Revisa tus datos.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-block">
-            <span className="text-4xl font-black text-white">
-              HJ<span className="text-brand-400">Store</span><span className="text-brand-300">VP</span>
-            </span>
-          </Link>
-          <p className="text-gray-400 mt-2">Ingresa a tu cuenta</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Iniciar sesión</h1>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Correo electrónico
-              </label>
-              <input
-                type="email" required
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="tu@correo.com"
-                className="input"
-              />
+    <AuthShell eyebrow="TU CUENTA" headline={<>EL ESTILO<br/>ES PERSONAL.</>}
+      description="Accede a tus pedidos, consulta tus compras y guarda todo en un mismo lugar.">
+      <div className="store-auth-card">
+        <LockKeyhole size={24} strokeWidth={1.5} aria-hidden="true" className="mb-5" />
+        <h1>INICIAR SESIÓN</h1>
+        <p className="store-muted">Ingresa tus datos para continuar.</p>
+        <form onSubmit={submit}>
+          <div>
+            <label className="store-label" htmlFor="login-email">Correo electrónico</label>
+            <input className="store-input" id="login-email" name="email" type="email" autoComplete="username"
+              autoCapitalize="none" spellCheck="false" maxLength={254} required
+              placeholder="tu@correo.com" value={form.email}
+              onChange={(event) => setForm((previous) => ({ ...previous, email: event.target.value }))} />
+          </div>
+          <div>
+            <label className="store-label" htmlFor="login-password">Contraseña</label>
+            <div className="relative">
+              <input className="store-input pr-14" id="login-password" name="password"
+                type={showPassword ? 'text' : 'password'} autoComplete="current-password" required
+                placeholder="Tu contraseña" value={form.password}
+                onChange={(event) => setForm((previous) => ({ ...previous, password: event.target.value }))} />
+              <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 min-w-11 min-h-11 flex items-center justify-center"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-pressed={showPassword} onClick={() => setShowPassword((previous) => !previous)}>
+                {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contraseña
-              </label>
-              <div className="relative">
-                <input
-                  type={showPass ? 'text' : 'password'} required
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="input pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit" disabled={loading}
-              className="btn-primary w-full flex items-center justify-center gap-2 text-base"
-            >
-              {loading
-                ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                : <><LogIn size={18} /> Ingresar</>
-              }
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-gray-500 mt-6">
-            ¿No tienes cuenta?{' '}
-            <Link to="/registro" className="text-brand-600 hover:text-brand-700 font-medium">
-              Regístrate gratis
-            </Link>
-          </p>
-        </div>
-
-        <p className="text-center text-xs text-gray-500 mt-6">
-          <Link to="/" className="hover:text-gray-400 transition-colors">← Volver a la tienda</Link>
+          </div>
+          <button className="store-button store-button-dark" type="submit" disabled={loading} aria-busy={loading}>
+            {loading ? 'INGRESANDO…' : 'INGRESAR'}
+          </button>
+        </form>
+        <p className="text-center text-sm text-neutral-500 mt-8">
+          ¿Aún no tienes una cuenta? <Link className="store-inline-link" to="/registro">CREAR CUENTA</Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   )
 }
