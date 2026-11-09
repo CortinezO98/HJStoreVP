@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
 import { productsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
+import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 import { useState } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -38,11 +39,11 @@ function SectionHeading({ eyebrow, title, link = '/catalogo', action = 'VER TODO
 
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState(-1)
-  const { data: newest = [], isLoading: loadingNewest } = useQuery({
+  const { data: newest = [], isLoading: loadingNewest, isError: newestError, refetch: retryNewest } = useQuery({
     queryKey: ['products', 'newest', 'editorial'],
     queryFn: () => productsApi.list({ per_page: 10, sort: 'newest' }).then((r) => r.data),
   })
-  const { data: featured = [] } = useQuery({
+  const { data: featured = [], isLoading: loadingFeatured, isError: featuredError, refetch: retryFeatured } = useQuery({
     queryKey: ['products', 'featured', 'editorial'],
     queryFn: () => productsApi.list({ featured: true, per_page: 8 }).then((r) => r.data),
   })
@@ -68,9 +69,9 @@ export default function HomePage() {
       <section className="editorial-products-section">
         <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
         {loadingNewest ? (
-          <div className="editorial-product-grid">
-            {Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-[3/4] animate-pulse bg-neutral-100" />)}
-          </div>
+          <LoadingGrid count={8} />
+        ) : newestError ? (
+          <ErrorState onRetry={() => retryNewest()} description="No pudimos consultar las últimas novedades." />
         ) : showcase.length ? (
           <div className="editorial-product-grid">
             {showcase.map((product) => <ProductCard key={product.id} product={product} label="NUEVO" />)}
@@ -91,7 +92,11 @@ export default function HomePage() {
 
       <section className="editorial-products-section">
         <SectionHeading eyebrow="ELEGIDOS PARA TI" title="PRODUCTOS DESTACADOS" link="/catalogo?featured=true" />
-        {featured.length ? (
+        {loadingFeatured ? (
+          <LoadingGrid count={8} />
+        ) : featuredError ? (
+          <ErrorState onRetry={() => retryFeatured()} description="No pudimos consultar los productos destacados." />
+        ) : featured.length ? (
           <div className="editorial-product-grid">
             {featured.map((product) => <ProductCard key={product.id} product={product} label="DESTACADO" />)}
           </div>
