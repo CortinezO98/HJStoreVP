@@ -13,7 +13,7 @@ export const apiClient = axios.create({
 
 // Token automático
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
+  const token = sessionStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -30,7 +30,7 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true
-      const refresh = localStorage.getItem('refresh_token')
+      const refresh = sessionStorage.getItem('refresh_token')
 
       if (refresh) {
         try {
@@ -39,12 +39,14 @@ apiClient.interceptors.response.use(
             { refresh_token: refresh }
           )
 
-          localStorage.setItem('access_token', data.access_token)
-          localStorage.setItem('refresh_token', data.refresh_token)
+          sessionStorage.setItem('access_token', data.access_token)
+          sessionStorage.setItem('refresh_token'), data.refresh_token)
 
           error.config.headers.Authorization = `Bearer ${data.access_token}`
           return apiClient(error.config)
         } catch {
+          sessionStorage.removeItem('access_token')
+          sessionStorage.removeItem('refresh_token')
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           localStorage.removeItem('hjstore-auth')
