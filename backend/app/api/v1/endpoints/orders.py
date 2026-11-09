@@ -20,6 +20,7 @@ from app.models.models import (
 from pydantic import BaseModel
 from app.services.stock_reservations import cancel_web_order, lock_web_order
 from app.core.config import settings
+from app.services.shipping import get_selected_rate, shipping_snapshot
 
 router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 
@@ -44,6 +45,7 @@ class ShippingAddress(BaseModel):
 class WebOrderCreate(BaseModel):
     items: List[OrderItemIn] = Field(min_length=1)
     shipping_address: ShippingAddress
+    shipping_rate_id: int = Field(gt=0)
     notes: Optional[str] = None
 
     @model_validator(mode="after")
@@ -70,6 +72,7 @@ class WebOrderOut(BaseModel):
     order_number: str
     status: str
     subtotal: float
+    shipping_amount: float
     total_amount: float
     shipping_address: dict
     notes: Optional[str]
@@ -175,6 +178,15 @@ def create_web_order(
     if any(p.sale_price is None or p.sale_price < 0 or p.cost_price is None or p.cost_price < 0 for p in products.values()):
         raise HTTPException(status_code=400, detail="Hay productos con precios inválidos")
 
+    # El cliente solo envía el ID de la tarifa elegida, NUNCA un importe.
+    # Si la tarifa cambió, fue desactivada o no cubre su ciudad, se rechaza.
+    shipping_rate = get_selected_rate(
+        db, data.shipping_rate_id,
+        data.shipping_address.department, data.shipping_address.city,
+    )
+    shipping_amount = shipping_rate.price
+    total_amount = subtotal + shipping_amount
+
     # Crear orden
     order = Order(
         order_number=generate_order_number(),
@@ -183,10 +195,13 @@ def create_web_order(
         status=OrderStatus.PENDING,
         subtotal=subtotal,
         discount_amount=Decimal("0"),
-        shipping_amount=Decimal("0"),
-        total_amount=subtotal,
+        shipping_amount=shipping_amount,
+        total_amount=total_amount,
         total_cost=total_cost,
-        shipping_address=data.shipping_address.model_dump(),
+        shipping_address={
+            **data.shipping_address.model_dump(),
+            **shipping_snapshot(shipping_rate),
+        },
         notes=data.notes,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
@@ -230,7 +245,8 @@ def create_web_order(
         order_number=order.order_number,
         status=order.status.value,
         subtotal=float(subtotal),
-        total_amount=float(subtotal),
+        shipping_amount=float(shipping_amount),
+        total_amount=float(total_amount),
         shipping_address=order.shipping_address,
         notes=order.notes,
         items=[
