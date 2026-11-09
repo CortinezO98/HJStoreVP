@@ -122,7 +122,15 @@ def cancel_web_order(
 
 def mark_paid(db: Session, order: Order, method: str, reference: str | None) -> bool:
     """Transición PENDING->PAID. Rechaza pagos tardíos en pedidos cancelados."""
-    if order.status == OrderStatus.PAID:
+    if order.status in (
+        OrderStatus.PAID, OrderStatus.PREPARING,
+        OrderStatus.SHIPPED, OrderStatus.DELIVERED,
+    ):
+        # Reentrega del webhook: no volver a cambiar el inventario ni la venta.
+        if order.payment_method != method:
+            raise HTTPException(
+                status_code=409, detail="Proveedor distinto al pago registrado"
+            )
         return False
     if order.status != OrderStatus.PENDING:
         raise HTTPException(
