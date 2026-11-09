@@ -124,7 +124,7 @@ export default function ShopLayout() {
           <div>
             <strong>CONTACTO</strong>
             <p>Atención y envíos en Colombia.</p>
-            <p>Consultas: info@hjstorevp.com</p>
+            <p>Consulta el estado de tus pedidos desde tu cuenta.</p>
             <span className="inline-flex items-center gap-2"><Instagram size={15} /> HJStoreVP</span>
           </div>
         </div>
