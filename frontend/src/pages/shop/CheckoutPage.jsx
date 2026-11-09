@@ -286,6 +286,11 @@ export default function CheckoutPage() {
       return
     }
 
+    if (!selectedMethodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true') {
+      toast.error('Este método de pago no está habilitado todavía')
+      return
+    }
+
     const validationError = validateForm()
     if (validationError) {
       toast.error(validationError)
@@ -312,8 +317,14 @@ export default function CheckoutPage() {
         notes: null,
       }
 
-      const { data: order } = await apiClient.post('/orders/web', orderPayload)
-      setCreatedOrder(order)
+      // En un fallo de la pasarela reutilizar el pedido pendiente:
+      // no reservar nuevamente el stock ni crear órdenes duplicadas.
+      let order = createdOrder
+      if (!order) {
+        const { data } = await apiClient.post('/orders/web', orderPayload)
+        order = data
+        setCreatedOrder(order)
+      }
 
       const paymentPayload = {
         order_number: order.order_number,
