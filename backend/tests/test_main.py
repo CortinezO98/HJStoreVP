@@ -107,6 +107,37 @@ class TestAuth:
         assert resp.status_code == 200
         assert resp.json()["email"] == "test@hjstorevp.com"
 
+    def test_password_change_revokes_old_tokens(self, client):
+        login = client.post("/api/v1/auth/login", json={
+            "email": "test@hjstorevp.com", "password": "Test1234!"
+        })
+        assert login.status_code == 200
+        old_access = login.json()["access_token"]
+        old_refresh = login.json()["refresh_token"]
+
+        db = TestingSession()
+        try:
+            user = db.query(User).filter(User.email == "test@hjstorevp.com").first()
+            user.hashed_password = hash_password("NewStrongPass123!")
+            db.commit()
+        finally:
+            db.close()
+
+        me = client.get("/api/v1/auth/me", headers={
+            "Authorization": f"Bearer {old_access}"
+        })
+        assert me.status_code == 401
+
+        refreshed = client.post("/api/v1/auth/refresh", json={
+            "refresh_token": old_refresh
+        })
+        assert refreshed.status_code == 401
+
+        relogin = client.post("/api/v1/auth/login", json={
+            "email": "test@hjstorevp.com", "password": "NewStrongPass123!"
+        })
+        assert relogin.status_code == 200
+
     def test_me_unauthenticated(self, client):
         resp = client.get("/api/v1/auth/me")
         assert resp.status_code == 403
