@@ -180,6 +180,40 @@ class TestProducts:
         }, headers=auth_headers)
         assert updated.status_code == 422
 
+    def test_web_order_rejects_invalid_item_quantities(self, client, auth_headers):
+        address = {
+            "full_name": "Cliente Prueba", "phone": "3000000000",
+            "address_line1": "Calle 1", "city": "Bogotá", "department": "Cundinamarca",
+        }
+        for qty in (-1, 0, 1.5):
+            response = client.post("/api/v1/orders/web", json={
+                "items": [{"product_id": 1, "qty": qty}],
+                "shipping_address": address,
+            }, headers=auth_headers)
+            assert response.status_code == 422
+
+    def test_web_order_rejects_duplicate_items(self, client, auth_headers):
+        response = client.post("/api/v1/orders/web", json={
+            "items": [{"product_id": 1, "qty": 1}, {"product_id": 1, "qty": 1}],
+            "shipping_address": {
+                "full_name": "Cliente Prueba", "phone": "3000000000",
+                "address_line1": "Calle 1", "city": "Bogotá",
+                "department": "Cundinamarca",
+            },
+        }, headers=auth_headers)
+        assert response.status_code == 422
+
+    def test_physical_sale_rejects_invalid_items(self, client, auth_headers):
+        for items in (
+            [{"product_id": 1, "qty": -1}],
+            [{"product_id": 1, "qty": 0}],
+            [{"product_id": 1, "qty": 1}, {"product_id": 1, "qty": 2}],
+        ):
+            response = client.post("/api/v1/physical-sales", json={
+                "items": items,
+            }, headers=auth_headers)
+            assert response.status_code == 422
+
     def test_deactivate_product(self, client, auth_headers):
         create = client.post("/api/v1/products", json={
             "name": "A borrar", "sku": "DEL-001", "cost_price": 5000, "margin_pct": 20
