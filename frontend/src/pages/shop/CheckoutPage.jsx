@@ -113,7 +113,7 @@ export default function CheckoutPage() {
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
-  const { data: methods = [] } = useQuery({
+  const { data: methods = [], isError: methodsError } = useQuery({
     queryKey: ['payment-methods'],
     queryFn: () => apiClient.get('/payments/methods').then((r) => r.data),
   })
@@ -176,7 +176,7 @@ export default function CheckoutPage() {
       <div className="max-w-lg mx-auto px-4 py-16">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CreditCard size={28} className="text-brand-600" />
+            <CreditCard size={28} className="text-neutral-950" />
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900">Completa tu pago</h1>
@@ -355,7 +355,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="store-container store-section">
       <Link
         to="/carrito"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors mb-6"
@@ -364,29 +364,28 @@ export default function CheckoutPage() {
         Volver al carrito
       </Link>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <form onSubmit={handleSubmit} className="flex-1 card">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Checkout</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_350px] xl:grid-cols-[minmax(0,1fr)_420px] gap-8 xl:gap-12 items-start">
+        <form onSubmit={handleSubmit} className="store-card min-w-0">
+          <div className="store-checkout-step mb-4"><strong>01</strong> ENTREGA Y PAGO</div>
+          <h1 className="text-4xl font-black text-neutral-950 uppercase tracking-tight mb-8">FINALIZAR COMPRA</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="store-field-grid">
             <div className="md:col-span-2">
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Nombre completo
-              </label>
+              <label className="store-label" htmlFor="checkout-full-name">Nombre completo</label>
               <input
-                className="input"
+                className="store-input"
+                id="checkout-full-name" name="full_name" autoComplete="name" required maxLength={200}
                 value={form.full_name}
                 onChange={(e) => set('full_name', e.target.value)}
-                placeholder="José Jorge Cortines Osorio"
+                placeholder="Nombre de quien recibe"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Teléfono
-              </label>
+              <label className="store-label" htmlFor="checkout-phone">Teléfono</label>
               <input
-                className="input"
+                className="store-input"
+                id="checkout-phone" name="phone" autoComplete="tel" type="tel" required
                 value={form.phone}
                 onChange={(e) => set('phone', e.target.value)}
                 placeholder="3001234567"
@@ -394,11 +393,10 @@ export default function CheckoutPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Código postal
-              </label>
+              <label className="store-label" htmlFor="checkout-postal">Código postal</label>
               <input
-                className="input"
+                className="store-input"
+                id="checkout-postal" name="postal_code" autoComplete="postal-code"
                 value={form.postal_code}
                 onChange={(e) => set('postal_code', e.target.value)}
                 placeholder="Opcional"
@@ -406,23 +404,21 @@ export default function CheckoutPage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Dirección principal
-              </label>
+              <label className="store-label" htmlFor="checkout-street">Dirección principal</label>
               <input
-                className="input"
+                className="store-input"
+                id="checkout-street" name="street-address" autoComplete="street-address" required
                 value={form.address_line1}
                 onChange={(e) => set('address_line1', e.target.value)}
-                placeholder="Calle 90 # 49C - 20"
+                placeholder="Dirección de entrega"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Dirección complementaria
-              </label>
+              <label className="store-label" htmlFor="checkout-address2">Dirección complementaria</label>
               <input
-                className="input"
+                className="store-input"
+                id="checkout-address2" name="address-line2" autoComplete="address-line2"
                 value={form.address_line2}
                 onChange={(e) => set('address_line2', e.target.value)}
                 placeholder="Apto, torre, referencia, etc. (opcional)"
@@ -430,23 +426,21 @@ export default function CheckoutPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Ciudad
-              </label>
+              <label className="store-label" htmlFor="checkout-city">Ciudad</label>
               <input
-                className="input"
+                className="store-input"
+                id="checkout-city" name="address-level2" autoComplete="address-level2" required
                 value={form.city}
                 onChange={(e) => set('city', e.target.value)}
-                placeholder="Barranquilla"
+                placeholder="Ciudad de entrega"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Departamento
-              </label>
+              <label className="store-label" htmlFor="checkout-department">Departamento</label>
               <select
-                className="input"
+                className="store-input"
+                id="checkout-department" name="address-level1" autoComplete="address-level1" required
                 value={form.department}
                 onChange={(e) => set('department', e.target.value)}
               >
@@ -461,10 +455,11 @@ export default function CheckoutPage() {
 
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-3">
-              <CreditCard size={18} className="text-brand-600" />
+              <CreditCard size={18} className="text-neutral-950" />
               <h2 className="text-lg font-bold text-gray-900">Método de pago</h2>
             </div>
 
+            {methodsError && <p role="alert" className="bg-red-50 text-red-800 text-sm p-4 mb-4">No pudimos consultar los métodos de pago. Comprueba tu conexión antes de continuar.</p>}
             <div className="space-y-3">
               {Object.entries(PAYMENT_METHODS).map(([key, config]) => {
                 const methodStatus = getMethodStatus(key)
@@ -475,9 +470,11 @@ export default function CheckoutPage() {
                     key={key}
                     type="button"
                     onClick={() => setSelectedMethod(key)}
+                    aria-pressed={isSelected}
+                    disabled={!methodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true'}
                     className={`w-full text-left border rounded-2xl p-4 transition ${
                       isSelected
-                        ? `${config.borderSelected} bg-gray-50`
+                        ? 'border-neutral-950 bg-neutral-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -508,11 +505,11 @@ export default function CheckoutPage() {
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {selectedMethodConfig.fields.map((field) => (
                   <div key={field.key}>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    <label className="store-label">
                       {field.label}
                     </label>
                     <input
-                      className="input"
+                      className="store-input"
                       value={extraFields[field.key] || ''}
                       onChange={(e) =>
                         setExtraFields((prev) => ({
@@ -528,9 +525,9 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <div className="mt-8 rounded-2xl bg-brand-50 border border-brand-100 p-4">
+          <div className="mt-8 bg-neutral-100 border border-neutral-200 p-5">
             <div className="flex items-start gap-3">
-              <MapPin size={18} className="text-brand-600 mt-0.5" />
+              <MapPin size={18} className="text-neutral-950 mt-0.5" />
               <div>
                 <p className="font-semibold text-gray-900 text-sm">
                   Información de envío
@@ -545,8 +542,9 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="btn-primary w-full flex items-center justify-center gap-2 text-base py-3 mt-8"
+            disabled={loading || methodsError}
+            aria-busy={loading}
+            className="store-button store-button-dark w-full mt-8"
           >
             {loading ? (
               <>
@@ -562,9 +560,9 @@ export default function CheckoutPage() {
           </button>
         </form>
 
-        <div className="lg:w-96 flex-shrink-0">
-          <div className="card sticky top-20">
-            <h2 className="font-bold text-gray-900 text-lg mb-4">Tu pedido</h2>
+        <div className="min-w-0">
+          <div className="store-responsive-summary">
+            <h2 className="font-black text-neutral-950 uppercase text-xl mb-5">RESUMEN DEL PEDIDO</h2>
 
             <div className="space-y-3 pb-4 border-b border-gray-100">
               {items.map(({ product, qty }) => {
@@ -572,12 +570,12 @@ export default function CheckoutPage() {
 
                 return (
                   <div key={product.id} className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                    <div className="w-14 h-14 bg-neutral-100 overflow-hidden flex-shrink-0">
                       {imgUrl ? (
                         <img
                           src={imgUrl}
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -608,12 +606,12 @@ export default function CheckoutPage() {
               </span>
             </div>
 
-            <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-lg mt-3">
+            <div className="border-t border-neutral-200 pt-5 flex justify-between font-bold text-lg mt-4">
               <span>Total</span>
-              <span className="text-brand-700">{formatCOP(total())}</span>
+              <span className="text-neutral-950">{formatCOP(total())}</span>
             </div>
 
-            <p className="text-xs text-gray-400 mt-4">
+            <p className="text-xs text-neutral-500 mt-4">
               Pago seguro. Tus datos serán procesados de forma protegida.
             </p>
           </div>
