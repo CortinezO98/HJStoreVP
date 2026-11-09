@@ -18,7 +18,8 @@ from app.models.models import (
     Product, Inventory, Location, StockMovement, StockMovementType
 )
 from app.schemas.schemas import OrderOut
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
+from sqlalchemy import update
 
 router = APIRouter(prefix="/physical-sales", tags=["Ventas Físicas"])
 
@@ -26,15 +27,22 @@ router = APIRouter(prefix="/physical-sales", tags=["Ventas Físicas"])
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
 class SaleItemIn(BaseModel):
-    product_id: int
-    qty: int
+    product_id: int = Field(gt=0)
+    qty: int = Field(gt=0)
 
 
 class PhysicalSaleIn(BaseModel):
-    items: List[SaleItemIn]
+    items: List[SaleItemIn] = Field(min_length=1)
     location_id: Optional[int] = None   # Admin puede especificar; vendedor usa el suyo
     notes: Optional[str] = None
     customer_name: Optional[str] = None  # Nombre del cliente (opcional)
+
+    @model_validator(mode="after")
+    def unique_products(self):
+        product_ids = [item.product_id for item in self.items]
+        if len(set(product_ids)) != len(product_ids):
+            raise ValueError("Un producto no puede aparecer dos veces en la venta")
+        return self
 
 
 class SaleItemOut(BaseModel):
@@ -101,8 +109,19 @@ def discount_stock(
                    f"Disponible: {inv.qty_available}, solicitado: {qty}"
         )
 
-    qty_before = inv.qty_available
-    inv.qty_available -= qty
+    updated = db.execute(
+        update(Inventory)
+        .where(
+            Inventory.id == inv.id,
+            Inventory.qty_available >= qty,
+            Inventory.qty_available >= 0,
+        )
+        .values(qty_available=Inventory.qty_available - qty)
+    )
+    if updated.rowcount != 1:
+        raise HTTPException(status_code=400, detail="Stock insuficiente; vuelve a consultar el inventario")
+    db.refresh(inv)
+    qty_before = inv.qty_available + qty
 
     db.add(StockMovement(
         product_id=product_id,
