@@ -28,3 +28,113 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 }
+
+
+/* HJStoreVP editorial storefront: visual-only, independent of the admin panel. */
+@layer base {
+  body { @apply bg-white text-neutral-950; }
+}
+@layer components {
+  .editorial-announcement { @apply bg-black text-white text-center font-semibold uppercase tracking-[.12em] py-2.5 px-3; font-size: 10px; }
+  .editorial-header { @apply sticky top-0 z-50 bg-white border-b border-neutral-100; }
+  .editorial-header-inner { @apply w-full mx-auto px-5 sm:px-8 flex items-center justify-between gap-5; height: 66px; }
+  .editorial-logo { @apply inline-flex items-baseline font-black uppercase tracking-[-.085em] whitespace-nowrap text-black; font-size: 27px; line-height: 1; }
+  .editorial-logo span { @apply tracking-[-.09em]; }
+  .editorial-logo small { @apply text-neutral-500 ml-1; font-size: 12px; letter-spacing: -.03em; }
+  .editorial-nav { @apply hidden lg:flex items-center justify-center gap-5 xl:gap-7 flex-1; }
+  .editorial-nav a { @apply font-black text-neutral-900 uppercase whitespace-nowrap hover:text-neutral-500 transition-colors; font-family: 'Arial Narrow', Impact, sans-serif; font-size: 12px; letter-spacing: .025em; }
+  .editorial-nav a.editorial-sale { @apply text-red-600; }
+  .editorial-actions { @apply flex items-center gap-1 sm:gap-3; }
+  .editorial-actions > a, .editorial-actions > button { @apply relative p-2 text-black hover:text-neutral-500 transition-colors; }
+  .editorial-bag > span { @apply absolute -top-0.5 -right-1 bg-black text-white rounded-full flex items-center justify-center font-bold; font-size: 9px; min-width: 16px; height: 16px; }
+  .editorial-search { @apply flex items-center gap-3 border-t border-neutral-100 px-5 sm:px-8 py-3; }
+  .editorial-search input { @apply flex-1 outline-none text-sm bg-transparent; }
+  .editorial-search button { @apply flex items-center gap-2 text-xs font-bold; }
+  .editorial-mobile-nav { @apply flex flex-col gap-0 px-5 pb-3 border-t border-neutral-100 lg:hidden; }
+  .editorial-mobile-nav a, .editorial-mobile-nav button { @apply py-3 border-b border-neutral-100 text-sm font-black text-left; }
+  .editorial-footer { @apply bg-neutral-950 text-white mt-0; }
+  .editorial-footer-inner { @apply max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-5 gap-10 py-16 px-6 sm:px-8; }
+  .editorial-footer-inner > div:first-child { @apply col-span-2; }
+  .editorial-footer .editorial-logo { @apply text-white mb-5; }
+  .editorial-footer .editorial-logo small { @apply text-neutral-400; }
+  .editorial-footer-inner p { @apply text-neutral-400 text-sm leading-7 max-w-sm; }
+  .editorial-footer-inner strong { @apply block text-white font-bold text-xs tracking-[.15em] mb-5; }
+  .editorial-footer-inner > div:not(:first-child) > a { @apply block text-neutral-400 text-sm mb-3 hover:text-white; }
+  .editorial-footer-bottom { @apply flex flex-col sm:flex-row gap-3 justify-between max-w-7xl mx-auto py-5 px-6 sm:px-8 border-t border-neutral-800 text-neutral-500 uppercase tracking-widest; font-size: 10px; }
+
+  .editorial-hero { @apply relative bg-neutral-950 text-white overflow-hidden; height: min(78vw, 740px); min-height: 470px; }
+  .editorial-hero-image { @apply absolute inset-0 bg-no-repeat; background-position: 73% center; background-size: cover; filter: brightness(.56) saturate(.65); transform: scale(1.02); }
+  .editorial-hero-shade { @apply absolute inset-0; background: linear-gradient(90deg, rgba(0,0,0,.87) 0%, rgba(0,0,0,.47) 46%, rgba(0,0,0,.1) 100%); }
+  .editorial-hero-content { @apply absolute inset-0 flex flex-col items-start justify-center max-w-7xl mx-auto px-6 sm:px-12 lg:px-20; }
+  .editorial-hero-kicker { @apply uppercase tracking-[.26em] text-neutral-200 mb-6; font-size: 11px; }
+  .editorial-hero h1 { @apply font-black uppercase tracking-[-.045em] leading-[.94]; font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(55px, 7.5vw, 126px); }
+  .editorial-hero h1 em { @apply not-italic text-neutral-300; }
+  .editorial-hero-content > p { @apply text-neutral-200 mt-7 mb-9 max-w-md leading-relaxed; font-size: 15px; }
+  .editorial-hero-cta { @apply inline-flex items-center gap-5 bg-white text-black font-black px-6 py-4 text-xs uppercase tracking-widest hover:bg-neutral-200 transition-colors; }
+  .editorial-hero-side { @apply absolute right-7 top-1/2 text-white/70 uppercase tracking-[.25em] hidden md:block; writing-mode: vertical-rl; font-size: 9px; }
+  .editorial-hero-number { @apply absolute right-8 bottom-7 text-neutral-300 tracking-widest text-xs; }
+
+  .editorial-products-section { @apply max-w-[1480px] mx-auto px-5 sm:px-10 lg:px-12 py-16 lg:py-24; }
+  .editorial-section-heading { @apply flex items-end justify-between gap-5 mb-8 sm:mb-10; }
+  .editorial-eyebrow { @apply block text-neutral-500 font-bold tracking-[.22em] uppercase mb-2; font-size: 10px; }
+  .editorial-section-heading h2 { @apply font-black uppercase text-black tracking-tight; font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(27px, 3.4vw, 42px); }
+  .editorial-view-all { @apply inline-flex items-center gap-2 bg-black text-white px-5 py-3 font-black uppercase whitespace-nowrap hover:bg-neutral-700; font-size: 11px; }
+  .editorial-product-grid { @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-14; }
+  .editorial-product { @apply min-w-0; }
+  .editorial-product-media { @apply relative bg-neutral-50; }
+  .editorial-product-media > a { @apply block aspect-[4/4.5] overflow-hidden; }
+  .editorial-product-media img { @apply w-full h-full object-contain transition-transform duration-500; mix-blend-mode: multiply; }
+  .editorial-product:hover .editorial-product-media img { transform: scale(1.055); }
+  .editorial-product-fallback { @apply w-full h-full flex justify-center items-center text-neutral-300; }
+  .editorial-product-label { @apply absolute top-3 left-3 bg-red-600 text-white font-bold px-2 py-1 rounded-[2px]; font-size: 10px; }
+  .editorial-product-label.is-sold-out { @apply bg-black; }
+  .editorial-product-add { @apply absolute bottom-3 right-3 bg-black text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-neutral-700 transition-colors; }
+  .editorial-product-info { @apply flex flex-col mt-4 gap-1; }
+  .editorial-product-name { @apply text-neutral-800 font-medium leading-snug line-clamp-2; font-size: 13px; }
+  .editorial-product-price { @apply text-neutral-600; font-size: 13px; }
+  .editorial-product-category { @apply text-neutral-400 uppercase tracking-wide; font-size: 10px; }
+  .editorial-empty-state { @apply bg-neutral-50 py-20 px-5 text-center text-neutral-600 text-sm; }
+  .editorial-empty-state a { @apply underline text-black font-bold; }
+
+  .editorial-statement { @apply relative bg-neutral-950 text-white overflow-hidden min-h-[440px] flex items-center; }
+  .editorial-statement-content { @apply relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-12 py-24; }
+  .editorial-statement-content > span { @apply text-neutral-400 uppercase font-semibold tracking-[.2em]; font-size: 11px; }
+  .editorial-statement h2 { @apply font-black uppercase leading-none tracking-tight my-6; font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(48px, 8vw, 108px); }
+  .editorial-statement-photo { @apply absolute inset-0 opacity-40; background-size: cover; background-position: center 45%; filter: grayscale(100%); }
+  .editorial-statement::after { content: ''; @apply absolute inset-0; background: linear-gradient(90deg, rgba(0,0,0,.9), rgba(0,0,0,.22)); }
+
+  .editorial-category-section { @apply bg-neutral-100 px-5 sm:px-10 lg:px-12 py-16 lg:py-24; }
+  .editorial-category-section > .editorial-section-heading, .editorial-category-grid { @apply max-w-[1384px] mx-auto; }
+  .editorial-category-grid { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-[2px]; }
+  .editorial-category-tile { @apply bg-white min-h-[235px] p-6 flex flex-col justify-between hover:bg-black hover:text-white transition-colors; }
+  .editorial-category-number { @apply text-neutral-400 text-xs tracking-widest; }
+  .editorial-category-tile h3 { @apply font-black text-3xl tracking-tight; font-family: Impact, 'Arial Narrow', sans-serif; }
+  .editorial-category-tile p { @apply text-xs text-neutral-500 mt-2; }
+  .editorial-category-tile:hover p { @apply text-neutral-300; }
+  .editorial-category-tile > svg { @apply self-end; }
+  .editorial-service-strip { @apply grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto text-center py-20 px-5; }
+  .editorial-service-strip > div { @apply flex flex-col items-center; }
+  .editorial-service-strip h3 { @apply font-black text-sm mt-4 tracking-wide; }
+  .editorial-service-strip p { @apply text-neutral-500 text-xs mt-1; }
+
+  .editorial-faq-section { @apply max-w-4xl mx-auto py-20 px-5; }
+  .editorial-faq-section > .editorial-eyebrow, .editorial-faq-section > h2 { @apply text-center; }
+  .editorial-faq-section > h2 { @apply font-black text-4xl mb-10; font-family: Impact, 'Arial Narrow', sans-serif; }
+  .editorial-faq-item { @apply border-b border-neutral-200; }
+  .editorial-faq-item button { @apply w-full flex justify-between items-center gap-4 py-5 text-left font-medium text-sm; }
+  .editorial-faq-item button > svg { @apply transition-transform; }
+  .editorial-faq-item p { @apply text-neutral-500 text-sm pb-5 leading-7 max-w-2xl; }
+  .editorial-closing { @apply bg-neutral-100 text-center px-5 py-20; }
+  .editorial-closing > span { @apply text-xs tracking-[.2em] text-neutral-500; }
+  .editorial-closing h2 { @apply font-black uppercase my-5 leading-none; font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(38px, 6vw, 72px); }
+  .editorial-closing > a { @apply inline-flex items-center gap-3 bg-black text-white px-6 py-4 font-black text-xs hover:bg-neutral-800; }
+}
+@media (max-width: 640px) {
+  .editorial-hero { min-height: 540px; }
+  .editorial-hero-image { background-position: 65% center; }
+  .editorial-hero-content { justify-content: flex-end; padding-bottom: 86px; }
+  .editorial-hero h1 { font-size: clamp(51px, 13.3vw, 78px); }
+  .editorial-hero-content > p { font-size: 13px; }
+  .editorial-view-all { font-size: 9px; padding: 10px 12px; }
+  .editorial-product-add { width: 34px; height: 34px; }
+}
