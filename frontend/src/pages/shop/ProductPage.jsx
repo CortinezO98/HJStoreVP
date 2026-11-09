@@ -163,11 +163,15 @@ export default function ProductPage() {
 
   if (isError || !product) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-gray-500 mb-4">{isError ? 'No pudimos cargar el producto.' : 'No se encontró el producto.'}</p>
-        <Link to="/catalogo" className="btn-primary">
-          Volver al catálogo
-        </Link>
+      <div className="store-container store-section">
+        <ErrorState
+          title={isError ? 'No pudimos cargar el producto' : 'Producto no encontrado'}
+          description={isError ? 'Comprueba tu conexión e inténtalo nuevamente.' : 'Es posible que este artículo ya no esté disponible.'}
+          onRetry={isError ? () => refetch() : undefined}
+        />
+        <div className="text-center mt-6">
+          <Link to="/catalogo" className="store-inline-link">VOLVER AL CATÁLOGO</Link>
+        </div>
       </div>
     )
   }
@@ -203,6 +207,9 @@ export default function ProductPage() {
               {images.map((img) => (
                 <button
                   key={img.id}
+                  type="button"
+                  aria-label={`Ver imagen de ${product.name}`}
+                  aria-pressed={mainImage === img.url}
                   onClick={() => setSelectedImage(img.url)}
                   className={`aspect-square overflow-hidden border-2 transition ${
                     mainImage === img.url
@@ -340,6 +347,8 @@ export default function ProductPage() {
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={handleAddToCart}
+                  type="button"
+                  disabled={maxQtyAllowed <= 0}
                   className="store-button store-button-outline w-full"
                 >
                   <ShoppingCart size={18} />
@@ -348,6 +357,8 @@ export default function ProductPage() {
 
                 <button
                   onClick={handleBuyNow}
+                  type="button"
+                  disabled={maxQtyAllowed <= 0}
                   className="store-button store-button-dark w-full"
                 >
                   <Zap size={18} />
