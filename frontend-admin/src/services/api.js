@@ -40,7 +40,7 @@ apiClient.interceptors.response.use(
           )
 
           sessionStorage.setItem('access_token', data.access_token)
-          sessionStorage.setItem('refresh_token'), data.refresh_token)
+          sessionStorage.setItem('refresh_token', data.refresh_token)
 
           error.config.headers.Authorization = `Bearer ${data.access_token}`
           return apiClient(error.config)
