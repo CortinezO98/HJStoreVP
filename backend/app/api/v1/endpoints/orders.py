@@ -46,6 +46,7 @@ class WebOrderCreate(BaseModel):
     items: List[OrderItemIn] = Field(min_length=1)
     shipping_address: ShippingAddress
     shipping_rate_id: int = Field(gt=0)
+    shipping_price_confirmed: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
     notes: Optional[str] = None
 
     @model_validator(mode="after")
@@ -185,6 +186,11 @@ def create_web_order(
         data.shipping_address.department, data.shipping_address.city,
     )
     shipping_amount = shipping_rate.price
+    if shipping_amount != data.shipping_price_confirmed:
+        raise HTTPException(
+            status_code=409,
+            detail="La tarifa de envío cambió. Actualiza la cotización y confirma el nuevo precio.",
+        )
     total_amount = subtotal + shipping_amount
 
     # Crear orden
