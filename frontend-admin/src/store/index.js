@@ -12,6 +12,9 @@ export const useAuthStore = create(
 
       login: async (email, password) => {
         const { data } = await authApi.login({ email, password })
+        if (!['super_admin', 'admin', 'seller'].includes(data.user_role)) {
+          throw new Error('No tienes acceso al panel de administración')
+        }
         localStorage.setItem('access_token', data.access_token)
         localStorage.setItem('refresh_token', data.refresh_token)
         set({
