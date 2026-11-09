@@ -39,7 +39,7 @@ const PAYMENT_METHODS = {
     description: 'Tarjeta débito, crédito o PSE',
     color: 'border-[#00C48C] bg-[#00C48C]',
     borderSelected: 'border-[#00C48C]',
-    disabledNote: 'Sin configurar — modo demo',
+    disabledNote: 'No disponible por ahora',
     fields: [],
   },
   sistecreditos: {
@@ -47,7 +47,7 @@ const PAYMENT_METHODS = {
     description: 'Crédito a cuotas · Sin tarjeta de crédito',
     color: 'border-blue-600 bg-blue-600',
     borderSelected: 'border-blue-600',
-    disabledNote: 'Sin configurar — modo demo',
+    disabledNote: 'No disponible por ahora',
     fields: [
       {
         key: 'customer_phone',
@@ -68,7 +68,7 @@ const PAYMENT_METHODS = {
     description: 'Crédito instantáneo con tu cédula',
     color: 'border-orange-500 bg-orange-500',
     borderSelected: 'border-orange-500',
-    disabledNote: 'Sin configurar — modo demo',
+    disabledNote: 'No disponible por ahora',
     fields: [
       {
         key: 'customer_phone',
@@ -472,7 +472,7 @@ export default function CheckoutPage() {
                     onClick={() => setSelectedMethod(key)}
                     aria-pressed={isSelected}
                     disabled={!methodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true'}
-                    className={`w-full text-left border rounded-2xl p-4 transition ${
+                    className={`w-full text-left border p-4 transition disabled:opacity-50 disabled:cursor-not-allowed ${
                       isSelected
                         ? 'border-neutral-950 bg-neutral-50'
                         : 'border-gray-200 hover:border-gray-300'
@@ -505,11 +505,15 @@ export default function CheckoutPage() {
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {selectedMethodConfig.fields.map((field) => (
                   <div key={field.key}>
-                    <label className="store-label">
+                    <label className="store-label" htmlFor={`checkout-extra-${field.key}`}>
                       {field.label}
                     </label>
                     <input
                       className="store-input"
+                      id={`checkout-extra-${field.key}`}
+                      name={field.key}
+                      required={field.required}
+                      autoComplete="off"
                       value={extraFields[field.key] || ''}
                       onChange={(e) =>
                         setExtraFields((prev) => ({
@@ -601,8 +605,8 @@ export default function CheckoutPage() {
 
             <div className="flex justify-between items-center py-4 border-b border-gray-100">
               <span className="text-gray-500 text-sm">Envío</span>
-              <span className="text-sm font-medium text-green-600">
-                Calculado al pagar
+              <span className="text-sm font-medium text-neutral-700">
+                Por confirmar
               </span>
             </div>
 
@@ -612,7 +616,7 @@ export default function CheckoutPage() {
             </div>
 
             <p className="text-xs text-neutral-500 mt-4">
-              Pago seguro. Tus datos serán procesados de forma protegida.
+              El monto mostrado corresponde a productos. Confirma los costos adicionales antes de completar el pago.
             </p>
           </div>
         </div>
