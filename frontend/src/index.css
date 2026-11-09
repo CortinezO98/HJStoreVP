@@ -138,3 +138,12 @@
   .editorial-view-all { font-size: 9px; padding: 10px 12px; }
   .editorial-product-add { width: 34px; height: 34px; }
 }
+
+
+@layer components {
+  .editorial-catalog-title { @apply font-black uppercase tracking-tight text-black; font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(34px, 4vw, 56px); }
+  .editorial-catalog-filters { @apply bg-white border-t border-neutral-200 pt-5 pr-1; }
+  .editorial-catalog-filters .input { @apply rounded-none border-neutral-200; }
+  .editorial-load-more { @apply inline-flex items-center justify-center bg-black text-white px-8 py-3 text-xs font-black tracking-widest uppercase hover:bg-neutral-800; }
+  .editorial-catalog .input { @apply rounded-none; }
+}
