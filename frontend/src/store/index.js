@@ -81,6 +81,8 @@ export const useAuthStore = create(
       logout: () => {
         sessionStorage.removeItem('access_token')
         sessionStorage.removeItem('refresh_token')
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
 
         set({
           user: null,
@@ -101,7 +103,6 @@ export const useAuthStore = create(
       name: 'hjstore-auth',
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
