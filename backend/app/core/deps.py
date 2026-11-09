@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.core.security import decode_token
+from app.core.security import decode_token, credential_version_matches
 from app.models.models import User, UserRole
 
 bearer_scheme = HTTPBearer()
@@ -29,6 +29,12 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no encontrado o inactivo",
+        )
+    if not credential_version_matches(payload, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sesión revocada; inicia sesión nuevamente",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 
