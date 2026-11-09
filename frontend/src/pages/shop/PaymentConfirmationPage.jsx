@@ -1,5 +1,5 @@
 import { useSearchParams, Link } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle2, XCircle, Clock3, LoaderCircle, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react'
 import { apiClient } from '../../services/api'
@@ -36,9 +36,6 @@ export default function PaymentConfirmationPage() {
   const orderNumber = params.get('order')
   const provider = params.get('provider')
   const transactionId = params.get('id')
-  const reconciledRef = useRef(null)
-  const [isReconciling, setIsReconciling] = useState(false)
-  const [reconcileError, setReconcileError] = useState(false)
   const { data: payment, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['payment-status', orderNumber],
     queryFn: () => apiClient.get(`/payments/status/${encodeURIComponent(orderNumber)}`).then(({ data }) => data),
@@ -47,26 +44,21 @@ export default function PaymentConfirmationPage() {
     refetchInterval: ({ state }) => state.data?.status === 'pending' ? 20000 : false,
   })
 
-  useEffect(() => {
-    if (provider !== 'wompi' || !transactionId || !orderNumber) return
-    const marker = `${orderNumber}:${transactionId}`
-    if (reconciledRef.current === marker) return
-    reconciledRef.current = marker
-    let cancelled = false
-    setIsReconciling(true)
-    setReconcileError(false)
-    apiClient.post('/payments/wompi/reconcile', {
+  const shouldReconcile = provider === 'wompi' && Boolean(transactionId && orderNumber)
+  const { isLoading: isReconciling, isError: reconcileError, data: reconciliation } = useQuery({
+    queryKey: ['wompi-transaction-reconcile', orderNumber, transactionId],
+    queryFn: () => apiClient.post('/payments/wompi/reconcile', {
       order_number: orderNumber,
       transaction_id: transactionId,
-    }).then(() => {
-      if (!cancelled) refetch()
-    }).catch(() => {
-      if (!cancelled) setReconcileError(true)
-    }).finally(() => {
-      if (!cancelled) setIsReconciling(false)
-    })
-    return () => { cancelled = true }
-  }, [provider, transactionId, orderNumber, refetch])
+    }).then(({ data }) => data),
+    enabled: shouldReconcile,
+    retry: false,
+    staleTime: 60_000,
+  })
+
+  useEffect(() => {
+    if (reconciliation) refetch()
+  }, [reconciliation, refetch])
 
   const status = !orderNumber || isError ? 'error' : payment?.status === 'paid'
     ? 'paid' : payment?.status === 'cancelled' ? 'cancelled' : 'pending'
