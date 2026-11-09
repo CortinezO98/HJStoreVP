@@ -52,7 +52,7 @@ export default function CartPage() {
           <section aria-label="Productos del carrito" className="min-w-0">
             {items.map(({ product, qty }) => {
               const available = product.total_stock ?? product.stock ?? null
-              const max = available === null ? 99 : Math.max(1, Number(available))
+              const max = available === null ? 99 : Math.max(0, Number(available))
               const photo = imageUrl(product)
               return (
                 <article key={product.id} className="store-order-item">
