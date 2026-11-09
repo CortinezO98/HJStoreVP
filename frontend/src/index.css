@@ -222,3 +222,27 @@
   .editorial-nav { gap: 12px; }
   .editorial-nav a { font-size: 10px; }
 }
+
+
+/* Progressive enhancement: visible keyboard skip-link, safe-area handling and zoom. */
+@layer components {
+  .store-skip-link { @apply fixed z-[100] left-3 top-3 bg-black text-white px-5 py-3 font-bold text-sm; transform: translateY(-150%); }
+  .store-skip-link:focus { transform: translateY(0); }
+  .editorial-header-inner { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .store-container { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .store-auth-aside { overflow-wrap: normal; }
+  .store-auth-aside h2 { overflow-wrap: normal; }
+}
+@media (min-width: 640px) {
+  .store-container { padding-left: 32px; padding-right: 32px; }
+}
+@media (min-width: 1024px) {
+  .store-container { padding-left: 48px; padding-right: 48px; }
+}
+@media (max-width: 380px) {
+  .editorial-header-inner { gap: 4px; }
+  .editorial-logo { font-size: 21px; }
+  .editorial-actions > a, .editorial-actions > button { padding: 7px; }
+  .store-page-heading h1 { font-size: 35px; }
+  .editorial-product-price, .editorial-product-name { font-size: 12px; }
+}
