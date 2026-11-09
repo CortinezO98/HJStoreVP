@@ -79,4 +79,6 @@ def test_live_payments_require_explicit_flag(monkeypatch, wompi_sandbox):
     monkeypatch.setattr(settings, "WOMPI_EVENTS_SECRET", "prod_events_" + "e" * 20)
     assert not wompi_enabled()
     monkeypatch.setattr(settings, "WOMPI_ALLOW_LIVE_PAYMENTS", True)
+    assert not wompi_enabled()
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
     assert wompi_enabled()
