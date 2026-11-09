@@ -105,6 +105,9 @@ async def initiate_payment(
     if not order:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
 
+    # Bloqueo compatible con cancelación y webhooks concurrentes.
+    order = lock_web_order(db, order.id)
+
     if order.status != OrderStatus.PENDING:
         raise HTTPException(
             status_code=400,
@@ -137,7 +140,7 @@ async def initiate_payment(
                 amount_in_cents=amount_cents,
                 customer_email=current_user.email,
                 customer_name=current_user.full_name,
-                redirect_url=f"{redirect}?order={order.order_number}&provider=wompi",
+                redirect_url=f"{redirect}{'&' if '?' in redirect else '?'}order={order.order_number}&provider=wompi",
             )
         except ValueError:
             raise HTTPException(status_code=503, detail="Configuración Wompi inválida")
