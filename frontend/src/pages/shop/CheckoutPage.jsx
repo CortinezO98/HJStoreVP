@@ -208,7 +208,7 @@ export default function CheckoutPage() {
             <ChevronRight size={24} />
           </button>
 
-          {!selectedMethodStatus.enabled && (
+          {import.meta.env.VITE_ENABLE_DEMO_PAYMENTS === 'true' && !selectedMethodStatus.enabled && (
             <button
               onClick={async () => {
                 setLoading(true)
@@ -318,14 +318,12 @@ export default function CheckoutPage() {
       const paymentPayload = {
         order_number: order.order_number,
         method: selectedMethod,
-        customer_email: 'cliente@demo.com',
-        customer_name: form.full_name,
         customer_phone: extraFields.customer_phone || form.phone,
         customer_id: extraFields.customer_id || '',
       }
 
       const { data: checkout } = await apiClient.post(
-        '/payments/create-checkout',
+        '/payments/initiate',
         paymentPayload
       )
 
