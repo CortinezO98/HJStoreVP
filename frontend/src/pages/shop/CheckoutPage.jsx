@@ -334,6 +334,7 @@ export default function CheckoutPage() {
           qty,
         })),
         shipping_rate_id: selectedShipping.id,
+        shipping_price_confirmed: selectedShipping.price,
         shipping_address: {
           full_name: form.full_name,
           phone: form.phone,
