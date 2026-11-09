@@ -8,13 +8,12 @@ import {
   ShieldCheck,
   Truck,
   BadgeCheck,
-  Minus,
-  Plus,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { productsApi } from '../../services/api'
 import { useCartStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
+import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -119,7 +118,7 @@ export default function ProductPage() {
     })
 
   const handleAddToCart = () => {
-    if (!product || isOutOfStock) return
+    if (!product || isOutOfStock || qty > maxQtyAllowed) { toast.error('Revisa la cantidad disponible'); return }
 
     const ok = addItem(product, qty)
     if (!ok) {
@@ -146,7 +145,7 @@ export default function ProductPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="store-container store-section">
         <div className="animate-pulse grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div className="aspect-square rounded-3xl bg-gray-100" />
           <div className="space-y-4">
@@ -174,7 +173,7 @@ export default function ProductPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="store-container store-section">
       <Link
         to="/catalogo"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors mb-6"
@@ -183,15 +182,15 @@ export default function ProductPage() {
         Volver al catálogo
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
         <div>
-          <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
-            <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+          <div className="bg-neutral-50 overflow-hidden">
+            <div className="aspect-square bg-neutral-50 flex items-center justify-center overflow-hidden">
               {mainImage ? (
                 <img
                   src={mainImage}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <div className="text-gray-300">Sin imagen</div>
@@ -200,21 +199,21 @@ export default function ProductPage() {
           </div>
 
           {images.length > 1 && (
-            <div className="grid grid-cols-5 gap-3 mt-4">
+            <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 sm:gap-3 mt-4">
               {images.map((img) => (
                 <button
                   key={img.id}
                   onClick={() => setSelectedImage(img.url)}
-                  className={`aspect-square rounded-2xl overflow-hidden border-2 transition ${
+                  className={`aspect-square overflow-hidden border-2 transition ${
                     mainImage === img.url
-                      ? 'border-brand-600'
+                      ? 'border-black'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <img
                     src={img.url}
                     alt={img.alt}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 </button>
               ))}
@@ -225,31 +224,31 @@ export default function ProductPage() {
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {categoryName && (
-              <span className="inline-flex items-center rounded-full bg-brand-100 text-brand-700 px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center bg-neutral-100 text-neutral-800 px-3 py-1 text-xs font-bold uppercase tracking-widest">
                 {categoryName}
               </span>
             )}
 
             {product.featured && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center bg-neutral-100 text-neutral-800 px-3 py-1 text-xs font-bold uppercase tracking-widest">
                 Destacado
               </span>
             )}
 
             {isOutOfStock && (
-              <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center bg-red-100 text-red-700 px-3 py-1 text-xs font-bold uppercase tracking-widest">
                 Agotado
               </span>
             )}
 
             {isLowStock && !isOutOfStock && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center bg-neutral-100 text-neutral-800 px-3 py-1 text-xs font-bold uppercase tracking-widest">
                 Últimas unidades
               </span>
             )}
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-black text-neutral-950 leading-tight tracking-tight uppercase">
             {product.name}
           </h1>
 
@@ -257,15 +256,10 @@ export default function ProductPage() {
 
           <div className="mt-5">
             <div className="flex items-end gap-3">
-              <span className="text-3xl md:text-4xl font-black text-brand-700">
+              <span className="text-3xl md:text-4xl font-black text-neutral-950">
                 {formatCOP(product.sale_price)}
               </span>
-              {product.cost_price &&
-                Number(product.sale_price) > Number(product.cost_price) && (
-                  <span className="text-sm text-gray-400 line-through mb-1">
-                    {formatCOP(Number(product.sale_price) * 1.15)}
-                  </span>
-                )}
+
             </div>
 
             <p
@@ -293,10 +287,10 @@ export default function ProductPage() {
             </div>
           )}
 
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-gray-200 p-4 bg-white">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="border border-neutral-200 p-4 bg-white">
               <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm">
-                <Truck size={16} className="text-brand-600" />
+                <Truck size={16} className="text-neutral-900" />
                 Envíos
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -304,9 +298,9 @@ export default function ProductPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 p-4 bg-white">
+            <div className="border border-neutral-200 p-4 bg-white">
               <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm">
-                <ShieldCheck size={16} className="text-brand-600" />
+                <ShieldCheck size={16} className="text-neutral-900" />
                 Pago seguro
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -314,9 +308,9 @@ export default function ProductPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 p-4 bg-white">
+            <div className="border border-neutral-200 p-4 bg-white">
               <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm">
-                <BadgeCheck size={16} className="text-brand-600" />
+                <BadgeCheck size={16} className="text-neutral-900" />
                 Confianza
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -328,7 +322,7 @@ export default function ProductPage() {
           {!isOutOfStock && (
             <>
               <div className="mt-8">
-                <p className="text-sm font-semibold text-gray-800 mb-3">Cantidad</p>
+                <p className="store-label">Cantidad</p>
                 <div className="flex items-center gap-3">
                   <div className="inline-flex items-center rounded-2xl border border-gray-200 overflow-hidden">
                     <button
@@ -363,7 +357,7 @@ export default function ProductPage() {
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={handleAddToCart}
-                  className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
+                  className="store-button store-button-outline w-full"
                 >
                   <ShoppingCart size={18} />
                   Agregar al carrito
@@ -371,7 +365,7 @@ export default function ProductPage() {
 
                 <button
                   onClick={handleBuyNow}
-                  className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+                  className="store-button store-button-dark w-full"
                 >
                   <Zap size={18} />
                   Comprar ahora
@@ -383,20 +377,20 @@ export default function ProductPage() {
       </div>
 
       {relatedProducts.length > 0 && (
-        <section className="mt-16">
+        <section className="mt-16 sm:mt-24">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-3xl uppercase font-black text-black">
               También te puede gustar
             </h2>
             <Link
               to={categorySlug ? `/catalogo?categoria=${categorySlug}` : '/catalogo'}
-              className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+              className="store-inline-link"
             >
               Ver más
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="editorial-product-grid">
             {relatedProducts.map((item) => (
               <ProductCard key={item.id} product={item} />
             ))}
