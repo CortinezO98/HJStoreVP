@@ -41,7 +41,10 @@ def wompi_enabled() -> bool:
         "integrity": settings.WOMPI_INTEGRITY_SECRET,
         "events": settings.WOMPI_EVENTS_SECRET,
     }
-    if environment == "production" and not settings.WOMPI_ALLOW_LIVE_PAYMENTS:
+    if environment == "production" and (
+        not settings.WOMPI_ALLOW_LIVE_PAYMENTS
+        or settings.ENVIRONMENT != "production"
+    ):
         return False
     return all(
         isinstance(configured[k], str)
