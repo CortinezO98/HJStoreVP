@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import StoreErrorBoundary from './components/shop/StoreErrorBoundary'
 import ScrollToTop from './components/shop/ScrollToTop'
+import StoreMetadata from './components/shop/StoreMetadata'
 import { useAuthStore } from './store'
 
 import ShopLayout               from './components/layout/ShopLayout'
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <StoreErrorBoundary>
       <ScrollToTop />
+      <StoreMetadata />
       <Routes>
       <Route element={<ShopLayout />}>
         <Route path="/"                    element={<HomePage />} />
