@@ -329,9 +329,11 @@ def update_order_status(
     if not order:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     try:
-        order.status = OrderStatus(status)
-        if status == "paid":
-            order.paid_at = datetime.utcnow()
+        next_status = OrderStatus(status)
+        if next_status == OrderStatus.PAID:
+            raise HTTPException(status_code=403, detail="Los pagos deben confirmarse mediante el proveedor de pagos")
+        order.status = next_status
+
         db.commit()
         return {"message": f"Estado actualizado a {status}"}
     except ValueError:
