@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
 import { useAuthStore } from '../store'
 import toast from 'react-hot-toast'
@@ -10,20 +10,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     try {
       const data = await login(form.email, form.password)
-      if (!['super_admin', 'admin', 'seller'].includes(data.user_role)) {
-        toast.error('No tienes acceso al panel de administración')
-        return
-      }
       toast.success(`Bienvenido, ${data.full_name}!`)
-      navigate('/')
-    } catch {
-      toast.error('Correo o contraseña incorrectos')
+      navigate(location.state?.from || '/', { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || error.message || 'No se pudo iniciar sesión')
     } finally {
       setLoading(false)
     }
