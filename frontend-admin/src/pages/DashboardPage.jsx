@@ -9,6 +9,7 @@ import {
   DollarSign,
   BarChart3,
   Boxes,
+  Clock,
 } from 'lucide-react'
 import {
   analyticsApi,
@@ -32,6 +33,12 @@ function formatNumber(n) {
 
 function getCurrentYear() {
   return new Date().getFullYear()
+}
+
+function formatDate(value) {
+  if (!value) return 'Sin fecha'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Fecha no válida' : date.toLocaleDateString('es-CO')
 }
 
 function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand' }) {
