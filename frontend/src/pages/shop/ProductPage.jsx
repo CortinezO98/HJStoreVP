@@ -41,7 +41,7 @@ export default function ProductPage() {
   const [qty, setQty] = useState(1)
   const [selectedImage, setSelectedImage] = useState(null)
 
-  const { data: product, isLoading, isError } = useQuery({
+  const { data: product, isLoading, isError, refetch } = useQuery({
     queryKey: ['product-detail', slug],
     queryFn: async () => {
       const res = await productsApi.get(slug)
@@ -164,7 +164,7 @@ export default function ProductPage() {
   if (isError || !product) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-gray-500 mb-4">No se encontró el producto.</p>
+        <p className="text-gray-500 mb-4">{isError ? 'No pudimos cargar el producto.' : 'No se encontró el producto.'}</p>
         <Link to="/catalogo" className="btn-primary">
           Volver al catálogo
         </Link>
@@ -324,27 +324,10 @@ export default function ProductPage() {
               <div className="mt-8">
                 <p className="store-label">Cantidad</p>
                 <div className="flex items-center gap-3">
-                  <div className="inline-flex items-center rounded-2xl border border-gray-200 overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={handleDecrease}
-                      className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                    >
-                      <Minus size={16} />
-                    </button>
-
-                    <div className="w-14 text-center font-bold text-gray-900">
-                      {qty}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleIncrease}
-                      className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
+                  <QuantityStepper value={qty}
+                    onChange={(next) => setQty(Math.max(1, Math.min(next, Math.max(1, Math.min(99, maxQtyAllowed)))))}
+                    min={1} max={Math.max(1, Math.min(99, maxQtyAllowed))}
+                    label={`Cantidad de ${product.name}`} />
 
                   {availableStock !== null && (
                     <span className="text-xs text-gray-500">
