@@ -6,9 +6,9 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
+      accessToken: sessionStorage.getItem('access_token'),
+      refreshToken: sessionStorage.getItem('refresh_token'),
+      isAuthenticated: !!sessionStorage.getItem('access_token'),
 
       login: async (email, password) => {
         const { data } = await authApi.login({ email, password })
@@ -33,6 +33,8 @@ export const useAuthStore = create(
       logout: () => {
         sessionStorage.removeItem('access_token')
         sessionStorage.removeItem('refresh_token')
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false })
       },
 
@@ -43,7 +45,7 @@ export const useAuthStore = create(
 
       isSeller: () => get().user?.role === 'seller',
     }),
-    { name: 'hjstore-auth', partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated }) }
+    { name: 'hjstore-auth', partialize: (s) => ({ user: s.user }) }
   )
 )
 
