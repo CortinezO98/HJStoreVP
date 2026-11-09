@@ -152,6 +152,34 @@ class TestProducts:
         assert resp.status_code == 200
         assert resp.json()["sku"] == "PER-AZL"
 
+    def test_update_product_name_and_sku(self, client, auth_headers):
+        created = client.post("/api/v1/products", json={
+            "name": "Gorra Negra", "sku": "GOR-001",
+            "cost_price": 25000, "margin_pct": 60,
+        }, headers=auth_headers)
+        assert created.status_code == 201
+        pid = created.json()["id"]
+
+        updated = client.put(f"/api/v1/products/{pid}", json={
+            "name": "Gorra Azul", "sku": "GOR-002",
+            "cost_price": 30000, "margin_pct": 50,
+        }, headers=auth_headers)
+        assert updated.status_code == 200
+        assert updated.json()["sku"] == "GOR-002"
+        assert updated.json()["sale_price"] == 45000.0
+
+    def test_update_product_rejects_negative_sale_price(self, client, auth_headers):
+        created = client.post("/api/v1/products", json={
+            "name": "Reloj", "sku": "REL-001",
+            "cost_price": 100000, "margin_pct": 20,
+        }, headers=auth_headers)
+        assert created.status_code == 201
+        pid = created.json()["id"]
+        updated = client.put(f"/api/v1/products/{pid}", json={
+            "sale_price": -1,
+        }, headers=auth_headers)
+        assert updated.status_code == 422
+
     def test_deactivate_product(self, client, auth_headers):
         create = client.post("/api/v1/products", json={
             "name": "A borrar", "sku": "DEL-001", "cost_price": 5000, "margin_pct": 20
