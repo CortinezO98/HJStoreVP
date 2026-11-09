@@ -24,7 +24,12 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401) {
+    const originalRequest = error.config
+    const isAuthRequest = originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/refresh')
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {
+      originalRequest._retry = true
       const refresh = localStorage.getItem('refresh_token')
 
       if (refresh) {
@@ -40,8 +45,10 @@ apiClient.interceptors.response.use(
           error.config.headers.Authorization = `Bearer ${data.access_token}`
           return apiClient(error.config)
         } catch {
-          localStorage.clear()
-          window.location.href = '/login'
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('hjstore-auth')
+          window.location.assign('/login')
         }
       }
     }
