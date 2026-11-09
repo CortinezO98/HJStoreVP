@@ -309,6 +309,7 @@ class TestWebOrderStockReservations:
         return {
             "items": [{"product_id": product_id, "qty": qty}],
             "shipping_rate_id": rate_id,
+            "shipping_price_confirmed": 12000,
             "shipping_address": {
                 "full_name": "Cliente Reserva", "phone": "3000000000",
                 "address_line1": "Calle 1", "city": "Bogotá",
