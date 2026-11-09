@@ -42,7 +42,7 @@ def main():
         if not name or len(name) > 200:
             print("El nombre es obligatorio (máximo 200 caracteres).")
             return 1
-        if not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", email) or len(email) > 255:
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) or len(email) > 255:
             print("Correo electrónico inválido.")
             return 1
         if db.query(User.id).filter(func.lower(User.email) == email).first():
