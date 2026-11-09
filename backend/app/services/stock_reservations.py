@@ -122,10 +122,14 @@ def mark_paid(db: Session, order: Order, method: str, reference: str | None) -> 
             status_code=409,
             detail="Estado incompatible con el pago; requiere conciliación manual",
         )
-    if not commit_reservations(db, order):
+    # Pedidos anteriores a la tabla de reservas pueden pagarse: ya habían
+    # descontado qty_available. No modificar inventario ni bloquear ventas
+    # históricas por falta de trazabilidad antigua.
+    records = _reservations(db, order)
+    if records and not commit_reservations(db, order):
         raise HTTPException(
             status_code=409,
-            detail="No fue posible confirmar las reservas; requiere conciliación manual",
+            detail="Las reservas no están disponibles; requiere conciliación manual",
         )
     order.status = OrderStatus.PAID
     order.payment_method = method
