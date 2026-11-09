@@ -1,107 +1,70 @@
-"""
-Servicio de integración con Wompi.
-Documentación: https://docs.wompi.co
+"""Wompi Web Checkout: firmado, validación de eventos y consultas backend.
 
-Para activar en producción, agregar al .env:
-    WOMPI_PUBLIC_KEY=pub_prod_XXXX
-    WOMPI_PRIVATE_KEY=prv_prod_XXXX
-    WOMPI_EVENTS_SECRET=XXXX
-    WOMPI_REDIRECT_URL=https://tudominio.com/pago-confirmado
-
-En sandbox (pruebas):
-    WOMPI_PUBLIC_KEY=pub_test_XXXX
-    WOMPI_PRIVATE_KEY=prv_test_XXXX
+Docs:
+https://docs.wompi.co/docs/colombia/widget-checkout-web/
+https://docs.wompi.co/docs/colombia/eventos/
+https://docs.wompi.co/docs/colombia/seguimiento-de-transacciones/
 """
+from __future__ import annotations
+
 import hashlib
 import hmac
+from decimal import Decimal
+from urllib.parse import urlencode
+
 import httpx
+
 from app.core.config import settings
 
-WOMPI_API_URL = "https://api-sandbox.co.uat.wompi.dev/v1"  # Sandbox
-# WOMPI_API_URL = "https://production.wompi.co/v1"         # Producción
+WOMPI_CHECKOUT_URL = "https://checkout.wompi.co/p/"
+WOMPI_API_URLS = {
+    "sandbox": "https://sandbox.wompi.co/v1",
+    "production": "https://production.wompi.co/v1",
+}
 
 
-async def get_acceptance_token() -> str:
-    """
-    Obtiene el acceptance_token requerido por Wompi antes de crear transacciones.
-    Se llama una vez al inicio del checkout.
-    """
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{WOMPI_API_URL}/merchants/{settings.WOMPI_PUBLIC_KEY}"
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["data"]["presigned_acceptance"]["acceptance_token"]
-
-
-async def create_transaction(
-    amount_in_cents: int,
-    currency: str,
-    order_number: str,
-    customer_email: str,
-    customer_name: str,
-    customer_phone: str,
-    redirect_url: str,
-    reference: str,
-) -> dict:
-    """
-    Crea una transacción en Wompi.
-    Retorna la URL de pago para redirigir al cliente.
-    """
-    acceptance_token = await get_acceptance_token()
-
-    payload = {
-        "amount_in_cents": amount_in_cents,
-        "currency": currency,
-        "customer_email": customer_email,
-        "payment_method": {
-            "installments": 1,
-        },
-        "redirect_url": redirect_url,
-        "reference": reference,
-        "customer_data": {
-            "phone_number": customer_phone,
-            "full_name": customer_name,
-        },
-        "acceptance_token": acceptance_token,
+def wompi_enabled() -> bool:
+    """Fail-closed: 4 credentials for selected environment and production opt-in."""
+    environment = settings.WOMPI_ENV
+    if environment not in WOMPI_API_URLS:
+        return False
+    prefix = "test" if environment == "sandbox" else "prod"
+    expected = {
+        "public": f"pub_{prefix}_",
+        "private": f"prv_{prefix}_",
+        "integrity": f"{prefix}_integrity_",
+        "events": f"{prefix}_events_",
     }
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{WOMPI_API_URL}/transactions",
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {settings.WOMPI_PRIVATE_KEY}",
-                "Content-Type": "application/json",
-            },
-        )
-        resp.raise_for_status()
-        return resp.json()["data"]
-
-
-async def get_transaction(transaction_id: str) -> dict:
-    """Consulta el estado de una transacción."""
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{WOMPI_API_URL}/transactions/{transaction_id}",
-            headers={"Authorization": f"Bearer {settings.WOMPI_PRIVATE_KEY}"},
-        )
-        resp.raise_for_status()
-        return resp.json()["data"]
+    configured = {
+        "public": settings.WOMPI_PUBLIC_KEY,
+        "private": settings.WOMPI_PRIVATE_KEY,
+        "integrity": settings.WOMPI_INTEGRITY_SECRET,
+        "events": settings.WOMPI_EVENTS_SECRET,
+    }
+    if environment == "production" and not settings.WOMPI_ALLOW_LIVE_PAYMENTS:
+        return False
+    return all(
+        isinstance(configured[k], str)
+        and configured[k].startswith(prefix_value)
+        and len(configured[k]) > len(prefix_value) + 8
+        for k, prefix_value in expected.items()
+    )
 
 
-def verify_webhook_signature(payload_str: str, timestamp: str, signature: str) -> bool:
-    """
-    Verifica que el webhook proviene realmente de Wompi.
-    Usa el WOMPI_EVENTS_SECRET del .env
-    """
-    if not settings.WOMPI_EVENTS_SECRET:
-        return False  # Nunca aceptar webhooks sin un secreto configurado
+def _amount_cents(amount: Decimal) -> int:
+    value = amount * 100
+    if amount <= 0 or value != value.to_integral_value():
+        raise ValueError("Importe COP inválido")
+    return int(value)
 
-    checksum_str = payload_str + timestamp + settings.WOMPI_EVENTS_SECRET
-    expected = hashlib.sha256(checksum_str.encode()).hexdigest()
-    return hmac.compare_digest(expected, signature)
+
+def integrity_signature(reference: str, amount_in_cents: int, currency: str = "COP") -> str:
+    """SHA256(reference + amount cents + currency + integrity secret)."""
+    secret = settings.WOMPI_INTEGRITY_SECRET
+    if not secret or not reference or amount_in_cents <= 0 or currency != "COP":
+        raise ValueError("Integridad Wompi no configurada")
+    raw = f"{reference}{amount_in_cents}{currency}{secret}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def build_checkout_url(
@@ -111,19 +74,85 @@ def build_checkout_url(
     customer_name: str,
     redirect_url: str,
 ) -> str:
-    """
-    Genera la URL del widget de Wompi (opción sin redirección de API).
-    Esta es la forma más simple — abre el checkout de Wompi directamente.
-    """
-    import urllib.parse
+    if not wompi_enabled():
+        raise ValueError("Wompi no está habilitado")
+    if not redirect_url.startswith(("https://", "http://localhost:")):
+        raise ValueError("La URL de retorno debe utilizar HTTPS")
     params = {
-        "public-key": settings.WOMPI_PUBLIC_KEY or "pub_test_PLACEHOLDER",
+        "public-key": settings.WOMPI_PUBLIC_KEY,
         "currency": "COP",
         "amount-in-cents": str(amount_in_cents),
         "reference": order_number,
+        "signature:integrity": integrity_signature(order_number, amount_in_cents),
         "redirect-url": redirect_url,
         "customer-data:email": customer_email,
         "customer-data:full-name": customer_name,
     }
-    query = urllib.parse.urlencode(params)
-    return f"https://checkout.wompi.co/p/?{query}"
+    return WOMPI_CHECKOUT_URL + "?" + urlencode(params)
+
+
+def _lookup_property(data: dict, property_path: str):
+    current = data
+    for segment in property_path.split("."):
+        if not isinstance(current, dict) or segment not in current:
+            raise ValueError("Propiedad de firma inexistente")
+        current = current[segment]
+    if isinstance(current, bool) or current is None or isinstance(current, (list, dict)):
+        raise ValueError("Valor de firma no escalar")
+    return str(current)
+
+
+def verify_webhook_signature(event: dict, signature_header: str = "") -> bool:
+    """SHA256(values(signature.properties) + timestamp + events_secret).
+
+    La firma se compara en tiempo constante. Rechaza propiedades ambiguas,
+    firmas inconsistentes en header/body y secretos ausentes.
+    """
+    if not wompi_enabled() or not isinstance(event, dict):
+        return False
+    try:
+        signature_data = event["signature"]
+        properties = signature_data["properties"]
+        timestamp = event["timestamp"]
+        body_checksum = signature_data["checksum"]
+        if (
+            not isinstance(properties, list) or not (1 <= len(properties) <= 20)
+            or not isinstance(timestamp, int) or isinstance(timestamp, bool)
+            or not isinstance(body_checksum, str) or len(body_checksum) != 64
+            or not all(isinstance(prop, str) and prop.startswith("transaction.") for prop in properties)
+            or len(set(properties)) != len(properties)
+        ):
+            return False
+        data = event["data"]
+        values = "".join(_lookup_property(data, prop) for prop in properties)
+        expected = hashlib.sha256(
+            (values + str(timestamp) + settings.WOMPI_EVENTS_SECRET).encode("utf-8")
+        ).hexdigest()
+        if signature_header and not hmac.compare_digest(
+            signature_header.lower(), body_checksum.lower()
+        ):
+            return False
+        return hmac.compare_digest(expected, body_checksum.lower())
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+
+
+async def get_transaction(transaction_id: str) -> dict:
+    """Consulta autenticada; nunca se llama desde el navegador."""
+    if not wompi_enabled():
+        raise ValueError("Wompi no configurado")
+    if not transaction_id or len(transaction_id) > 128 or not all(
+        c.isalnum() or c in "-_" for c in transaction_id
+    ):
+        raise ValueError("ID Wompi inválido")
+    api_url = WOMPI_API_URLS[settings.WOMPI_ENV]
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        response = await client.get(
+            f"{api_url}/transactions/{transaction_id}",
+            headers={"Authorization": f"Bearer {settings.WOMPI_PRIVATE_KEY}"},
+        )
+        response.raise_for_status()
+        result = response.json()["data"]
+        if not isinstance(result, dict):
+            raise ValueError("Respuesta Wompi inválida")
+        return result
