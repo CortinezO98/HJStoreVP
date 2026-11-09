@@ -432,6 +432,16 @@ class TestWebOrderStockReservations:
         assert result.json()["total_amount"] == 42000
         assert result.json()["shipping_address"]["carrier"] == "Transportadora de Prueba"
 
+    def test_shipping_price_change_requires_new_confirmation(self, client, auth_headers):
+        product_id, inventory_id = self.create_stock()
+        data = self.payload(product_id)
+        data["shipping_price_confirmed"] = 5000
+        result = client.post("/api/v1/orders/web", json=data, headers=auth_headers)
+        assert result.status_code == 409
+        db = TestingSession()
+        assert db.get(Inventory, inventory_id).qty_available == 5
+        db.close()
+
     def test_shipping_rate_cannot_apply_to_another_city(self, client, auth_headers):
         product_id, inv_id = self.create_stock()
         data = self.payload(product_id)
