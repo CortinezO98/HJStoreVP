@@ -109,6 +109,14 @@ async def initiate_payment(
             detail=f"Esta orden ya tiene estado: {order.status.value}"
         )
 
+    # Registrar método iniciado. Evita liberar stock mientras una pasarela
+    # todavía puede confirmar un cobro; no equivale a confirmar el pago.
+    if order.payment_method and order.payment_method != data.method:
+        raise HTTPException(
+            status_code=409,
+            detail="Ya hay un método de pago iniciado para este pedido; verifica su estado",
+        )
+
     amount = float(order.total_amount)
     amount_cents = int(order.total_amount * 100)
     redirect_base = "http://localhost:5173/pago-confirmado"
@@ -130,6 +138,9 @@ async def initiate_payment(
         else:
             url = f"http://localhost:5173/pago-demo?order={order.order_number}&provider=wompi&amount={amount}"
 
+        if wompi_enabled:
+            order.payment_method = "wompi"
+            db.commit()
         return InitiatePaymentResponse(
             order_number=order.order_number, method="wompi",
             checkout_url=url, amount=amount, enabled=wompi_enabled,
@@ -146,6 +157,9 @@ async def initiate_payment(
             customer_phone=data.customer_phone or current_user.phone or "",
             customer_id=data.customer_id or "",
         )
+        if sistecreditos_enabled():
+            order.payment_method = "sistecreditos"
+            db.commit()
         return InitiatePaymentResponse(
             order_number=order.order_number, method="sistecreditos",
             checkout_url=url, amount=amount, enabled=sistecreditos_enabled(),
@@ -172,6 +186,8 @@ async def initiate_payment(
         )
         # Guardar el ID de la aplicación Addi en la orden para seguimiento
         order.payment_ref = result.get("applicationId")
+        if addi_enabled():
+            order.payment_method = "addi"
         db.commit()
 
         return InitiatePaymentResponse(
@@ -230,7 +246,7 @@ async def wompi_webhook(request: Request, db: Session = Depends(get_db)):
     elif wompi_status in ["DECLINED", "ERROR", "VOIDED"]:
         if order.status == OrderStatus.PENDING:
             try:
-                cancel_web_order(db, order, f"Wompi {wompi_status}")
+                cancel_web_order(db, order, f"Wompi {wompi_status}", provider_confirmed_failure=True)
             except HTTPException as exc:
                 if exc.status_code == 409:
                     return {"status": "manual_review", "reason": "legacy_reservation"}
@@ -281,7 +297,7 @@ async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db))
     elif sc_status in ["REJECTED", "CANCELLED", "EXPIRED"]:
         if order.status == OrderStatus.PENDING:
             try:
-                cancel_web_order(db, order, f"Sistecréditos {sc_status}")
+                cancel_web_order(db, order, f"Sistecréditos {sc_status}", provider_confirmed_failure=True)
             except HTTPException as exc:
                 if exc.status_code == 409:
                     return {"status": "manual_review", "reason": "legacy_reservation"}
@@ -332,7 +348,7 @@ async def addi_webhook(request: Request, db: Session = Depends(get_db)):
     elif addi_status in ["REJECTED", "CANCELLED", "EXPIRED"]:
         if order.status == OrderStatus.PENDING:
             try:
-                cancel_web_order(db, order, f"Addi {addi_status}")
+                cancel_web_order(db, order, f"Addi {addi_status}", provider_confirmed_failure=True)
             except HTTPException as exc:
                 if exc.status_code == 409:
                     return {"status": "manual_review", "reason": "legacy_reservation"}
