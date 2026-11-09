@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 from decimal import Decimal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 
@@ -76,7 +76,13 @@ def build_checkout_url(
 ) -> str:
     if not wompi_enabled():
         raise ValueError("Wompi no está habilitado")
-    if not redirect_url.startswith(("https://", "http://localhost:")):
+    redirect = urlsplit(redirect_url)
+    local_dev = (
+        settings.WOMPI_ENV == "sandbox"
+        and redirect.scheme == "http"
+        and redirect.hostname in ("localhost", "127.0.0.1")
+    )
+    if not (redirect.scheme == "https" or local_dev):
         raise ValueError("La URL de retorno debe utilizar HTTPS")
     params = {
         "public-key": settings.WOMPI_PUBLIC_KEY,
