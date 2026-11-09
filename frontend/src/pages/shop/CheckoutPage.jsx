@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   ShoppingBag,
@@ -96,6 +96,8 @@ export default function CheckoutPage() {
   const [createdOrder, setCreatedOrder] = useState(null)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [selectedMethod, setSelectedMethod] = useState('wompi')
+  const [shippingRateId, setShippingRateId] = useState(null)
+  const [quoteCity, setQuoteCity] = useState('')
   const [extraFields, setExtraFields] = useState({
     customer_phone: '',
     customer_id: '',
@@ -111,7 +113,28 @@ export default function CheckoutPage() {
     postal_code: '',
   })
 
-  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
+  const set = (key, value) => {
+    if (createdOrder) return // Pedido ya fijado: no modificar dirección ni tarifa sin cancelar.
+    if (key === 'city' || key === 'department') setShippingRateId(null)
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setQuoteCity(form.city.trim()), 350)
+    return () => clearTimeout(timeout)
+  }, [form.city])
+
+  const { data: shippingQuotes = [], isLoading: shippingLoading, isError: shippingError } = useQuery({
+    queryKey: ['shipping-quote', form.department, quoteCity],
+    queryFn: () => apiClient.get('/shipping/quote', {
+      params: { department: form.department, city: quoteCity },
+    }).then(({ data }) => data),
+    enabled: quoteCity.length >= 2 && Boolean(form.department),
+    staleTime: 30_000,
+  })
+  const selectedShipping = shippingQuotes.find((rate) => rate.id === shippingRateId) || null
+  const shippingAmount = selectedShipping ? Number(selectedShipping.price) : 0
+  const checkoutTotal = Number(total()) + shippingAmount
 
   const { data: methods = [], isError: methodsError } = useQuery({
     queryKey: ['payment-methods'],
@@ -291,6 +314,11 @@ export default function CheckoutPage() {
       return
     }
 
+    if (shippingError || shippingLoading || !selectedShipping) {
+      toast.error('Selecciona una tarifa de envío disponible para tu dirección')
+      return
+    }
+
     const validationError = validateForm()
     if (validationError) {
       toast.error(validationError)
@@ -305,6 +333,7 @@ export default function CheckoutPage() {
           product_id: product.id,
           qty,
         })),
+        shipping_rate_id: selectedShipping.id,
         shipping_address: {
           full_name: form.full_name,
           phone: form.phone,
@@ -369,6 +398,11 @@ export default function CheckoutPage() {
           <div className="store-checkout-step mb-4"><strong>01</strong> ENTREGA Y PAGO</div>
           <h1 className="text-4xl font-black text-neutral-950 uppercase tracking-tight mb-8">FINALIZAR COMPRA</h1>
 
+          {createdOrder && <p className="bg-amber-50 text-amber-900 text-sm p-4 mb-5" role="status">
+            El pedido {createdOrder.order_number} ya tiene dirección, tarifa y total fijados.
+            Para cambiarlos debes cancelar el pedido pendiente desde tu cuenta.
+          </p>}
+          <fieldset disabled={Boolean(createdOrder)} className="disabled:opacity-70">
           <div className="store-field-grid">
             <div className="md:col-span-2">
               <label className="store-label" htmlFor="checkout-full-name">Nombre completo</label>
@@ -452,6 +486,35 @@ export default function CheckoutPage() {
               </select>
             </div>
           </div>
+          </fieldset>
+
+          <div className="mt-8">
+            <h2 className="font-bold text-lg uppercase mb-3">Selecciona el envío</h2>
+            {shippingLoading && <p className="text-sm text-neutral-500" role="status">Cotizando transportadoras…</p>}
+            {shippingError && <p className="text-sm text-red-700" role="alert">No se pudieron consultar las tarifas. Revisa la conexión.</p>}
+            {!shippingLoading && !shippingError && quoteCity.length >= 2 && shippingQuotes.length === 0 &&
+              <p className="text-sm text-amber-800 bg-amber-50 p-4" role="status">
+                No hay una tarifa configurada para esta ciudad. Aún no es posible continuar al pago.
+              </p>}
+            {quoteCity.length < 2 && <p className="text-sm text-neutral-500">Ingresa una ciudad para ver precios de entrega.</p>}
+            <div className="space-y-2">
+              {shippingQuotes.map((rate) => (
+                <label key={rate.id} className={`flex items-center justify-between gap-3 border p-4 cursor-pointer ${shippingRateId === rate.id ? 'border-black bg-neutral-50' : 'border-neutral-200'}`}>
+                  <span className="flex items-center gap-3">
+                    <input type="radio" name="shipping_rate" value={rate.id}
+                      checked={shippingRateId === rate.id}
+                      disabled={Boolean(createdOrder)}
+                      onChange={() => setShippingRateId(rate.id)} />
+                    <span className="text-sm">
+                      <strong className="block">{rate.carrier} · {rate.service}</strong>
+                      <span className="text-neutral-500">{rate.days_min}–{rate.days_max} días estimados</span>
+                    </span>
+                  </span>
+                  <strong className="shrink-0 text-sm">{formatCOP(rate.price)}</strong>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-3">
@@ -471,7 +534,7 @@ export default function CheckoutPage() {
                     type="button"
                     onClick={() => setSelectedMethod(key)}
                     aria-pressed={isSelected}
-                    disabled={!methodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true'}
+                    disabled={Boolean(createdOrder) || (!methodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true')}
                     className={`w-full text-left border p-4 transition disabled:opacity-50 disabled:cursor-not-allowed ${
                       isSelected
                         ? 'border-neutral-950 bg-neutral-50'
@@ -546,7 +609,7 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={loading || methodsError}
+            disabled={loading || methodsError || shippingError || shippingLoading || !selectedShipping}
             aria-busy={loading}
             className="store-button store-button-dark w-full mt-8"
           >
@@ -558,7 +621,7 @@ export default function CheckoutPage() {
             ) : (
               <>
                 <CreditCard size={20} />
-                Continuar al pago · {formatCOP(total())}
+                Continuar al pago · {formatCOP(createdOrder?.total_amount ?? checkoutTotal)}
               </>
             )}
           </button>
@@ -606,17 +669,17 @@ export default function CheckoutPage() {
             <div className="flex justify-between items-center py-4 border-b border-gray-100">
               <span className="text-gray-500 text-sm">Envío</span>
               <span className="text-sm font-medium text-neutral-700">
-                Por confirmar
+                {selectedShipping ? formatCOP(selectedShipping.price) : 'Selecciona una tarifa'}
               </span>
             </div>
 
             <div className="border-t border-neutral-200 pt-5 flex justify-between font-bold text-lg mt-4">
               <span>Total</span>
-              <span className="text-neutral-950">{formatCOP(total())}</span>
+              <span className="text-neutral-950">{selectedShipping ? formatCOP(createdOrder?.total_amount ?? checkoutTotal) : '—'}</span>
             </div>
 
             <p className="text-xs text-neutral-500 mt-4">
-              El monto mostrado corresponde a productos. Confirma los costos adicionales antes de completar el pago.
+              El total incluye productos y el envío seleccionado. El servidor valida nuevamente la tarifa antes de crear el pedido.
             </p>
           </div>
         </div>
