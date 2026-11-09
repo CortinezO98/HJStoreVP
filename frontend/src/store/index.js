@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '../services/api'
 
+const isPositiveInteger = (value) => Number.isSafeInteger(value) && value > 0
+const validPrice = (value) => Number.isFinite(Number(value)) && Number(value) >= 0
+
 const getAvailableStock = (product) => {
   const raw = product?.total_stock ?? product?.stock ?? null
   return raw === null || raw === undefined ? null : Number(raw)
@@ -11,15 +14,15 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: localStorage.getItem('access_token'),
-      refreshToken: localStorage.getItem('refresh_token'),
-      isAuthenticated: !!localStorage.getItem('access_token'),
+      accessToken: sessionStorage.getItem('access_token'),
+      refreshToken: sessionStorage.getItem('refresh_token'),
+      isAuthenticated: !!sessionStorage.getItem('access_token'),
 
       login: async (email, password) => {
         const { data } = await authApi.login({ email, password })
 
-        localStorage.setItem('access_token', data.access_token)
-        localStorage.setItem('refresh_token', data.refresh_token)
+        sessionStorage.setItem('access_token', data.access_token)
+        sessionStorage.setItem('refresh_token', data.refresh_token)
 
         set({
           accessToken: data.access_token,
@@ -38,8 +41,8 @@ export const useAuthStore = create(
       register: async (payload) => {
         const { data } = await authApi.register(payload)
 
-        localStorage.setItem('access_token', data.access_token)
-        localStorage.setItem('refresh_token', data.refresh_token)
+        sessionStorage.setItem('access_token', data.access_token)
+        sessionStorage.setItem('refresh_token', data.refresh_token)
 
         set({
           accessToken: data.access_token,
@@ -76,8 +79,8 @@ export const useAuthStore = create(
       },
 
       logout: () => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('refresh_token')
 
         set({
           user: null,
@@ -115,6 +118,7 @@ export const useCartStore = create(
       },
 
       canAdd: (product, qtyToAdd = 1) => {
+        if (!isPositiveInteger(qtyToAdd) || !validPrice(product?.sale_price)) return false
         const available = getAvailableStock(product)
         if (available === null) return true
 
@@ -123,11 +127,13 @@ export const useCartStore = create(
       },
 
       addItem: (product, qty = 1) => {
+        if (!isPositiveInteger(qty) || !validPrice(product?.sale_price)) return false
         const items = get().items
         const existing = items.find((i) => i.product.id === product.id)
         const available = getAvailableStock(product)
 
         if (available !== null) {
+          if (!Number.isSafeInteger(available) || available < 0) return false
           const currentQty = existing ? existing.qty : 0
           const nextQty = currentQty + qty
           if (nextQty > available) return false
@@ -161,6 +167,7 @@ export const useCartStore = create(
       },
 
       updateQty: (productId, qty) => {
+        if (!Number.isSafeInteger(qty)) return false
         const item = get().items.find((i) => i.product.id === productId)
         if (!item) return true
 
@@ -170,7 +177,7 @@ export const useCartStore = create(
         }
 
         const available = getAvailableStock(item.product)
-        if (available !== null && qty > available) {
+        if (available !== null && (!Number.isSafeInteger(available) || qty > available)) {
           return false
         }
 
@@ -202,12 +209,12 @@ export const useCartStore = create(
 
       total: () =>
         get().items.reduce(
-          (acc, i) => acc + Number(i.product.sale_price || 0) * i.qty,
+          (acc, i) => acc + (validPrice(i.product.sale_price) && isPositiveInteger(i.qty) ? Number(i.product.sale_price) * i.qty : 0),
           0
         ),
 
       count: () =>
-        get().items.reduce((acc, i) => acc + i.qty, 0),
+        get().items.reduce((acc, i) => acc + (isPositiveInteger(i.qty) ? i.qty : 0), 0),
     }),
     {
       name: 'hjstore-cart',
