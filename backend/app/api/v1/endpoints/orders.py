@@ -3,6 +3,8 @@ Endpoint de órdenes web (checkout de la tienda pública).
 Crea la orden, reserva el stock y espera confirmación de pago.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import Field, model_validator
+from sqlalchemy import update
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime
@@ -23,8 +25,8 @@ router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class OrderItemIn(BaseModel):
-    product_id: int
-    qty: int
+    product_id: int = Field(gt=0)
+    qty: int = Field(gt=0)
 
 
 class ShippingAddress(BaseModel):
@@ -38,9 +40,16 @@ class ShippingAddress(BaseModel):
 
 
 class WebOrderCreate(BaseModel):
-    items: List[OrderItemIn]
+    items: List[OrderItemIn] = Field(min_length=1)
     shipping_address: ShippingAddress
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def unique_products(self):
+        product_ids = [item.product_id for item in self.items]
+        if len(set(product_ids)) != len(product_ids):
+            raise ValueError("Un producto no puede aparecer dos veces en el mismo pedido")
+        return self
 
 
 class OrderItemOut(BaseModel):
@@ -107,7 +116,19 @@ def reserve_stock(db: Session, product_id: int, qty: int):
                         f"Disponible: {inv.qty_available if inv else 0}"
             )
 
-    inv.qty_available -= qty
+    # Descuento condicional y atómico: dos compradores simultáneos no pueden
+    # descontar el mismo stock hasta producir cantidades negativas.
+    updated = db.execute(
+        update(Inventory)
+        .where(
+            Inventory.id == inv.id,
+            Inventory.qty_available >= qty,
+            Inventory.qty_available >= 0,
+        )
+        .values(qty_available=Inventory.qty_available - qty)
+    )
+    if updated.rowcount != 1:
+        raise HTTPException(status_code=400, detail="Stock insuficiente; actualiza tu carrito")
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -147,6 +168,9 @@ def create_web_order(
         p = products[item.product_id]
         subtotal += p.sale_price * item.qty
         total_cost += p.cost_price * item.qty
+
+    if any(p.sale_price is None or p.sale_price < 0 or p.cost_price is None or p.cost_price < 0 for p in products.values()):
+        raise HTTPException(status_code=400, detail="Hay productos con precios inválidos")
 
     # Crear orden
     order = Order(
