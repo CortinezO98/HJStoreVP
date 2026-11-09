@@ -15,8 +15,8 @@ export const useAuthStore = create(
         if (!['super_admin', 'admin', 'seller'].includes(data.user_role)) {
           throw new Error('No tienes acceso al panel de administración')
         }
-        localStorage.setItem('access_token', data.access_token)
-        localStorage.setItem('refresh_token', data.refresh_token)
+        sessionStorage.setItem('access_token', data.access_token)
+        sessionStorage.setItem('refresh_token', data.refresh_token)
         set({
           user: {
             id: data.user_id,
@@ -31,8 +31,8 @@ export const useAuthStore = create(
       },
 
       logout: () => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('refresh_token')
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false })
       },
 
