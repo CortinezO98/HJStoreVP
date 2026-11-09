@@ -425,3 +425,61 @@ class TestWebOrderStockReservations:
         )
         assert result.status_code == 403
 
+
+    def test_initiated_payment_prevents_unsafe_cancellation(
+        self, client, auth_headers
+    ):
+        product_id, inv_id = self.create_stock()
+        created = client.post(
+            "/api/v1/orders/web", json=self.payload(product_id),
+            headers=auth_headers,
+        )
+        assert created.status_code == 201
+        db = TestingSession()
+        order = db.get(Order, created.json()["id"])
+        order.payment_method = "wompi"  # Simula inicio de proceso en la pasarela.
+        db.commit()
+        db.close()
+
+        cancel = client.post(
+            f"/api/v1/orders/{created.json()['id']}/cancel",
+            headers=auth_headers,
+        )
+        assert cancel.status_code == 409
+        db = TestingSession()
+        assert db.get(Inventory, inv_id).qty_available == 3
+        assert db.query(OrderStockReservation).filter_by(
+            order_id=created.json()["id"]
+        ).one().status == "held"
+        db.close()
+
+    def test_webhook_failure_restores_after_initiated_payment(
+        self, client, auth_headers
+    ):
+        from app.services.stock_reservations import cancel_web_order, lock_web_order
+        product_id, inv_id = self.create_stock()
+        created = client.post(
+            "/api/v1/orders/web", json=self.payload(product_id),
+            headers=auth_headers,
+        )
+        assert created.status_code == 201
+        db = TestingSession()
+        order = lock_web_order(db, created.json()["id"])
+        order.payment_method = "wompi"
+        db.commit()
+        db.close()
+
+        db = TestingSession()
+        order = lock_web_order(db, created.json()["id"])
+        assert cancel_web_order(
+            db, order, "Proveedor rechazó el cobro",
+            provider_confirmed_failure=True,
+        ) is True
+        db.commit()
+        db.close()
+        db = TestingSession()
+        assert db.get(Inventory, inv_id).qty_available == 5
+        assert db.query(OrderStockReservation).filter_by(
+            order_id=created.json()["id"]
+        ).one().status == "released"
+        db.close()
