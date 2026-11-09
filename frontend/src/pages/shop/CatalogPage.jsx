@@ -301,10 +301,11 @@ export default function CatalogPage() {
                 }
               </p>
               <button
-                onClick={clearAllFilters}
-                className="btn-primary text-sm"
+                type="button"
+                onClick={page > 1 ? () => setFilter('page', String(page - 1)) : clearAllFilters}
+                className="store-button store-button-dark"
               >
-                Limpiar filtros y ver todo
+                {page > 1 ? 'VOLVER A LA PÁGINA ANTERIOR' : 'LIMPIAR FILTROS'}
               </button>
             </div>
           ) : (
@@ -315,16 +316,18 @@ export default function CatalogPage() {
                 ))}
               </div>
 
-              {/* Paginación simple */}
-              {products.length === 24 && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={() => setFilter('page', String(page + 1))}
-                    className="editorial-load-more"
-                  >
-                    Cargar más productos
+              {(page > 1 || products.length === 24) && (
+                <nav aria-label="Paginación del catálogo" className="mt-12 flex flex-wrap items-center justify-center gap-4">
+                  <button type="button" className="store-button store-button-outline"
+                    disabled={page <= 1} onClick={() => setFilter('page', String(page - 1))}>
+                    ANTERIOR
                   </button>
-                </div>
+                  <span className="text-xs font-bold text-neutral-500 uppercase" aria-current="page">PÁGINA {page}</span>
+                  <button type="button" className="store-button store-button-dark"
+                    disabled={products.length < 24} onClick={() => setFilter('page', String(page + 1))}>
+                    SIGUIENTE
+                  </button>
+                </nav>
               )}
             </>
           )}
