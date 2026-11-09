@@ -16,6 +16,7 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldCheck,
+  Truck,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -62,6 +63,12 @@ const NAV_ITEMS = [
     to: '/puntos',
     icon: MapPin,
     label: 'Puntos físicos',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/envios',
+    icon: Truck,
+    label: 'Envíos y tarifas',
     roles: ['super_admin', 'admin'],
   },
   {
