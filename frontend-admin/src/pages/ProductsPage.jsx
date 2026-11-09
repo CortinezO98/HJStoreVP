@@ -482,10 +482,26 @@ export default function ProductsPage() {
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['admin-products'],
-    queryFn: () =>
-      productsApi
-        .list({ include_inactive: true, per_page: 200 })
-        .then((r) => r.data),
+    queryFn: async () => {
+      // El backend permite un máximo de 100 productos por solicitud.
+      // Recuperar todas las páginas evita truncar el catálogo administrativo.
+      const pageSize = 100
+      const allProducts = []
+      let page = 1
+
+      while (true) {
+        const { data } = await productsApi.list({
+          include_inactive: true,
+          page,
+          per_page: pageSize,
+        })
+        allProducts.push(...data)
+        if (data.length < pageSize) break
+        page += 1
+      }
+
+      return allProducts
+    },
   })
 
   const filteredProducts = useMemo(() => {
