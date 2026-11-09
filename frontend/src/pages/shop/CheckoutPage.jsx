@@ -276,6 +276,16 @@ export default function CheckoutPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    // No confiar en cantidades ni precios del carrito persistido en el navegador.
+    if (!items.length || items.some(({ product, qty }) =>
+      !Number.isSafeInteger(qty) || qty <= 0 ||
+      !Number.isFinite(Number(product.sale_price)) || Number(product.sale_price) < 0 ||
+      (product.total_stock != null && qty > Number(product.total_stock))
+    )) {
+      toast.error('Revisa las cantidades y existencias de tu carrito')
+      return
+    }
+
     const validationError = validateForm()
     if (validationError) {
       toast.error(validationError)
