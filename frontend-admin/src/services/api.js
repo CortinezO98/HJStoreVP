@@ -58,6 +58,15 @@ apiClient.interceptors.response.use(
 )
 
 // ─────────────────────────────────────────────────────────
+// 🔐 AUTENTICACIÓN
+// ─────────────────────────────────────────────────────────
+export const authApi = {
+  login: (data) => apiClient.post('/auth/login', data),
+  refresh: (refreshToken) => apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
+  me: () => apiClient.get('/auth/me'),
+}
+
+// ─────────────────────────────────────────────────────────
 // 🛍️ PRODUCTOS
 // ─────────────────────────────────────────────────────────
 export const productsApi = {
