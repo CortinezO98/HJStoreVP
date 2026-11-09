@@ -104,6 +104,11 @@ export const useAuthStore = create(
       partialize: (state) => ({
         user: state.user,
       }),
+      // Ignorar estados de autenticación antiguos del almacenamiento persistente.
+      merge: (persisted, current) => ({
+        ...current,
+        user: persisted?.user ?? null,
+      }),
     }
   )
 )
