@@ -51,21 +51,34 @@ class CaseCreate(BaseModel):
     @field_validator("reason", "description")
     @classmethod
     def clean(cls, value):
-        return value.strip()
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("El texto no puede estar vacío")
+        return value
 
 
-class ReviewIn(BaseModel):
+class NonEmptyNote(BaseModel):
+    note: str = Field(min_length=5, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def validate_note(cls, value):
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("El motivo requiere al menos cinco caracteres")
+        return value
+
+
+class ReviewIn(NonEmptyNote):
     status: Literal["under_review", "approved", "rejected", "closed"]
-    note: str = Field(min_length=5, max_length=500)
 
 
-class ReceiveIn(BaseModel):
+class ReceiveIn(NonEmptyNote):
     condition: Literal["resellable", "damaged"]
-    note: str = Field(min_length=5, max_length=500)
 
 
-class RefundRequestIn(BaseModel):
-    note: str = Field(min_length=5, max_length=500)
+class RefundRequestIn(NonEmptyNote):
+    pass
 
 
 class RecordRefundIn(BaseModel):
@@ -76,7 +89,10 @@ class RecordRefundIn(BaseModel):
     @field_validator("external_reference", "confirmation_note")
     @classmethod
     def trim(cls, value):
-        return value.strip()
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("Se requiere una referencia o explicación válida")
+        return value
 
 
 class CaseEventOut(BaseModel):
