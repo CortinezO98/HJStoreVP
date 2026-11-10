@@ -454,3 +454,35 @@ class ShipmentEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     shipment: Mapped["Shipment"] = relationship("Shipment", back_populates="events")
+
+
+# ─── NOTIFICACIONES DE CLIENTES ──────────────────────────────────────────────
+class CustomerNotification(Base):
+    """Bandeja de salida transaccional: se inserta con el cambio de negocio.
+
+    No almacena credenciales SMTP ni contenido HTML sensible. La clave del
+    evento es única para no crear avisos duplicados tras webhooks repetidos.
+    """
+    __tablename__ = "customer_notifications"
+    __table_args__ = (
+        UniqueConstraint("event_key", name="uq_customer_notification_event"),
+        Index("ix_customer_notification_queue", "status", "next_attempt_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    event_key: Mapped[str] = mapped_column(String(180), nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    recipient: Mapped[str] = mapped_column(String(254), nullable=False)
+    subject: Mapped[str] = mapped_column(String(220), nullable=False)
+    context: Mapped[dict] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    lease_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
