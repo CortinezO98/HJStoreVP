@@ -640,3 +640,107 @@ def test_variant_admin_access_and_deactivation(client, auth_headers):
     assert public["variants"] == []
     admin = client.get(f"/api/v1/products/{parent_id}/variants", headers=auth_headers).json()
     assert admin[0]["active"] is False
+
+
+# ─── FASE 4: FILTROS DE ATRIBUTOS E IMÁGENES POR VARIANTE ───────────────────
+
+def test_catalog_variant_facets_match_the_same_active_sku(client, auth_headers):
+    parent = client.post("/api/v1/products/", headers=auth_headers, json={
+        "name": "Gorra atributos", "sku": "CAP-FACET-BASE",
+        "cost_price": 12000, "margin_pct": 80,
+    })
+    assert parent.status_code == 201
+    pid = parent.json()["id"]
+    variants = []
+    for sku, label, options, price in [
+        ("CAP-BL-M", "Azul M", {"color": "Azul", "talla": "M"}, 50000),
+        ("CAP-NE-L", "Negra L", {"color": "Negro", "talla": "L"}, 60000),
+    ]:
+        result = client.post(f"/api/v1/products/{pid}/variants", headers=auth_headers, json={
+            "sku": sku, "label": label, "options": options,
+            "cost_price": 12000, "sale_price": price,
+        })
+        assert result.status_code == 201, result.text
+        variants.append(result.json()["id"])
+
+    db = TestingSession()
+    web = db.query(Location).filter(Location.type == LocationType.WEB).first()
+    db.add(Inventory(product_id=variants[0], location_id=web.id, qty_available=5, qty_reserved=0))
+    db.add(Inventory(product_id=variants[1], location_id=web.id, qty_available=2, qty_reserved=0))
+    db.commit()
+    db.close()
+
+    available = client.get("/api/v1/products/filters").json()
+    assert "Azul" in available["color"] and "Negro" in available["color"]
+    assert available["talla"] == ["L", "M"]
+
+    blue_m = client.get("/api/v1/products/", params={"color": "Azul", "talla": "M"})
+    assert blue_m.status_code == 200
+    row = next(item for item in blue_m.json() if item["id"] == pid)
+    assert row["sale_price"] == 50000
+    assert row["total_stock"] == 5
+    assert row["has_variants"] is True
+
+    # No debe combinar el color de una variante con la talla de otra.
+    assert not any(item["id"] == pid for item in client.get(
+        "/api/v1/products/", params={"color": "Azul", "talla": "L"}
+    ).json())
+    assert not any(item["id"] == pid for item in client.get(
+        "/api/v1/products/", params={"color": "Azul", "min_price": 55000}
+    ).json())
+
+    disabled = client.patch(
+        f"/api/v1/products/{pid}/variants/{variants[0]}",
+        headers=auth_headers, json={"active": False},
+    )
+    assert disabled.status_code == 200
+    assert not any(item["id"] == pid for item in client.get(
+        "/api/v1/products/", params={"color": "Azul"}
+    ).json())
+
+
+def test_variant_image_is_visible_on_variant_and_filtered_catalog(client, auth_headers, tmp_path, monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+    from app.api.v1.endpoints import images as image_routes
+
+    parent = client.post("/api/v1/products/", headers=auth_headers, json={
+        "name": "Gorra fotografías", "sku": "CAP-PHOTO-BASE",
+        "cost_price": 12000, "margin_pct": 80,
+    })
+    assert parent.status_code == 201
+    pid = parent.json()["id"]
+    child = client.post(f"/api/v1/products/{pid}/variants", headers=auth_headers, json={
+        "sku": "CAP-PHOTO-RED", "label": "Rojo", "options": {"color": "Rojo"},
+        "cost_price": 12000, "sale_price": 40000,
+    })
+    assert child.status_code == 201
+    vid = child.json()["id"]
+
+    def local_save(content, extension):
+        target = tmp_path / f"variant-photo.{extension}"
+        target.write_bytes(content)
+        return f"/uploads/products/{target.name}", target
+
+    monkeypatch.setattr(image_routes, "save_file_local", local_save)
+    output = BytesIO()
+    Image.new("RGB", (16, 16), (200, 0, 0)).save(output, format="PNG")
+
+    uploaded = client.post(
+        f"/api/v1/products/{vid}/images",
+        files=[("files", ("photo.png", output.getvalue(), "image/png"))],
+        headers=auth_headers,
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    photo = uploaded.json()[0]
+    assert photo["is_primary"] is True
+
+    public = client.get(f"/api/v1/products/{pid}").json()
+    assert public["variants"][0]["primary_image"] == photo["url"]
+    assert public["variants"][0]["images"][0]["url"] == photo["url"]
+    assert "cost_price" not in public["variants"][0]
+
+    catalog = client.get("/api/v1/products/", params={"color": "Rojo"})
+    assert catalog.status_code == 200, catalog.text
+    selected = next(item for item in catalog.json() if item["id"] == pid)
+    assert selected["primary_image"] == photo["url"]
