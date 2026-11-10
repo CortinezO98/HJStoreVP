@@ -900,8 +900,7 @@ def test_sitemap_only_lists_active_parent_products(client, auth_headers):
     })
     assert child.status_code == 201
     db = TestingSession()
-    variant = db.get(Product, child.json()["id"])
-    db.commit()
+    variant_slug = db.get(Product, child.json()["id"]).slug
     db.close()
     xml = client.get("/sitemap.xml")
     assert xml.status_code == 200
@@ -910,7 +909,7 @@ def test_sitemap_only_lists_active_parent_products(client, auth_headers):
     urls = [elem.text for elem in root.findall(".//s:loc", ns)]
     assert any(url.endswith("/catalogo?categoria=accesorios-seo") for url in urls)
     assert any(url.endswith(f"/producto/{active.json()['slug']}") for url in urls)
-    assert not any(variant.slug in url for url in urls)
+    assert not any(variant_slug in url for url in urls)
 
     db = TestingSession()
     db.get(Product, pid).active = False
