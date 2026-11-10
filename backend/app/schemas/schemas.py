@@ -230,17 +230,17 @@ class InventoryOut(BaseModel):
 
 
 class StockAdjust(BaseModel):
-    product_id: int
-    location_id: int
-    qty: int
+    product_id: int = Field(gt=0)
+    location_id: int = Field(gt=0)
+    qty: int = Field(gt=0)
     notes: Optional[str] = None
 
 
 class StockTransfer(BaseModel):
-    product_id: int
-    from_location_id: int
-    to_location_id: int
-    qty: int
+    product_id: int = Field(gt=0)
+    from_location_id: int = Field(gt=0)
+    to_location_id: int = Field(gt=0)
+    qty: int = Field(gt=0)
     notes: Optional[str] = None
 
 
