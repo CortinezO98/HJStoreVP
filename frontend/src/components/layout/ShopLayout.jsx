@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram, Heart } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { categoriesApi } from '../../services/api'
+import { categoriesApi, storefrontSettingsApi } from '../../services/api'
 import { useCartStore, useAuthStore, useWishlistStore } from '../../store'
 
 
@@ -13,6 +13,14 @@ export default function ShopLayout() {
   const searchRef = useRef(null)
   const cartCount = useCartStore((s) => s.count())
   const wishlistCount = useWishlistStore((s) => s.items.length)
+  const { data: storeSettings = {} } = useQuery({
+    queryKey: ['storefront-settings-public'],
+    queryFn: () => storefrontSettingsApi.public().then(({ data }) => data),
+    staleTime: 60000,
+  })
+  const logo = storeSettings.logo_url
+  const logoSrc = logo?.startsWith('/') ? `${import.meta.env.VITE_API_URL || ''}${logo}` : logo
+  const storeName = storeSettings.store_name || 'HJStoreVP'
   const { data: categories = [] } = useQuery({
     queryKey: ['storefront-categories'],
     queryFn: () => categoriesApi.list().then((r) => r.data),
@@ -45,13 +53,14 @@ export default function ShopLayout() {
     <div className="min-h-screen flex flex-col bg-white text-black">
       <a href="#store-main-content" className="store-skip-link">Saltar al contenido principal</a>
       <div className="editorial-announcement">
-        DESCUBRE LA NUEVA COLECCIÓN · ENVÍOS A TODO COLOMBIA
+        {storeSettings.announcement || 'DESCUBRE LA NUEVA COLECCIÓN · ENVÍOS A TODO COLOMBIA'}
       </div>
 
       <header className="editorial-header">
         <div className="editorial-header-inner">
-          <Link to="/" className="editorial-logo" aria-label="HJStoreVP, inicio">
-            HJ<span>STORE</span><small>VP</small>
+          <Link to="/" className="editorial-logo" aria-label={`${storeName}, inicio`}>
+            {logoSrc ? <img src={logoSrc} alt={storeName} className="max-h-12 max-w-40 object-contain" /> :
+              <>HJ<span>STORE</span><small>VP</small></>}
           </Link>
           <nav className="editorial-nav" aria-label="Navegación principal">
             <Link to="/">INICIO</Link>
@@ -112,8 +121,8 @@ export default function ShopLayout() {
       <footer className="editorial-footer">
         <div className="editorial-footer-inner">
           <div>
-            <Link to="/" className="editorial-logo">HJ<span>STORE</span><small>VP</small></Link>
-            <p>Una selección con carácter. Gorras, perfumes, relojes y accesorios para todos los estilos.</p>
+            <Link to="/" className="editorial-logo">{logoSrc ? <img src={logoSrc} alt={storeName} className="max-h-12 max-w-40 object-contain" /> : <>HJ<span>STORE</span><small>VP</small></>}</Link>
+            <p>{storeSettings.footer_description || 'Una selección con carácter. Gorras, perfumes, relojes y accesorios para todos los estilos.'}</p>
           </div>
           <div>
             <strong>EXPLORA</strong>
@@ -131,13 +140,27 @@ export default function ShopLayout() {
           <div>
             <strong>CONTACTO</strong>
             <p>Atención y envíos en Colombia.</p>
-            <p>Consulta el estado de tus pedidos desde tu cuenta.</p>
-            <span className="inline-flex items-center gap-2"><Instagram size={15} /> HJStoreVP</span>
+            {storeSettings.contact_email && <a href={`mailto:${storeSettings.contact_email}`}>{storeSettings.contact_email}</a>}
+            {storeSettings.contact_phone && <p>{storeSettings.contact_phone}</p>}
+            {storeSettings.contact_whatsapp && <a href={`https://wa.me/${storeSettings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+            {storeSettings.instagram_url && <a href={storeSettings.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex gap-2 items-center"><Instagram size={15}/> Instagram</a>}
+            {storeSettings.facebook_url && <a href={storeSettings.facebook_url} target="_blank" rel="noopener noreferrer">Facebook</a>}
+            {storeSettings.tiktok_url && <a href={storeSettings.tiktok_url} target="_blank" rel="noopener noreferrer">TikTok</a>}
           </div>
         </div>
         <div className="editorial-footer-bottom">
-          <span>© {new Date().getFullYear()} HJStoreVP</span>
-          <span>ESTILO PROPIO · COMPRA CON CONFIANZA</span>
+          <span>© {new Date().getFullYear()} {storeName}</span>
+          <span>{storeSettings.tagline || 'ESTILO PROPIO'} · COMPRA CON CONFIANZA</span>
+          <nav aria-label="Políticas comerciales" className="flex flex-wrap gap-3">
+            {[
+              ['shipping_policy', 'Envíos', 'envios'],
+              ['returns_policy', 'Cambios y devoluciones', 'devoluciones'],
+              ['privacy_policy', 'Privacidad', 'privacidad'],
+              ['terms_policy', 'Términos', 'terminos'],
+            ].filter(([key]) => storeSettings[key]?.trim()).map(([, label, slug]) =>
+              <Link key={slug} to={`/politicas/${slug}`}>{label}</Link>
+            )}
+          </nav>
         </div>
       </footer>
     </div>
