@@ -12,6 +12,7 @@ from app.models.models import (
     LoyaltyLedger, Order, OrderChannel, OrderStatus, Product, User, UserRole,
 )
 from app.services.engagement import loyalty_balance, queue_cart_reminder
+from app.services.cart_recovery_worker import enabled as recovery_email_enabled
 
 router = APIRouter(prefix="/engagement", tags=["Fidelización y carritos"])
 
@@ -171,6 +172,6 @@ def overview(db: Session = Depends(get_db), _: User = Depends(require_admin)):
         ).scalar() or 0,
         "loyalty_members": db.query(func.count(func.distinct(LoyaltyLedger.user_id))).scalar() or 0,
         "loyalty_points_issued_net": int(db.query(func.coalesce(func.sum(LoyaltyLedger.points_delta), 0)).scalar() or 0),
-        "email_delivery_enabled": False,
+        "email_delivery_enabled": recovery_email_enabled(),
         "disclaimer": "Envíos de recuperación deshabilitados por defecto; no son conversiones verificadas ni ventas recuperadas.",
     }
