@@ -64,6 +64,7 @@ def save_preferences(data: PreferencesIn, db: Session = Depends(get_db),
         db.add(record)
     record.recovery_email_opt_in = data.recovery_email_opt_in
     record.marketing_email_opt_in = data.marketing_email_opt_in
+    db.flush()  # La primera preferencia opt-in debe ser visible para el planificador.
     if data.recovery_email_opt_in:
         cart = db.get(SavedCustomerCart, user.id)
         if cart and cart.items:
