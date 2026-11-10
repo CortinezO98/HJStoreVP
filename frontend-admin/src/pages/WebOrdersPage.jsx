@@ -122,6 +122,10 @@ function OrderDetailModal({ order, onClose }) {
                 <p className="font-bold text-gray-900">{formatCOP(order.subtotal)}</p>
             </div>
 
+            {Number(order.discount_amount || 0) > 0 && <div className="rounded-xl bg-emerald-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-emerald-700 mb-1">Cupón aplicado {order.coupon_code || ''}</p>
+                <p className="font-bold text-emerald-800">− {formatCOP(order.discount_amount)}</p>
+            </div>}
             <div className="rounded-xl bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Envío</p>
                 <p className="font-bold text-gray-900">{formatCOP(order.shipping_amount || 0)}</p>
