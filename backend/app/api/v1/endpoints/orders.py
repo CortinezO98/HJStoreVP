@@ -59,6 +59,7 @@ class WebOrderCreate(BaseModel):
 
 
 class OrderItemOut(BaseModel):
+    id: int
     product_id: int
     product_name: str
     product_sku: str
@@ -261,6 +262,7 @@ def create_web_order(
         notes=order.notes,
         items=[
             OrderItemOut(
+                id=oi.id,
                 product_id=oi.product_id,
                 product_name=oi.product_name,
                 product_sku=oi.product_sku,
