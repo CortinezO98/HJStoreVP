@@ -157,3 +157,24 @@ def recommend_for_cart(
         product_ids = product_ids[:MAX_CART_REFERENCES]
     parent_ids = {pid for raw in product_ids if (pid := _parent_id(db, raw)) is not None}
     return _recommend(db, sorted(parent_ids), limit, "cart")
+
+
+@router.get("/personalized")
+def recommend_personalized(
+    product_ids: list[int] = Query(default=[]),
+    limit: int = Query(8, ge=1, le=12),
+    db: Session = Depends(get_db),
+):
+    """Afinidad comercial de IDs voluntariamente compartidos, sin guardar perfil.
+
+    El navegador decide si usa favoritos o historial local; el endpoint no
+    conoce usuarios ni almacena navegación.
+    """
+    valid_ids = list(dict.fromkeys(pid for pid in product_ids if pid > 0))[:MAX_CART_REFERENCES]
+    if not valid_ids:
+        return []
+    parent_ids = {
+        parent_id for item_id in valid_ids
+        if (parent_id := _parent_id(db, item_id)) is not None
+    }
+    return _recommend(db, sorted(parent_ids), limit, "related")
