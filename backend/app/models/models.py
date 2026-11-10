@@ -646,3 +646,44 @@ class ProductTaxProfile(Base):
     accounting_note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     reviewed_by_accountant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+# ─── CUPONES COMERCIALES (DESCUENTOS DEL CHECKOUT WEB) ──────────────────────
+class PromotionCoupon(Base, TimestampMixin):
+    __tablename__ = "promotion_coupons"
+    __table_args__ = (UniqueConstraint("code", name="uq_promotion_coupon_code"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(32), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(240), nullable=True)
+    discount_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    maximum_discount: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
+    minimum_subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=0)
+    max_uses: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    max_uses_per_customer: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    starts_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class CouponRedemption(Base):
+    """Aplicación única por pedido, incluye reservas PENDING.
+
+    Pedidos cancelados no consumen límite; confirmados sí.
+    """
+    __tablename__ = "coupon_redemptions"
+    __table_args__ = (
+        UniqueConstraint("order_id", name="uq_coupon_redemption_order"),
+        Index("ix_coupon_redemptions_coupon_customer", "coupon_id", "customer_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    coupon_id: Mapped[int] = mapped_column(Integer, ForeignKey("promotion_coupons.id"), nullable=False)
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    code_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
