@@ -22,6 +22,7 @@ from app.models.models import (
     StockMovementType, User, UserRole,
 )
 from app.services.stock_reservations import lock_web_order
+from app.services.notifications import enqueue_order_notification
 
 router = APIRouter(prefix="/post-sale", tags=["Posventa"])
 
@@ -129,6 +130,21 @@ def _log(db: Session, case: PostSaleCase, actor: User, action: str, note: str | 
     db.add(PostSaleEvent(
         case_id=case.id, actor_id=actor.id, action=action, note=note,
     ))
+    kind = {
+        "submitted": "post_sale_submitted",
+        "under_review": "post_sale_under_review",
+        "approved": "post_sale_approved",
+        "rejected": "post_sale_rejected",
+        "received": "post_sale_received",
+        "closed": "post_sale_closed",
+        "refund_requested": "post_sale_refund_requested",
+        "refund_externally_recorded": "post_sale_refund_recorded",
+    }.get(action)
+    if kind:
+        order = db.get(Order, case.order_id)
+        enqueue_order_notification(
+            db, order, kind, f"post-sale:{case.id}:{action}",
+        )
 
 
 def _get_case(db: Session, case_id: int, user: User) -> PostSaleCase:
