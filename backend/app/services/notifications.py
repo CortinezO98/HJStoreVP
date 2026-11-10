@@ -27,6 +27,14 @@ SUBJECTS = {
     "shipment_delivered": "Tu pedido fue entregado",
     "shipment_exception": "Hay una novedad con tu envío",
     "shipment_guide_updated": "Actualizamos el número de guía",
+    "post_sale_submitted": "Recibimos tu solicitud posventa",
+    "post_sale_under_review": "Estamos revisando tu solicitud",
+    "post_sale_approved": "Tu solicitud fue aprobada para continuar el trámite",
+    "post_sale_rejected": "Actualizamos la decisión sobre tu solicitud",
+    "post_sale_received": "Registramos la recepción de tu devolución",
+    "post_sale_closed": "Tu caso posventa fue cerrado",
+    "post_sale_refund_requested": "Registramos tu reembolso para gestión externa",
+    "post_sale_refund_recorded": "Registramos una operación de reembolso externa",
 }
 DESCRIPTIONS = {
     "order_created": "Registramos tu pedido. El pago todavía está pendiente de confirmación.",
@@ -39,6 +47,15 @@ DESCRIPTIONS = {
     "shipment_delivered": "HJStoreVP registró tu pedido como entregado.",
     "shipment_exception": "Registramos una novedad durante el transporte de tu pedido.",
     "shipment_guide_updated": "Actualizamos el número de guía asociado a tu pedido.",
+    "post_sale_submitted": "Recibimos tu caso de devolución o incidencia. Nuestro equipo lo revisará.",
+    "post_sale_under_review": "Tu caso posventa se encuentra en revisión por nuestro equipo.",
+    "post_sale_approved": "Aprobamos continuar el trámite de tu caso. Esto aún no confirma reembolso ni recepción.",
+    "post_sale_rejected": "Actualizamos la decisión administrativa de tu solicitud. Consulta el historial para conocer el motivo.",
+    "post_sale_received": "Registramos la mercancía devuelta como físicamente recibida y revisada.",
+    "post_sale_closed": "El seguimiento administrativo del caso posventa fue cerrado.",
+    "post_sale_refund_requested": "El reembolso fue solicitado para gestión fuera de la plataforma. No se ha efectuado todavía.",
+    "post_sale_refund_recorded": "Un administrador registró un comprobante externo. HJStoreVP no ejecutó esta transferencia.",
+
 }
 
 
