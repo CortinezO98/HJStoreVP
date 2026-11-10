@@ -370,6 +370,16 @@ def update_order_status(
 
     if next_status == OrderStatus.PAID:
         raise HTTPException(status_code=403, detail="Los pagos deben confirmarse mediante el proveedor de pagos")
+    if next_status in (OrderStatus.SHIPPED, OrderStatus.DELIVERED):
+        raise HTTPException(
+            status_code=409,
+            detail="El despacho y entrega se registran desde el módulo de seguimiento",
+        )
+    if order.status in (OrderStatus.SHIPPED, OrderStatus.DELIVERED):
+        raise HTTPException(
+            status_code=409,
+            detail="El estado de un pedido despachado se gestiona desde seguimiento",
+        )
     if order.status == next_status:
         return {"message": "Sin cambios", "status": order.status.value}
     if next_status == OrderStatus.CANCELLED:
