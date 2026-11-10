@@ -15,13 +15,14 @@ from app.db.session import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.models import (
     User, UserRole, Order, OrderItem, OrderStatus, OrderChannel,
-    Product, Inventory, Location, LocationType, OrderStockReservation
+    Product, Inventory, Location, LocationType, OrderStockReservation, CouponRedemption
 )
 from pydantic import BaseModel
 from app.services.stock_reservations import cancel_web_order, lock_web_order
 from app.core.config import settings
 from app.services.shipping import get_selected_rate, shipping_snapshot
 from app.services.notifications import enqueue_order_notification
+from app.services.coupons import evaluate_coupon
 
 router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 
@@ -48,6 +49,8 @@ class WebOrderCreate(BaseModel):
     shipping_address: ShippingAddress
     shipping_rate_id: int = Field(gt=0)
     shipping_price_confirmed: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+    coupon_code: Optional[str] = Field(default=None, max_length=32)
+    discount_confirmed: Decimal = Field(default=Decimal('0'), ge=0, max_digits=14, decimal_places=2)
     notes: Optional[str] = None
 
     @model_validator(mode="after")
@@ -76,6 +79,8 @@ class WebOrderOut(BaseModel):
     status: str
     subtotal: float
     shipping_amount: float
+    discount_amount: float
+    coupon_code: Optional[str] = None
     total_amount: float
     shipping_address: dict
     notes: Optional[str]
@@ -173,13 +178,24 @@ def create_web_order(
     # Calcular totales
     subtotal = Decimal("0")
     total_cost = Decimal("0")
+    if any(p.sale_price is None or p.sale_price < 0 or p.cost_price is None or p.cost_price < 0 for p in products.values()):
+        raise HTTPException(status_code=400, detail="Hay productos con precios inválidos")
     for item in data.items:
         p = products[item.product_id]
         subtotal += p.sale_price * item.qty
         total_cost += p.cost_price * item.qty
 
-    if any(p.sale_price is None or p.sale_price < 0 or p.cost_price is None or p.cost_price < 0 for p in products.values()):
-        raise HTTPException(status_code=400, detail="Hay productos con precios inválidos")
+    coupon = None
+    discount = Decimal("0")
+    if data.coupon_code:
+        coupon, discount = evaluate_coupon(
+            db, data.coupon_code, subtotal, current_user.id, lock=True
+        )
+    if discount != data.discount_confirmed:
+        raise HTTPException(
+            status_code=409,
+            detail="La promoción cambió. Actualiza la cotización y confirma el descuento.",
+        )
 
     # El cliente solo envía el ID de la tarifa elegida, NUNCA un importe.
     # Si la tarifa cambió, fue desactivada o no cubre su ciudad, se rechaza.
@@ -193,7 +209,7 @@ def create_web_order(
             status_code=409,
             detail="La tarifa de envío cambió. Actualiza la cotización y confirma el nuevo precio.",
         )
-    total_amount = subtotal + shipping_amount
+    total_amount = subtotal - discount + shipping_amount
 
     # Crear orden
     order = Order(
@@ -202,7 +218,7 @@ def create_web_order(
         channel=OrderChannel.WEB,
         status=OrderStatus.PENDING,
         subtotal=subtotal,
-        discount_amount=Decimal("0"),
+        discount_amount=discount,
         shipping_amount=shipping_amount,
         total_amount=total_amount,
         total_cost=total_cost,
@@ -216,6 +232,11 @@ def create_web_order(
     )
     db.add(order)
     db.flush()
+    if coupon is not None:
+        db.add(CouponRedemption(
+            coupon_id=coupon.id, order_id=order.id, customer_id=current_user.id,
+            code_snapshot=coupon.code, discount_amount=discount,
+        ))
 
     # Crear items y reservar stock
     order_items = []
@@ -257,6 +278,8 @@ def create_web_order(
         status=order.status.value,
         subtotal=float(subtotal),
         shipping_amount=float(shipping_amount),
+        discount_amount=float(discount),
+        coupon_code=coupon.code if coupon else None,
         total_amount=float(total_amount),
         shipping_address=order.shipping_address,
         notes=order.notes,
@@ -295,6 +318,8 @@ def my_orders(
             status=order.status.value,
             subtotal=float(order.subtotal),
             shipping_amount=float(order.shipping_amount or 0),
+            discount_amount=float(order.discount_amount or 0),
+            coupon_code=(db.query(CouponRedemption.code_snapshot).filter_by(order_id=order.id).scalar()),
             total_amount=float(order.total_amount),
             shipping_address=order.shipping_address or {},
             notes=order.notes,
@@ -342,6 +367,8 @@ def list_orders_admin(
             status=order.status.value,
             subtotal=float(order.subtotal),
             shipping_amount=float(order.shipping_amount or 0),
+            discount_amount=float(order.discount_amount or 0),
+            coupon_code=db.query(CouponRedemption.code_snapshot).filter_by(order_id=order.id).scalar(),
             total_amount=float(order.total_amount),
             shipping_address=order.shipping_address or {},
             notes=order.notes,

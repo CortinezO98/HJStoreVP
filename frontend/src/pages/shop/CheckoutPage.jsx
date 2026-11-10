@@ -97,6 +97,9 @@ export default function CheckoutPage() {
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [selectedMethod, setSelectedMethod] = useState('wompi')
   const [shippingRateId, setShippingRateId] = useState(null)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponQuote, setCouponQuote] = useState(null)
+  const [couponChecking, setCouponChecking] = useState(false)
   const [quoteCity, setQuoteCity] = useState('')
   const [extraFields, setExtraFields] = useState({
     customer_phone: '',
@@ -134,7 +137,37 @@ export default function CheckoutPage() {
   })
   const selectedShipping = shippingQuotes.find((rate) => rate.id === shippingRateId) || null
   const shippingAmount = selectedShipping ? Number(selectedShipping.price) : 0
-  const checkoutTotal = Number(total()) + shippingAmount
+  const couponDiscount = couponQuote ? Number(couponQuote.discount_amount) : 0
+  const checkoutTotal = Number(total()) - couponDiscount + shippingAmount
+  const cartFingerprint = items.map(({product,qty}) => `${product.id}:${qty}`).sort().join('|')
+  const [validatedFingerprint, setValidatedFingerprint] = useState('')
+
+  useEffect(() => {
+    if (validatedFingerprint && validatedFingerprint !== cartFingerprint && !createdOrder) {
+      setCouponQuote(null)
+      setValidatedFingerprint('')
+    }
+  }, [cartFingerprint, validatedFingerprint, createdOrder])
+
+  const checkCoupon = async () => {
+    if (!couponInput.trim() || createdOrder) return
+    setCouponChecking(true)
+    try {
+      const { data } = await apiClient.post('/promotions/quote', {
+        code: couponInput.trim(),
+        items: items.map(({product,qty}) => ({ product_id: product.id, qty })),
+      })
+      setCouponQuote(data)
+      setValidatedFingerprint(cartFingerprint)
+      toast.success('Cupón validado para esta cotización')
+    } catch (err) {
+      setCouponQuote(null)
+      const detail = err?.response?.data?.detail
+      toast.error(typeof detail === 'string' ? detail : 'El cupón no está disponible')
+    } finally {
+      setCouponChecking(false)
+    }
+  }
 
   const { data: methods = [], isError: methodsError } = useQuery({
     queryKey: ['payment-methods'],
@@ -314,6 +347,11 @@ export default function CheckoutPage() {
       return
     }
 
+    if (couponQuote && validatedFingerprint !== cartFingerprint) {
+      toast.error('Actualiza la promoción para los artículos del carrito')
+      return
+    }
+
     if (shippingError || shippingLoading || !selectedShipping) {
       toast.error('Selecciona una tarifa de envío disponible para tu dirección')
       return
@@ -335,6 +373,8 @@ export default function CheckoutPage() {
         })),
         shipping_rate_id: selectedShipping.id,
         shipping_price_confirmed: selectedShipping.price,
+        coupon_code: couponQuote?.code || null,
+        discount_confirmed: couponQuote?.discount_amount || 0,
         shipping_address: {
           full_name: form.full_name,
           phone: form.phone,
@@ -517,6 +557,31 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          <div className="mt-8 border border-neutral-200 p-4 rounded-xl">
+            <h2 className="font-bold text-lg uppercase mb-3">Cupón de descuento</h2>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input type="text" aria-label="Código promocional" className="store-input flex-1"
+                value={couponInput} maxLength={32} disabled={Boolean(createdOrder)}
+                onChange={e => {
+                  setCouponInput(e.target.value.toUpperCase())
+                  setCouponQuote(null)
+                  setValidatedFingerprint('')
+                }}
+                placeholder="Código promocional" />
+              <button type="button" className="btn-secondary" onClick={checkCoupon}
+                disabled={couponChecking || Boolean(createdOrder) || !couponInput.trim()}>
+                {couponChecking ? 'Verificando…' : 'Aplicar cupón'}
+              </button>
+            </div>
+            {couponQuote && <div className="mt-3 flex items-center justify-between text-sm text-emerald-800" role="status">
+              <span>Aplicado: {couponQuote.code}</span>
+              <strong>− {formatCOP(couponQuote.discount_amount)}</strong>
+            </div>}
+            <p className="text-xs text-neutral-500 mt-2">
+              El descuento se valida nuevamente al confirmar el pedido.
+            </p>
+          </div>
+
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-3">
               <CreditCard size={18} className="text-neutral-950" />
@@ -674,13 +739,20 @@ export default function CheckoutPage() {
               </span>
             </div>
 
+            {(couponQuote || createdOrder?.discount_amount > 0) && (
+              <div className="flex justify-between items-center py-4 border-b border-gray-100 text-emerald-800">
+                <span className="text-sm">Descuento {createdOrder?.coupon_code || couponQuote?.code || ''}</span>
+                <strong>− {formatCOP(createdOrder?.discount_amount ?? couponDiscount)}</strong>
+              </div>
+            )}
+
             <div className="border-t border-neutral-200 pt-5 flex justify-between font-bold text-lg mt-4">
               <span>Total</span>
               <span className="text-neutral-950">{selectedShipping ? formatCOP(createdOrder?.total_amount ?? checkoutTotal) : '—'}</span>
             </div>
 
             <p className="text-xs text-neutral-500 mt-4">
-              El total incluye productos y el envío seleccionado. El servidor valida nuevamente la tarifa antes de crear el pedido.
+              El total incluye el descuento aplicado y el envío. El servidor vuelve a validar el cupón, los productos y la tarifa antes de crear el pedido.
             </p>
           </div>
         </div>
