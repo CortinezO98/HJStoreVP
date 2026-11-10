@@ -61,6 +61,27 @@ class ShipmentEventIn(BaseModel):
     note: Optional[str] = Field(default=None, max_length=500)
 
 
+class GuideCorrectionIn(BaseModel):
+    tracking_number: str = Field(min_length=4, max_length=120)
+    reason: str = Field(min_length=5, max_length=250)
+
+    @field_validator("tracking_number")
+    @classmethod
+    def valid_tracking_number(cls, value: str) -> str:
+        value = value.strip()
+        if not GUIDE_PATTERN.fullmatch(value):
+            raise ValueError("Número de guía inválido")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def required_reason(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 5:
+            raise ValueError("El motivo debe tener mínimo cinco caracteres")
+        return value
+
+
 class ShipmentEventOut(BaseModel):
     id: int
     status: str
@@ -165,6 +186,33 @@ def dispatch_order(
         created_by_id=admin.id,
     ))
     order.status = OrderStatus.SHIPPED
+    db.commit()
+    db.refresh(shipment)
+    return _serialize(shipment, order)
+
+
+@router.patch("/orders/{order_id}/guide", response_model=ShipmentOut)
+def correct_tracking_guide(
+    order_id: int,
+    data: GuideCorrectionIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Corrección auditada de guía: no modifica transportadora ni pago."""
+    order = lock_web_order(db, order_id)
+    shipment = _get_shipment(db, order)
+    if order.status != OrderStatus.SHIPPED or shipment.status == "delivered":
+        raise HTTPException(status_code=409, detail="No se puede corregir una guía de un pedido cerrado")
+    if shipment.tracking_number == data.tracking_number:
+        raise HTTPException(status_code=409, detail="La guía nueva coincide con la actual")
+    previous = shipment.tracking_number
+    shipment.tracking_number = data.tracking_number
+    db.add(ShipmentEvent(
+        shipment_id=shipment.id,
+        status=shipment.status,
+        note=f"Guía corregida: {previous} → {data.tracking_number}. Motivo: {data.reason}",
+        created_by_id=admin.id,
+    ))
     db.commit()
     db.refresh(shipment)
     return _serialize(shipment, order)
