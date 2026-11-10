@@ -56,21 +56,33 @@ export default function StoreMetadata() {
   const { pathname, search } = useLocation()
   useEffect(() => {
     const product = pathname.startsWith('/producto/')
-    const description = DEFAULT_DESCRIPTION
-    const title = product ? 'Detalle de producto' : TITLES[pathname] || 'Moda y accesorios'
+    const params = new URLSearchParams(search)
+    const categoryOnly = pathname === '/catalogo' && params.has('categoria') &&
+      [...params.keys()].every((key) => key === 'categoria')
+    const categoryName = categoryOnly
+      ? params.get('categoria').replace(/-/g, ' ')
+      : ''
+    const description = categoryOnly
+      ? `Explora ${categoryName} en HJStoreVP. Descubre productos y accesorios disponibles en Colombia.`
+      : DEFAULT_DESCRIPTION
+    const title = product ? 'Detalle de producto'
+      : categoryOnly ? `${categoryName} | Catálogo`
+      : TITLES[pathname] || 'Moda y accesorios'
     document.title = `${title} | HJStoreVP`
     updateMeta('name', 'description', description)
-    updateMeta('name', 'robots', PRIVATE_ROUTES.has(pathname) || pathname === '/catalogo' && !!search
+    updateMeta('name', 'robots', PRIVATE_ROUTES.has(pathname) || pathname === '/catalogo' && !!search && !categoryOnly
       ? 'noindex,follow' : 'index,follow')
     updateMeta('property', 'og:type', 'website')
     updateMeta('property', 'og:title', document.title)
     updateMeta('property', 'og:description', description)
-    updateMeta('property', 'og:url', window.location.origin + pathname)
+    const canonicalUrl = window.location.origin + pathname +
+      (categoryOnly ? `?categoria=${encodeURIComponent(params.get('categoria'))}` : '')
+    updateMeta('property', 'og:url', canonicalUrl)
     updateMeta('name', 'twitter:title', document.title)
     updateMeta('name', 'twitter:description', description)
     const ogImage = document.head.querySelector('meta[property="og:image"]')
     ogImage?.remove()
-    updateCanonical(window.location.origin + pathname)
+    updateCanonical(canonicalUrl)
     updateStructuredData(null)
   }, [pathname, search])
   return null
