@@ -5,6 +5,7 @@ const TITLES = {
   '/': 'Tienda de moda y accesorios',
   '/catalogo': 'Catálogo de productos',
   '/carrito': 'Mi carrito',
+  '/favoritos': 'Mis favoritos',
   '/checkout': 'Finalizar compra',
   '/login': 'Iniciar sesión',
   '/registro': 'Crear cuenta',
