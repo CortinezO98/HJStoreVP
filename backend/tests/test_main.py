@@ -744,3 +744,88 @@ def test_variant_image_is_visible_on_variant_and_filtered_catalog(client, auth_h
     assert catalog.status_code == 200, catalog.text
     selected = next(item for item in catalog.json() if item["id"] == pid)
     assert selected["primary_image"] == photo["url"]
+
+
+# ─── RECOMENDACIONES COMERCIALES (SIN CAMBIAR INVENTARIO) ──────────────────
+
+def test_recommendations_only_active_stocked_parents(client, auth_headers):
+    db = TestingSession()
+    from app.models.models import Category
+    category = Category(name="Complementos", slug="complementos", active=True)
+    db.add(category)
+    db.commit()
+    category_id = category.id
+    db.close()
+
+    ids = []
+    for idx in range(3):
+        response = client.post("/api/v1/products/", headers=auth_headers, json={
+            "name": f"Accesorio {idx}", "sku": f"REC-ITEM-{idx}",
+            "cost_price": 10000, "margin_pct": 30, "category_id": category_id,
+        })
+        assert response.status_code == 201, response.text
+        ids.append(response.json()["id"])
+
+    db = TestingSession()
+    location = db.query(Location).filter(Location.type == LocationType.WEB).first()
+    db.add(Inventory(product_id=ids[0], location_id=location.id, qty_available=4, qty_reserved=0))
+    db.add(Inventory(product_id=ids[1], location_id=location.id, qty_available=5, qty_reserved=0))
+    db.commit()
+    db.close()
+
+    recommended = client.get(f"/api/v1/recommendations/products/{ids[0]}")
+    assert recommended.status_code == 200, recommended.text
+    results = recommended.json()
+    assert [item["id"] for item in results] == [ids[1]]
+    assert results[0]["total_stock"] == 5
+    assert "cost_price" not in results[0]
+
+    cart = client.get("/api/v1/recommendations/cart", params={"product_ids": ids[0]})
+    assert cart.status_code == 200
+    assert [item["id"] for item in cart.json()] == [ids[1]]
+
+    db = TestingSession()
+    disabled = db.get(Product, ids[1])
+    disabled.active = False
+    db.commit()
+    db.close()
+    assert client.get(f"/api/v1/recommendations/products/{ids[0]}").json() == []
+
+
+def test_recommendations_variant_uses_parent_without_showing_parent_stock(client, auth_headers):
+    db = TestingSession()
+    from app.models.models import Category
+    category = Category(name="Variantes recomendadas", slug="variantes-recomendadas", active=True)
+    db.add(category)
+    db.commit()
+    cid = category.id
+    db.close()
+    ids = []
+    for i in range(2):
+        response = client.post("/api/v1/products/", headers=auth_headers, json={
+            "name": f"Producto {i}", "sku": f"REC-VP-{i}",
+            "cost_price": 10000, "margin_pct": 50, "category_id": cid,
+        })
+        assert response.status_code == 201
+        ids.append(response.json()["id"])
+    variant = client.post(f"/api/v1/products/{ids[1]}/variants", headers=auth_headers, json={
+        "sku": "REC-VARIANT-1", "label": "Negro", "options": {"color": "Negro"},
+        "cost_price": 10000, "sale_price": 27000,
+    })
+    assert variant.status_code == 201, variant.text
+    vid = variant.json()["id"]
+    db = TestingSession()
+    location = db.query(Location).filter(Location.type == LocationType.WEB).first()
+    db.add(Inventory(product_id=ids[0], location_id=location.id, qty_available=2, qty_reserved=0))
+    db.add(Inventory(product_id=vid, location_id=location.id, qty_available=3, qty_reserved=0))
+    db.commit()
+    db.close()
+    recommended = client.get(f"/api/v1/recommendations/products/{ids[0]}")
+    assert recommended.status_code == 200, recommended.text
+    results = recommended.json()
+    assert len(results) == 1
+    assert results[0]["id"] == ids[1]
+    assert results[0]["has_variants"] is True
+    assert results[0]["total_stock"] == 3
+    assert results[0]["sale_price"] == 27000
+    assert vid not in [item["id"] for item in results]
