@@ -186,3 +186,13 @@ export const shippingApi = {
   create: (data) => apiClient.post('/shipping/rates', data),
   update: (id, data) => apiClient.put(`/shipping/rates/${id}`, data),
 }
+
+
+// ─────────────────────────────────────────────────────────
+// 🚚 DESPACHOS Y SEGUIMIENTO DE PEDIDOS WEB
+// ─────────────────────────────────────────────────────────
+export const shipmentsApi = {
+  get: (orderId) => apiClient.get(`/shipments/orders/${orderId}`),
+  dispatch: (orderId, payload) => apiClient.post(`/shipments/orders/${orderId}/dispatch`, payload),
+  addEvent: (orderId, payload) => apiClient.post(`/shipments/orders/${orderId}/events`, payload),
+}
