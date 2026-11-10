@@ -76,6 +76,10 @@ export const productsApi = {
 
 // ── RECOMENDACIONES COMERCIALES ─────────────────────────────────────────────
 export const recommendationsApi = {
+  personalized: (ids, limit = 8) => apiClient.get('/recommendations/personalized', {
+    params: { product_ids: ids, limit },
+    paramsSerializer: { indexes: null },
+  }),
   product: (id, limit = 4) => apiClient.get(`/recommendations/products/${id}`, { params: { limit } }),
   cart: (ids, limit = 4) => apiClient.get('/recommendations/cart', {
     params: { product_ids: ids, limit },

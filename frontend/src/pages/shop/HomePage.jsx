@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
 import { productsApi, categoriesApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
+import PersonalizedShowcase from '../../components/shop/PersonalizedShowcase'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 import { useState } from 'react'
 
@@ -100,6 +101,8 @@ export default function HomePage() {
           </div>
         ) : <div className="editorial-empty-state">Explora todas nuestras referencias. <Link to="/catalogo">Ir al catálogo</Link></div>}
       </section>
+
+      <PersonalizedShowcase />
 
       <section className="editorial-category-section">
         <div className="editorial-section-heading">

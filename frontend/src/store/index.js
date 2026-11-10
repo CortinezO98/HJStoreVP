@@ -253,3 +253,33 @@ export const useWishlistStore = create(
     { name: 'hjstore-wishlist-v1' }
   )
 )
+
+
+// Historial opcional, solo en el navegador. Nunca se envía al backend por
+// sincronización ni a servicios externos. Hasta 12 IDs/slugs recientes.
+export const useBrowsingStore = create(
+  persist(
+    (set, get) => ({
+      enabled: false,
+      viewed: [],
+      setEnabled: (enabled) => set({
+        enabled: Boolean(enabled),
+        ...(!enabled ? { viewed: [] } : {}),
+      }),
+      recordView: (product) => {
+        if (!get().enabled) return
+        const id = Number(product?.id)
+        const slug = product?.slug
+        if (!isPositiveInteger(id) || typeof slug !== 'string' || !slug) return
+        set({
+          viewed: [{ id, slug }, ...get().viewed.filter((item) => item.id !== id)].slice(0, 12),
+        })
+      },
+      clear: () => set({ viewed: [] }),
+    }),
+    {
+      name: 'hjstore-browsing-history-v1',
+      partialize: ({ enabled, viewed }) => ({ enabled, viewed }),
+    }
+  )
+)
