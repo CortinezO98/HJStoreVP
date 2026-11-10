@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { cashApi, locationsApi } from '../services/api'
+import { authApi, cashApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
 
 const money = (value) => new Intl.NumberFormat('es-CO', {
@@ -16,6 +16,12 @@ export default function CashPage() {
   const admin = user?.role === 'admin' || user?.role === 'super_admin'
   const qc = useQueryClient()
   const [locationId, setLocationId] = useState('')
+  const { data: me } = useQuery({
+    queryKey: ['cash-me'],
+    queryFn: () => authApi.me().then((r) => r.data),
+    enabled: !admin,
+  })
+  const sellerLocationId = me?.location_id
   const [selectedId, setSelectedId] = useState(null)
   const [opening, setOpening] = useState('')
   const [openingNote, setOpeningNote] = useState('')
@@ -93,7 +99,7 @@ export default function CashPage() {
         <div className="card space-y-4">
           <h2 className="text-lg font-bold">Abrir turno de caja</h2>
           <form onSubmit={(e) => submit(e, 'open', null, {
-            location_id: Number(admin ? locationId : user?.locationId),
+            location_id: Number(admin ? locationId : sellerLocationId),
             opening_amount: opening,
             note: openingNote || null,
           })} className="space-y-3">
@@ -102,7 +108,7 @@ export default function CashPage() {
             <input className={classes} type="number" min="0" step="0.01" required value={opening} onChange={(e) => setOpening(e.target.value)} />
             <label className="block text-sm">Observación</label>
             <input className={classes} maxLength={500} value={openingNote} onChange={(e) => setOpeningNote(e.target.value)} placeholder="Ej. Base de caja recibida" />
-            <button className="btn-primary" disabled={run.isPending || (admin && !locationId) || (!admin && !user?.locationId)}>Abrir caja</button>
+            <button className="btn-primary" disabled={run.isPending || (admin && !locationId) || (!admin && !sellerLocationId)}>Abrir caja</button>
           </form>
           <p className="text-xs text-gray-500">Solo se permite un turno abierto por sede. No se cambian ventas históricas.</p>
         </div>
