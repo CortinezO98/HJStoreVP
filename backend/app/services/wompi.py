@@ -97,7 +97,7 @@ def verify_webhook_signature(payload_str: str, timestamp: str, signature: str) -
     Usa el WOMPI_EVENTS_SECRET del .env
     """
     if not settings.WOMPI_EVENTS_SECRET:
-        return True  # En desarrollo sin secret, aceptar todo
+        return False  # Nunca aceptar webhooks sin un secreto configurado
 
     checksum_str = payload_str + timestamp + settings.WOMPI_EVENTS_SECRET
     expected = hashlib.sha256(checksum_str.encode()).hexdigest()

@@ -1,238 +1,144 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, ShoppingBag, Star, Truck, Shield, MessageCircle, Zap, Award } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
 import { productsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
+import { useState } from 'react'
 
-const WHATSAPP_NUMBER = '573000000000'
-const WHATSAPP_MSG    = 'Hola! Me interesa hacer un pedido en HJStoreVP 🛍️'
-
+const API_URL = import.meta.env.VITE_API_URL || ''
 const CATEGORIES = [
-  { name: 'Gorras',   slug: 'gorras',   emoji: '🧢', color: 'from-blue-500 to-blue-700',     count: '50+ estilos' },
-  { name: 'Perfumes', slug: 'perfumes', emoji: '🌸', color: 'from-pink-500 to-rose-600',      count: 'Importados' },
-  { name: 'Relojes',  slug: 'relojes',  emoji: '⌚', color: 'from-amber-500 to-orange-600',   count: 'Casuales y formales' },
-  { name: 'Bolsos',   slug: 'bolsos',   emoji: '👜', color: 'from-purple-500 to-purple-700',  count: 'Dama y caballero' },
-  { name: 'Canguros', slug: 'canguros', emoji: '🎽', color: 'from-teal-500 to-teal-700',      count: 'Riñoneras incluidas' },
+  { name: 'GORRAS', slug: 'gorras', text: 'Estilos que hablan por ti', code: '01' },
+  { name: 'PERFUMES', slug: 'perfumes', text: 'Tu esencia, tu sello', code: '02' },
+  { name: 'RELOJES', slug: 'relojes', text: 'Cada segundo cuenta', code: '03' },
+  { name: 'BOLSOS', slug: 'bolsos', text: 'Llévalo a tu manera', code: '04' },
+  { name: 'CANGUROS', slug: 'canguros', text: 'Todo a mano', code: '05' },
 ]
-
-const BENEFITS = [
-  { icon: Truck,          title: 'Envíos a todo Colombia',    desc: 'Recibe en la puerta de tu casa',         color: 'bg-blue-100 text-blue-600' },
-  { icon: Shield,         title: 'Pago 100% seguro',          desc: 'Wompi · Sistecréditos · Addi',           color: 'bg-green-100 text-green-600' },
-  { icon: Award,          title: 'Productos originales',       desc: 'Garantía en todos nuestros artículos',   color: 'bg-purple-100 text-purple-600' },
-  { icon: MessageCircle,  title: 'Atención por WhatsApp',      desc: 'Respuesta en menos de 1 hora',           color: 'bg-amber-100 text-amber-600' },
+const FAQ = [
+  { q: '¿Cómo puedo realizar una compra?', a: 'Selecciona tus productos, agrégalos al carrito y continúa al checkout. Allí podrás revisar las opciones de pago disponibles.' },
+  { q: '¿Hacen envíos a otras ciudades?', a: 'Sí, atendemos pedidos en Colombia. La disponibilidad y el costo del envío se confirman durante la gestión del pedido.' },
+  { q: '¿Dónde puedo revisar mis pedidos?', a: 'Inicia sesión y entra a Mi cuenta para consultar el estado de tus compras.' },
+  { q: '¿Qué sucede si un producto se agota?', a: 'Los artículos sin existencias no se pueden agregar al carrito. Puedes revisar otras referencias en el catálogo.' },
 ]
+const imageUrl = (value) => {
+  if (!value) return null
+  return value.startsWith('http') ? value : `${API_URL}${value}`
+}
 
-const TESTIMONIALS = [
-  { name: 'María G.',    city: 'Barranquilla', rating: 5, text: 'Excelente servicio, la gorra llegó súper rápido y en perfecto estado. Definitivamente vuelvo a comprar.' },
-  { name: 'Carlos R.',   city: 'Bogotá',       rating: 5, text: 'El perfume es idéntico al original. Muy buen precio y el envío fue rápido. 100% recomendado.' },
-  { name: 'Valentina M.', city: 'Medellín',    rating: 5, text: 'Mi reloj llegó en 3 días con el empaque intacto. La atención por WhatsApp fue increíble.' },
-]
-
-function StarRating({ count }) {
+function SectionHeading({ eyebrow, title, link = '/catalogo', action = 'VER TODO' }) {
   return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: count }).map((_, i) => (
-        <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
-      ))}
+    <div className="editorial-section-heading">
+      <div>
+        {eyebrow && <span className="editorial-eyebrow">{eyebrow}</span>}
+        <h2>{title}</h2>
+      </div>
+      <Link to={link} className="editorial-view-all">{action} <ArrowRight size={15} /></Link>
     </div>
   )
 }
 
 export default function HomePage() {
-  const { data: featured } = useQuery({
-    queryKey: ['products', 'featured'],
+  const [openFaq, setOpenFaq] = useState(-1)
+  const { data: newest = [], isLoading: loadingNewest } = useQuery({
+    queryKey: ['products', 'newest', 'editorial'],
+    queryFn: () => productsApi.list({ per_page: 10, sort: 'newest' }).then((r) => r.data),
+  })
+  const { data: featured = [] } = useQuery({
+    queryKey: ['products', 'featured', 'editorial'],
     queryFn: () => productsApi.list({ featured: true, per_page: 8 }).then((r) => r.data),
   })
-
-  const { data: newest } = useQuery({
-    queryKey: ['products', 'newest'],
-    queryFn: () => productsApi.list({ per_page: 4, sort: 'newest' }).then((r) => r.data),
-  })
-
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MSG)}`
+  const heroProduct = featured.find((p) => p.primary_image) || newest.find((p) => p.primary_image)
+  const heroImage = imageUrl(heroProduct?.primary_image)
+  const showcase = newest.slice(0, 8)
 
   return (
-    <div>
-
-      {/* ── HERO ───────────────────────────────────────────────── */}
-      <section className="relative bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #7088ff 0%, transparent 50%), radial-gradient(circle at 80% 20%, #4f5ff7 0%, transparent 40%)' }} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-brand-800/60 border border-brand-700 rounded-full px-4 py-1.5 text-sm text-brand-300 mb-5">
-              <Zap size={13} className="fill-brand-400 text-brand-400" />
-              Nueva colección disponible · Envíos desde $0
-            </div>
-            <h1 className="text-5xl md:text-6xl font-black leading-tight mb-5">
-              Tu estilo,<br />
-              <span className="text-brand-400">tu historia.</span>
-            </h1>
-            <p className="text-lg text-gray-300 mb-4 max-w-lg">
-              Gorras, perfumes, relojes, bolsos y más. Todo original, con envíos rápidos a todo Colombia.
-            </p>
-
-            {/* Trust badges */}
-            <div className="flex flex-wrap gap-3 mb-8">
-              {['✅ Productos originales', '🚚 Envíos rápidos', '🔒 Pago seguro', '💬 Soporte WhatsApp'].map(b => (
-                <span key={b} className="text-xs text-brand-200 bg-brand-800/50 border border-brand-700/50 rounded-full px-3 py-1">
-                  {b}
-                </span>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link to="/catalogo" className="btn-primary flex items-center gap-2 text-base">
-                Ver catálogo <ArrowRight size={18} />
-              </Link>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-base bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-xl font-semibold transition-colors"
-              >
-                <MessageCircle size={18} /> Comprar por WhatsApp
-              </a>
-            </div>
-          </div>
+    <div className="editorial-home">
+      <section className="editorial-hero" aria-label="Colección HJStoreVP">
+        {heroImage && <div className="editorial-hero-image" style={{ backgroundImage: `url("${heroImage.replaceAll('"', '%22')}")` }} />}
+        <div className="editorial-hero-shade" />
+        <div className="editorial-hero-content">
+          <span className="editorial-hero-kicker">HJSTOREVP / NUEVA TEMPORADA</span>
+          <h1>EL ESTILO<br />NO SE EXPLICA.<br /><em>SE LLEVA.</em></h1>
+          <p>Una selección de gorras, perfumes, relojes y accesorios para marcar tu propio ritmo.</p>
+          <Link to="/catalogo" className="editorial-hero-cta">EXPLORAR COLECCIÓN <ArrowUpRight size={18} /></Link>
         </div>
+        <span className="editorial-hero-side">HJSTOREVP · COLOMBIA</span>
+        <span className="editorial-hero-number">01 / 03</span>
       </section>
 
-      {/* ── BENEFICIOS ─────────────────────────────────────────── */}
-      <section className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {BENEFITS.map((b) => (
-              <div key={b.title} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-                <div className={`w-10 h-10 ${b.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                  <b.icon size={20} />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900 text-xs">{b.title}</p>
-                  <p className="text-gray-500 text-xs">{b.desc}</p>
-                </div>
-              </div>
-            ))}
+      <section className="editorial-products-section">
+        <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
+        {loadingNewest ? (
+          <div className="editorial-product-grid">
+            {Array.from({ length: 8 }, (_, i) => <div key={i} className="aspect-[3/4] animate-pulse bg-neutral-100" />)}
           </div>
-        </div>
+        ) : showcase.length ? (
+          <div className="editorial-product-grid">
+            {showcase.map((product) => <ProductCard key={product.id} product={product} label="NUEVO" />)}
+          </div>
+        ) : (
+          <div className="editorial-empty-state">Pronto encontrarás aquí los productos recién agregados. <Link to="/catalogo">Ver catálogo</Link></div>
+        )}
       </section>
 
-      {/* ── CATEGORÍAS ─────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Explora por categoría</h2>
-            <p className="text-sm text-gray-500 mt-1">Encuentra exactamente lo que buscas</p>
-          </div>
-          <Link to="/catalogo" className="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
-            Ver todo <ArrowRight size={14} />
-          </Link>
+      <section className="editorial-statement">
+        <div className="editorial-statement-content">
+          <span>NO ES SOLO UN ACCESORIO</span>
+          <h2>HAZ QUE TU<br />ESTILO HABLE.</h2>
+          <Link to="/catalogo" className="editorial-hero-cta">COMPRAR AHORA <ArrowUpRight size={18}/></Link>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.slug}
-              to={`/catalogo?categoria=${cat.slug}`}
-              className={`bg-gradient-to-br ${cat.color} rounded-2xl p-5 text-white text-center hover:scale-105 transition-transform duration-200 shadow-md group`}
-            >
-              <span className="text-4xl block mb-2 group-hover:scale-110 transition-transform">{cat.emoji}</span>
-              <span className="font-bold text-sm block">{cat.name}</span>
-              <span className="text-xs opacity-75 block mt-0.5">{cat.count}</span>
+        {heroImage && <div className="editorial-statement-photo" style={{ backgroundImage: `url("${heroImage.replaceAll('"', '%22')}")` }} />}
+      </section>
+
+      <section className="editorial-products-section">
+        <SectionHeading eyebrow="ELEGIDOS PARA TI" title="PRODUCTOS DESTACADOS" link="/catalogo?featured=true" />
+        {featured.length ? (
+          <div className="editorial-product-grid">
+            {featured.map((product) => <ProductCard key={product.id} product={product} label="DESTACADO" />)}
+          </div>
+        ) : <div className="editorial-empty-state">Explora todas nuestras referencias. <Link to="/catalogo">Ir al catálogo</Link></div>}
+      </section>
+
+      <section className="editorial-category-section">
+        <div className="editorial-section-heading">
+          <div><span className="editorial-eyebrow">ENCUENTRA LO TUYO</span><h2>EXPLORA POR CATEGORÍA</h2></div>
+        </div>
+        <div className="editorial-category-grid">
+          {CATEGORIES.map((category) => (
+            <Link key={category.slug} to={`/catalogo?categoria=${category.slug}`} className="editorial-category-tile">
+              <span className="editorial-category-number">{category.code} / 05</span>
+              <div><h3>{category.name}</h3><p>{category.text}</p></div>
+              <ArrowUpRight size={25} strokeWidth={1.4} />
             </Link>
           ))}
         </div>
       </section>
 
-      {/* ── PRODUCTOS DESTACADOS ───────────────────────────────── */}
-      {featured?.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">⭐ Productos destacados</h2>
-              <p className="text-sm text-gray-500 mt-1">Los más populares de nuestra tienda</p>
-            </div>
-            <Link to="/catalogo?featured=true" className="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
-              Ver más <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {featured.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── BANNER WHATSAPP ────────────────────────────────────── */}
-      <section className="bg-green-600 text-white py-12 my-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <MessageCircle size={40} className="mx-auto mb-4 opacity-90" />
-          <h2 className="text-2xl font-bold mb-2">¿Prefieres comprar por WhatsApp?</h2>
-          <p className="text-green-100 mb-6">
-            Escríbenos y te asesoramos personalmente. Respuesta en menos de 1 hora.
-          </p>
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-white text-green-700 font-bold px-8 py-3 rounded-xl hover:bg-green-50 transition-colors text-base"
-          >
-            <MessageCircle size={20} />
-            Chatear ahora en WhatsApp
-          </a>
-        </div>
+      <section className="editorial-service-strip">
+        <div><Truck size={25} strokeWidth={1.4}/><h3>ENVÍOS A COLOMBIA</h3><p>Compra desde donde estés</p></div>
+        <div><CreditCard size={25} strokeWidth={1.4}/><h3>OPCIONES DE PAGO</h3><p>Consulta los medios disponibles al pagar</p></div>
+        <div><PackageCheck size={25} strokeWidth={1.4}/><h3>CONSULTA TUS PEDIDOS</h3><p>Sigue tus compras desde tu cuenta</p></div>
       </section>
 
-      {/* ── NOVEDADES ──────────────────────────────────────────── */}
-      {newest?.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">🆕 Últimas novedades</h2>
-              <p className="text-sm text-gray-500 mt-1">Los productos más recientes de nuestra tienda</p>
+      <section className="editorial-faq-section">
+        <span className="editorial-eyebrow">¿TIENES DUDAS?</span>
+        <h2>PREGUNTAS FRECUENTES</h2>
+        <div className="editorial-faq-items">
+          {FAQ.map((item, i) => (
+            <div key={item.q} className="editorial-faq-item">
+              <button type="button" onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
+                aria-expanded={openFaq === i}>
+                <span>{item.q}</span><ChevronDown size={18} className={openFaq === i ? 'rotate-180' : ''}/>
+              </button>
+              {openFaq === i && <p>{item.a}</p>}
             </div>
-            <Link to="/catalogo" className="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
-              Ver catálogo <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
-            {newest.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── TESTIMONIOS ────────────────────────────────────────── */}
-      <section className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Lo que dicen nuestros clientes</h2>
-            <div className="flex items-center justify-center gap-2">
-              <StarRating count={5} />
-              <span className="text-sm text-gray-500 font-medium">4.9/5 · +500 clientes satisfechos</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <StarRating count={t.rating} />
-                <p className="text-gray-700 text-sm mt-3 mb-4 leading-relaxed">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 font-bold text-sm">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                    <p className="text-xs text-gray-400">{t.city}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </section>
-
+      <section className="editorial-closing">
+        <span>HJSTOREVP / ESTILO PROPIO</span>
+        <h2>ENCUENTRA TU SIGUIENTE FAVORITO.</h2>
+        <Link to="/catalogo">DESCUBRIR PRODUCTOS <ArrowRight size={16}/></Link>
+      </section>
     </div>
   )
 }

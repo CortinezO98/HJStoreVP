@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token
+from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, credential_version, credential_version_matches
 from app.core.deps import get_current_user
 from app.models.models import User
 from app.schemas.schemas import LoginRequest, TokenResponse, RefreshRequest, UserOut
@@ -20,8 +20,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         )
 
     return TokenResponse(
-        access_token=create_access_token(user.id, extra={"role": user.role}),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token(user.id, extra={"role": user.role, "ver": credential_version(user.hashed_password)}),
+        refresh_token=create_refresh_token(user.id, extra={"ver": credential_version(user.hashed_password)}),
         user_role=user.role,
         user_id=user.id,
         full_name=user.full_name,
@@ -39,9 +39,12 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado")
 
+    if not credential_version_matches(payload, user.hashed_password):
+        raise HTTPException(status_code=401, detail="La sesión fue revocada; inicia sesión nuevamente")
+
     return TokenResponse(
-        access_token=create_access_token(user.id, extra={"role": user.role}),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token(user.id, extra={"role": user.role, "ver": credential_version(user.hashed_password)}),
+        refresh_token=create_refresh_token(user.id, extra={"ver": credential_version(user.hashed_password)}),
         user_role=user.role,
         user_id=user.id,
         full_name=user.full_name,

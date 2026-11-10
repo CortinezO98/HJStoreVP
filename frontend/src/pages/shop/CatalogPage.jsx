@@ -82,12 +82,12 @@ export default function CatalogPage() {
     : featured === 'true' ? '⭐ Productos destacados' : 'Catálogo'
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="editorial-catalog max-w-[1480px] mx-auto px-5 sm:px-10 lg:px-12 py-12">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
+          <h1 className="editorial-catalog-title">{pageTitle.toUpperCase()}</h1>
           {!isLoading && (
             <p className="text-gray-500 text-sm mt-1">
               {products?.length || 0} productos encontrados
@@ -155,11 +155,11 @@ export default function CatalogPage() {
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-10">
 
         {/* ── SIDEBAR FILTROS ─────────────────────────────────── */}
         <aside className={`lg:w-56 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden lg:block'}`}>
-          <div className="card sticky top-20 space-y-5">
+          <div className="editorial-catalog-filters sticky top-24 space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal size={16} className="text-brand-600" />
@@ -275,7 +275,7 @@ export default function CatalogPage() {
         {/* ── GRID PRODUCTOS ──────────────────────────────────── */}
         <div className="flex-1">
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="bg-gray-100 rounded-2xl aspect-square animate-pulse" />
               ))}
@@ -299,7 +299,7 @@ export default function CatalogPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -310,7 +310,7 @@ export default function CatalogPage() {
                 <div className="mt-8 text-center">
                   <button
                     onClick={() => setFilter('page', String(page + 1))}
-                    className="btn-secondary px-8"
+                    className="editorial-load-more"
                   >
                     Cargar más productos
                   </button>

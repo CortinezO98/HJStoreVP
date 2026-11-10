@@ -208,7 +208,7 @@ export default function CheckoutPage() {
             <ChevronRight size={24} />
           </button>
 
-          {!selectedMethodStatus.enabled && (
+          {import.meta.env.VITE_ENABLE_DEMO_PAYMENTS === 'true' && !selectedMethodStatus.enabled && (
             <button
               onClick={async () => {
                 setLoading(true)
@@ -276,6 +276,21 @@ export default function CheckoutPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    // No confiar en cantidades ni precios del carrito persistido en el navegador.
+    if (!items.length || items.some(({ product, qty }) =>
+      !Number.isSafeInteger(qty) || qty <= 0 ||
+      !Number.isFinite(Number(product.sale_price)) || Number(product.sale_price) < 0 ||
+      (product.total_stock != null && qty > Number(product.total_stock))
+    )) {
+      toast.error('Revisa las cantidades y existencias de tu carrito')
+      return
+    }
+
+    if (!selectedMethodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true') {
+      toast.error('Este método de pago no está habilitado todavía')
+      return
+    }
+
     const validationError = validateForm()
     if (validationError) {
       toast.error(validationError)
@@ -302,20 +317,24 @@ export default function CheckoutPage() {
         notes: null,
       }
 
-      const { data: order } = await apiClient.post('/orders/web', orderPayload)
-      setCreatedOrder(order)
+      // En un fallo de la pasarela reutilizar el pedido pendiente:
+      // no reservar nuevamente el stock ni crear órdenes duplicadas.
+      let order = createdOrder
+      if (!order) {
+        const { data } = await apiClient.post('/orders/web', orderPayload)
+        order = data
+        setCreatedOrder(order)
+      }
 
       const paymentPayload = {
         order_number: order.order_number,
         method: selectedMethod,
-        customer_email: 'cliente@demo.com',
-        customer_name: form.full_name,
         customer_phone: extraFields.customer_phone || form.phone,
         customer_id: extraFields.customer_id || '',
       }
 
       const { data: checkout } = await apiClient.post(
-        '/payments/create-checkout',
+        '/payments/initiate',
         paymentPayload
       )
 

@@ -1,5 +1,10 @@
 import axios from 'axios'
 
+// Eliminar tokens antiguos guardados de forma persistente por versiones previas.
+// Los nuevos tokens solo permanecen durante la sesión de la pestaña.
+localStorage.removeItem('access_token')
+localStorage.removeItem('refresh_token')
+
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 export const apiClient = axios.create({
@@ -13,7 +18,7 @@ export const apiClient = axios.create({
 
 // Token automático
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
+  const token = sessionStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -24,8 +29,13 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401) {
-      const refresh = localStorage.getItem('refresh_token')
+    const originalRequest = error.config
+    const isAuthRequest = originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/refresh')
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {
+      originalRequest._retry = true
+      const refresh = sessionStorage.getItem('refresh_token')
 
       if (refresh) {
         try {
@@ -34,14 +44,18 @@ apiClient.interceptors.response.use(
             { refresh_token: refresh }
           )
 
-          localStorage.setItem('access_token', data.access_token)
-          localStorage.setItem('refresh_token', data.refresh_token)
+          sessionStorage.setItem('access_token', data.access_token)
+          sessionStorage.setItem('refresh_token', data.refresh_token)
 
           error.config.headers.Authorization = `Bearer ${data.access_token}`
           return apiClient(error.config)
         } catch {
-          localStorage.clear()
-          window.location.href = '/login'
+          sessionStorage.removeItem('access_token')
+          sessionStorage.removeItem('refresh_token')
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('hjstore-auth')
+          window.location.assign('/login')
         }
       }
     }
@@ -49,6 +63,15 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// ─────────────────────────────────────────────────────────
+// 🔐 AUTENTICACIÓN
+// ─────────────────────────────────────────────────────────
+export const authApi = {
+  login: (data) => apiClient.post('/auth/login', data),
+  refresh: (refreshToken) => apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
+  me: () => apiClient.get('/auth/me'),
+}
 
 // ─────────────────────────────────────────────────────────
 // 🛍️ PRODUCTOS

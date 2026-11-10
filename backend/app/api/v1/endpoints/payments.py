@@ -350,6 +350,8 @@ async def confirm_demo(
 
     if not order:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if order.status != OrderStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Solo se pueden confirmar pedidos pendientes")
 
     order.status = OrderStatus.PAID
     order.payment_method = f"demo-{data.method}"

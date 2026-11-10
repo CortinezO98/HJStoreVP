@@ -6,14 +6,17 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
+      accessToken: sessionStorage.getItem('access_token'),
+      refreshToken: sessionStorage.getItem('refresh_token'),
+      isAuthenticated: !!sessionStorage.getItem('access_token'),
 
       login: async (email, password) => {
         const { data } = await authApi.login({ email, password })
-        localStorage.setItem('access_token', data.access_token)
-        localStorage.setItem('refresh_token', data.refresh_token)
+        if (!['super_admin', 'admin', 'seller'].includes(data.user_role)) {
+          throw new Error('No tienes acceso al panel de administración')
+        }
+        sessionStorage.setItem('access_token', data.access_token)
+        sessionStorage.setItem('refresh_token', data.refresh_token)
         set({
           user: {
             id: data.user_id,
@@ -28,6 +31,8 @@ export const useAuthStore = create(
       },
 
       logout: () => {
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('refresh_token')
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false })
@@ -40,7 +45,15 @@ export const useAuthStore = create(
 
       isSeller: () => get().user?.role === 'seller',
     }),
-    { name: 'hjstore-auth', partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated }) }
+    {
+      name: 'hjstore-auth',
+      partialize: (s) => ({ user: s.user }),
+      // No confiar en un isAuthenticated antiguo persistido en localStorage.
+      merge: (persisted, current) => ({
+        ...current,
+        user: persisted?.user ?? null,
+      }),
+    }
   )
 )
 

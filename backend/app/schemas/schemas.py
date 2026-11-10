@@ -161,6 +161,8 @@ class ProductCreate(BaseModel):
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
+    sku: Optional[str] = None
+    sale_price: Optional[Decimal] = None
     description: Optional[str] = None
     category_id: Optional[int] = None
     cost_price: Optional[Decimal] = None
@@ -169,6 +171,13 @@ class ProductUpdate(BaseModel):
     active: Optional[bool] = None
     featured: Optional[bool] = None
     attributes: Optional[dict] = None
+
+    @field_validator("cost_price", "margin_pct", "sale_price")
+    @classmethod
+    def non_negative_price_fields(cls, value):
+        if value is not None and value < 0:
+            raise ValueError("El valor no puede ser negativo")
+        return value
 
 
 class ProductOut(BaseModel):
