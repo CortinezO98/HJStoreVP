@@ -367,6 +367,8 @@ def list_orders_admin(
             status=order.status.value,
             subtotal=float(order.subtotal),
             shipping_amount=float(order.shipping_amount or 0),
+            discount_amount=float(order.discount_amount or 0),
+            coupon_code=db.query(CouponRedemption.code_snapshot).filter_by(order_id=order.id).scalar(),
             total_amount=float(order.total_amount),
             shipping_address=order.shipping_address or {},
             notes=order.notes,
