@@ -20,6 +20,7 @@ import {
   Mail,
   RotateCcw,
   ReceiptText,
+  FileCheck2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -90,6 +91,12 @@ const NAV_ITEMS = [
     to: '/comprobantes',
     icon: ReceiptText,
     label: 'Comprobantes',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/configuracion-dian',
+    icon: FileCheck2,
+    label: 'Configuración DIAN',
     roles: ['super_admin', 'admin'],
   },
   {

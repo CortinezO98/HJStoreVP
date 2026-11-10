@@ -231,3 +231,15 @@ export const billingApi = {
   detail: (id) => apiClient.get(`/billing/${id}`),
   print: (id) => apiClient.get(`/billing/${id}/print`, { responseType: 'blob' }),
 }
+
+
+// ─────────────────────────────────────────────────────────
+// CONFIGURACIÓN TRIBUTARIA PREPARATORIA — SIN EMISIÓN DIAN
+// ─────────────────────────────────────────────────────────
+export const taxReadinessApi = {
+  issuer: () => apiClient.get('/tax-readiness/issuer'),
+  saveIssuer: (data) => apiClient.put('/tax-readiness/issuer', data),
+  products: () => apiClient.get('/tax-readiness/products'),
+  saveProductTax: (id, data) => apiClient.put(`/tax-readiness/products/${id}`, data),
+  readiness: () => apiClient.get('/tax-readiness/readiness'),
+}
