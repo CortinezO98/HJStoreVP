@@ -200,6 +200,20 @@ def create_physical_sale(
                 detail=f"La cantidad debe ser mayor a 0"
             )
 
+    # En productos con variantes cada referencia física tiene su propio ID.
+    existing_parents = db.query(Product.parent_product_id).filter(
+        Product.parent_product_id.in_(product_ids)
+    ).distinct().all()
+    if existing_parents:
+        raise HTTPException(status_code=409, detail="Selecciona la variante de producto que se venderá")
+    child_parent_ids = {p.parent_product_id for p in products.values() if p.parent_product_id}
+    if child_parent_ids:
+        parents = {pid for (pid,) in db.query(Product.id).filter(
+            Product.id.in_(child_parent_ids), Product.active.is_(True)
+        ).all()}
+        if parents != child_parent_ids:
+            raise HTTPException(status_code=409, detail="Producto base inactivo")
+
     # Calcular totales
     subtotal = Decimal("0")
     total_cost = Decimal("0")
