@@ -204,5 +204,6 @@ export const shipmentsApi = {
  // ─────────────────────────────────────────────────────────
 export const notificationsApi = {
   list: (params = {}) => apiClient.get('/notifications/admin', { params }),
+  stats: () => apiClient.get('/notifications/admin/stats'),
   retry: (id) => apiClient.post(`/notifications/admin/${id}/retry`),
 }
