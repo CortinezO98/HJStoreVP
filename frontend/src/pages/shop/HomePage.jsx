@@ -1,19 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
-import { productsApi } from '../../services/api'
+import { productsApi, categoriesApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 import { useState } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
-const CATEGORIES = [
-  { name: 'GORRAS', slug: 'gorras', text: 'Estilos que hablan por ti', code: '01' },
-  { name: 'PERFUMES', slug: 'perfumes', text: 'Tu esencia, tu sello', code: '02' },
-  { name: 'RELOJES', slug: 'relojes', text: 'Cada segundo cuenta', code: '03' },
-  { name: 'BOLSOS', slug: 'bolsos', text: 'Llévalo a tu manera', code: '04' },
-  { name: 'CANGUROS', slug: 'canguros', text: 'Todo a mano', code: '05' },
-]
 const FAQ = [
   { q: '¿Cómo puedo realizar una compra?', a: 'Selecciona tus productos, agrégalos al carrito y continúa al checkout. Allí podrás revisar las opciones de pago disponibles.' },
   { q: '¿Hacen envíos a otras ciudades?', a: 'Sí, atendemos pedidos en Colombia. La disponibilidad y el costo del envío se confirman durante la gestión del pedido.' },
@@ -39,6 +32,11 @@ function SectionHeading({ eyebrow, title, link = '/catalogo', action = 'VER TODO
 
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState(-1)
+  const { data: categories = [] } = useQuery({
+    queryKey: ['storefront-categories'],
+    queryFn: () => categoriesApi.list().then((r) => r.data),
+  })
+  const featuredCategories = categories.filter((c) => c.active !== false).slice(0, 10)
   const { data: newest = [], isLoading: loadingNewest, isError: newestError, refetch: retryNewest } = useQuery({
     queryKey: ['products', 'newest', 'editorial'],
     queryFn: () => productsApi.list({ per_page: 10, sort: 'newest' }).then((r) => r.data),
@@ -108,10 +106,10 @@ export default function HomePage() {
           <div><span className="editorial-eyebrow">ENCUENTRA LO TUYO</span><h2>EXPLORA POR CATEGORÍA</h2></div>
         </div>
         <div className="editorial-category-grid">
-          {CATEGORIES.map((category) => (
+          {featuredCategories.map((category, index) => (
             <Link key={category.slug} to={`/catalogo?categoria=${category.slug}`} className="editorial-category-tile">
-              <span className="editorial-category-number">{category.code} / 05</span>
-              <div><h3>{category.name}</h3><p>{category.text}</p></div>
+              <span className="editorial-category-number">{String(index + 1).padStart(2, '0')} / {String(featuredCategories.length).padStart(2, '0')}</span>
+              <div><h3>{category.name.toUpperCase()}</h3><p>{category.description || 'Encuentra tus favoritos en esta categoría'}</p></div>
               <ArrowUpRight size={25} strokeWidth={1.4} />
             </Link>
           ))}
