@@ -63,6 +63,10 @@ def save_preferences(data: PreferencesIn, db: Session = Depends(get_db),
         db.add(record)
     record.recovery_email_opt_in = data.recovery_email_opt_in
     record.marketing_email_opt_in = data.marketing_email_opt_in
+    if data.recovery_email_opt_in:
+        cart = db.get(SavedCustomerCart, user.id)
+        if cart and cart.items:
+            queue_cart_reminder(db, cart, user)
     if not data.recovery_email_opt_in:
         db.query(CartRecoveryNotice).filter(
             CartRecoveryNotice.user_id == user.id,
