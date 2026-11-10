@@ -29,6 +29,14 @@ export default function CustomerEngagement() {
     },
     onError:()=>toast.error('No pudimos guardar tus preferencias'),
   })
+  const deleteSaved = useMutation({
+    mutationFn:()=>apiClient.put('/engagement/cart',{items:[]}),
+    onSuccess:()=>{
+      client.invalidateQueries({queryKey:['my-saved-cart']})
+      toast.success('Carrito guardado eliminado')
+    },
+    onError:()=>toast.error('No pudimos eliminar el carrito guardado'),
+  })
   const saveConsent = (key, value) => {
     if (!preferences) return
     optIn.mutate({...preferences,[key]:value})
@@ -94,6 +102,10 @@ export default function CustomerEngagement() {
         </ul>
         <button className="store-button store-button-outline w-full" type="button" disabled={restoring}
           onClick={restoreCart}>{restoring?'RESTAURANDO…':'RECUPERAR PRODUCTOS'}</button>
+        <button className="text-xs text-red-700 underline underline-offset-2" type="button"
+          disabled={deleteSaved.isPending} onClick={()=>deleteSaved.mutate()}>
+          Eliminar carrito guardado de mi cuenta
+        </button>
       </> : <>
         <p className="text-sm text-neutral-500">Todavía no tienes un carrito guardado en tu cuenta.</p>
         <Link to="/catalogo" className="store-inline-link text-sm">Explorar catálogo</Link>
