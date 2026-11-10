@@ -600,3 +600,49 @@ class CommercialDocumentEvent(Base):
     action: Mapped[str] = mapped_column(String(60), nullable=False)
     note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ─── PREPARACIÓN TRIBUTARIA (NO EMISIÓN ELECTRÓNICA) ─────────────────────────
+class TaxIssuerProfile(Base):
+    """Datos preliminares del emisor, sin credenciales ni habilitación DIAN."""
+    __tablename__ = "tax_issuer_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    legal_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    tax_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    verification_digit: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
+    person_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    tax_regime: Mapped[str] = mapped_column(String(60), nullable=False)
+    fiscal_responsibilities: Mapped[list] = mapped_column(JSON, nullable=False)
+    economic_activities: Mapped[list] = mapped_column(JSON, nullable=False)
+    fiscal_address: Mapped[str] = mapped_column(String(350), nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    contact_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    operation_mode: Mapped[str] = mapped_column(String(30), nullable=False)
+    provider_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    readiness_status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class ProductTaxProfile(Base):
+    """Clasificación tributaria pendiente de verificación por contador.
+
+    No altera prices, sale_price, pedidos, IVA o comprobantes históricos.
+    """
+    __tablename__ = "product_tax_profiles"
+    __table_args__ = (
+        UniqueConstraint("product_id", name="uq_product_tax_profiles_product"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    tax_treatment: Mapped[str] = mapped_column(String(25), nullable=False)
+    tariff_code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    tax_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 4), nullable=True)
+    accounting_note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    reviewed_by_accountant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
