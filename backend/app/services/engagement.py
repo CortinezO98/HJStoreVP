@@ -88,3 +88,30 @@ def queue_cart_reminder(db: Session, cart: SavedCustomerCart, user: User) -> boo
         status="scheduled", due_at=datetime.utcnow() + timedelta(hours=24),
     ))
     return True
+
+
+def clear_saved_cart_after_purchase(db: Session, order: Order) -> None:
+    """Evita recordatorios sobre productos ya comprados.
+
+    Solo limpia la lista guardada si su contenido coincide exactamente con
+    las líneas de la compra; no borra un carrito nuevo del cliente.
+    """
+    if not order.customer_id:
+        return
+    cart = db.query(SavedCustomerCart).filter(
+        SavedCustomerCart.user_id == order.customer_id
+    ).with_for_update().first()
+    if not cart or not cart.items:
+        return
+    actual = sorted((int(x["product_id"]), int(x["qty"])) for x in cart.items)
+    purchased = sorted((i.product_id, i.qty) for i in order.items)
+    if actual != purchased:
+        return
+    cart.items = []
+    cart.revision += 1
+    cart.updated_at = datetime.utcnow()
+    cart.recovered_at = datetime.utcnow()
+    db.query(CartRecoveryNotice).filter(
+        CartRecoveryNotice.user_id == order.customer_id,
+        CartRecoveryNotice.status == "scheduled",
+    ).update({"status": "cancelled"}, synchronize_session=False)
