@@ -829,3 +829,48 @@ def test_recommendations_variant_uses_parent_without_showing_parent_stock(client
     assert results[0]["total_stock"] == 3
     assert results[0]["sale_price"] == 27000
     assert vid not in [item["id"] for item in results]
+
+
+# ─── PERSONALIZACIÓN SIN PERFIL DE SEGUIMIENTO ──────────────────────────────
+
+def test_personalized_recommendations_only_use_public_product_ids(client, auth_headers):
+    from app.models.models import Category
+    db = TestingSession()
+    category = Category(name="Intereses de moda", slug="intereses-moda", active=True)
+    db.add(category)
+    db.commit()
+    category_id = category.id
+    location_id = db.query(Location).filter(Location.type == LocationType.WEB).first().id
+    db.close()
+
+    products = []
+    for i in range(3):
+        response = client.post("/api/v1/products/", headers=auth_headers, json={
+            "name": f"Interés {i}", "sku": f"PERSONAL-V1-{i}",
+            "category_id": category_id, "cost_price": 20000, "margin_pct": 20,
+        })
+        assert response.status_code == 201, response.text
+        products.append(response.json()["id"])
+
+    db = TestingSession()
+    for product_id in products[:2]:
+        db.add(Inventory(product_id=product_id, location_id=location_id,
+                         qty_available=4, qty_reserved=0))
+    db.commit()
+    db.close()
+
+    response = client.get("/api/v1/recommendations/personalized", params={
+        "product_ids": products[0], "limit": 8,
+    })
+    assert response.status_code == 200, response.text
+    assert [item["id"] for item in response.json()] == [products[1]]
+    assert "cost_price" not in response.json()[0]
+    assert "margin_pct" not in response.json()[0]
+
+    assert client.get("/api/v1/recommendations/personalized").json() == []
+    assert client.get("/api/v1/recommendations/personalized",
+                      params={"product_ids": 999999999}).json() == []
+
+    too_large = client.get("/api/v1/recommendations/personalized",
+                           params={"product_ids": products[0], "limit": 100})
+    assert too_large.status_code == 422
