@@ -69,7 +69,9 @@ export default function ProductVariantsManager({ product, onClose }) {
     imageFiles.forEach((file) => formData.append('files', file))
     setImageBusy(true)
     try {
-      await apiClient.post(`/products/${variantId}/images`, formData)
+      await apiClient.post(`/products/${variantId}/images`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
       toast.success('Fotos de la variante guardadas')
       setImageFiles([])
       invalidate()
