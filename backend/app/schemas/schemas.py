@@ -2,7 +2,7 @@
 Schemas Pydantic v2 — HJStoreVP
 Validación de entrada/salida para todos los endpoints.
 """
-from pydantic import BaseModel, EmailStr, field_validator, computed_field
+from pydantic import BaseModel, EmailStr, Field, field_validator, computed_field
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
