@@ -37,6 +37,12 @@ const NAV_ITEMS = [
     roles: ['super_admin', 'admin', 'seller'],
   },
   {
+    to: '/integraciones',
+    icon: PlugZap,
+    label: 'Centro de integraciones',
+    roles: ['super_admin', 'admin'],
+  },
+  {
     to: '/productos',
     icon: Package,
     label: 'Productos',
@@ -112,12 +118,6 @@ const NAV_ITEMS = [
     to: '/fidelizacion',
     icon: HeartHandshake,
     label: 'Fidelización y carritos',
-    roles: ['super_admin', 'admin'],
-  },
-  {
-    to: '/integraciones',
-    icon: PlugZap,
-    label: 'Centro de integraciones',
     roles: ['super_admin', 'admin'],
   },
   {
