@@ -300,6 +300,7 @@ def my_orders(
             notes=order.notes,
             items=[
                 OrderItemOut(
+                    id=oi.id,
                     product_id=oi.product_id,
                     product_name=oi.product_name,
                     product_sku=oi.product_sku,
@@ -346,6 +347,7 @@ def list_orders_admin(
             notes=order.notes,
             items=[
                 OrderItemOut(
+                    id=oi.id,
                     product_id=oi.product_id,
                     product_name=oi.product_name,
                     product_sku=oi.product_sku,
