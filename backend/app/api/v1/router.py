@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import ( auth, register, products, inventory, analytics, images, physical_sales, locations, users, orders, payments, categories, shipping, shipments, notifications, post_sale)
+from app.api.v1.endpoints import ( auth, register, products, inventory, analytics, images, physical_sales, locations, users, orders, payments, categories, shipping, shipments, notifications, post_sale, billing)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -20,3 +20,5 @@ api_router.include_router(shipments.router)
 api_router.include_router(notifications.router)
 
 api_router.include_router(post_sale.router)
+
+api_router.include_router(billing.router)
