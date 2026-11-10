@@ -68,7 +68,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: hjstorevp_notification_worker
-    restart: unless-stopped
+    restart: on-failure
     environment:
       - DATABASE_URL=mysql+pymysql://${DB_USER:-hjstore}:${DB_PASSWORD:-hjstore123}@db:3306/${DB_NAME:-hjstorevp}
       - REDIS_URL=redis://redis:6379/0
