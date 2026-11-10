@@ -219,3 +219,15 @@ export const postSaleApi = {
   requestRefund: (id, data) => apiClient.post(`/post-sale/${id}/request-refund`, data),
   recordRefund: (id, data) => apiClient.post(`/post-sale/${id}/record-refund`, data),
 }
+
+
+// ─────────────────────────────────────────────────────────
+// 🧾 COMPROBANTES COMERCIALES INTERNOS (NO DIAN)
+ // ─────────────────────────────────────────────────────────
+export const billingApi = {
+  list: () => apiClient.get('/billing/admin'),
+  receipt: (orderId) => apiClient.post(`/billing/receipt/${orderId}`),
+  creditDraft: (caseId) => apiClient.post(`/billing/credit-note-draft/${caseId}`),
+  detail: (id) => apiClient.get(`/billing/${id}`),
+  print: (id) => apiClient.get(`/billing/${id}/print`, { responseType: 'blob' }),
+}

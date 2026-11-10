@@ -549,3 +549,54 @@ class PostSaleEvent(Base):
     )
 
     case: Mapped["PostSaleCase"] = relationship("PostSaleCase", back_populates="events")
+
+
+# ─── DOCUMENTOS COMERCIALES INTERNOS ─────────────────────────────────────────
+class CommercialDocument(Base):
+    """Comprobante interno o borrador de nota crédito.
+
+    IMPORTANTE: no constituye factura electrónica ni nota crédito validada
+    por la DIAN; no crea CUFE/CUDE, rangos oficiales ni firma digital.
+    Los documentos se derivan de snapshots históricos del pedido.
+    """
+    __tablename__ = "commercial_documents"
+    __table_args__ = (
+        UniqueConstraint("document_type", "order_id", "post_sale_case_id",
+                         name="uq_commercial_document_source"),
+        Index("ix_commercial_documents_order", "order_id", "document_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    post_sale_case_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("post_sale_cases.id"), nullable=True, unique=True
+    )
+    internal_reference: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(25), nullable=False, default="internal")
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CommercialDocumentEvent(Base):
+    """Bitácora append-only de gestión documental interna."""
+    __tablename__ = "commercial_document_events"
+    __table_args__ = (Index("ix_document_events_document", "document_id", "id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("commercial_documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    actor_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String(60), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
