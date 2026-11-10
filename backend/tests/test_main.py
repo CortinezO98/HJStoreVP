@@ -874,3 +874,72 @@ def test_personalized_recommendations_only_use_public_product_ids(client, auth_h
     too_large = client.get("/api/v1/recommendations/personalized",
                            params={"product_ids": products[0], "limit": 100})
     assert too_large.status_code == 422
+
+
+# ─── SEO: SITEMAP PÚBLICO, ROBOTS Y OPEN GRAPH ──────────────────────────────
+
+def test_sitemap_only_lists_active_parent_products(client, auth_headers):
+    from xml.etree import ElementTree
+    from app.models.models import Category
+
+    db = TestingSession()
+    category = Category(name="Accesorios SEO", slug="accesorios-seo", active=True)
+    db.add(category)
+    db.commit()
+    cid = category.id
+    db.close()
+    active = client.post("/api/v1/products/", headers=auth_headers, json={
+        "name": "Producto para SEO", "sku": "SEO-BASE-1",
+        "category_id": cid, "cost_price": 10000, "margin_pct": 20,
+    })
+    assert active.status_code == 201
+    pid = active.json()["id"]
+    child = client.post(f"/api/v1/products/{pid}/variants", headers=auth_headers, json={
+        "label": "Negro", "sku": "SEO-BLACK-1",
+        "options": {"color": "Negro"}, "cost_price": 10000, "sale_price": 20000,
+    })
+    assert child.status_code == 201
+    db = TestingSession()
+    variant = db.get(Product, child.json()["id"])
+    db.commit()
+    db.close()
+    xml = client.get("/sitemap.xml")
+    assert xml.status_code == 200
+    root = ElementTree.fromstring(xml.content)
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    urls = [elem.text for elem in root.findall(".//s:loc", ns)]
+    assert any(url.endswith("/catalogo?categoria=accesorios-seo") for url in urls)
+    assert any(url.endswith(f"/producto/{active.json()['slug']}") for url in urls)
+    assert not any(variant.slug in url for url in urls)
+
+    db = TestingSession()
+    db.get(Product, pid).active = False
+    db.commit()
+    db.close()
+    urls = [elem.text for elem in ElementTree.fromstring(
+        client.get("/sitemap.xml").content
+    ).findall(".//s:loc", ns)]
+    assert not any(f"/producto/{active.json()['slug']}" in url for url in urls)
+
+
+def test_share_has_server_rendered_social_metadata_without_costs(client, auth_headers):
+    created = client.post("/api/v1/products/", headers=auth_headers, json={
+        "name": 'Reloj <clásico>', "sku": "SEO-WATCH-1",
+        "cost_price": 40000, "margin_pct": 50,
+    })
+    assert created.status_code == 201
+    slug = created.json()["slug"]
+    preview = client.get(f"/share/product/{slug}", follow_redirects=False)
+    assert preview.status_code == 200, preview.text
+    assert 'property="og:title"' in preview.text
+    assert 'rel="canonical"' in preview.text
+    assert '"@type": "Product"' in preview.text
+    assert "&lt;clásico&gt;" in preview.text
+    assert "cost_price" not in preview.text
+    assert client.get("/share/product/no-existe").status_code == 404
+
+
+def test_robots_disallows_development_crawling(client):
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200
+    assert "Disallow: /" in robots.text
