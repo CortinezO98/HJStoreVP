@@ -75,6 +75,18 @@ def claim_next(db: Session) -> CustomerNotification | None:
     puede provocar duplicado (no prometer exactamente una entrega).
     """
     now = datetime.utcnow()
+    # Un worker que cae tras agotar su último intento no debe quedar eternamente
+    # en estado 'sending'. Marcarlo fallido al vencer el arrendamiento.
+    db.execute(
+        update(CustomerNotification)
+        .where(
+            CustomerNotification.status == "sending",
+            CustomerNotification.attempts >= MAX_ATTEMPTS,
+            CustomerNotification.lease_until < now,
+        )
+        .values(status="failed", lease_until=None, last_error="worker_lease_expired")
+    )
+    db.commit()
     candidate = db.query(CustomerNotification.id).filter(
         CustomerNotification.attempts < MAX_ATTEMPTS,
         or_(
@@ -123,7 +135,9 @@ def process_one() -> bool:
             return False
         try:
             send_email(notification)
-        except (smtplib.SMTPException, OSError, TimeoutError, ValueError, RuntimeError):
+        except Exception:
+            # No registrar excepción del SMTP: ciertos proveedores incluyen
+            # destinatarios, URLs o datos confidenciales en el mensaje.
             # No guardar mensajes de error del proveedor: podrían contener
             # dirección, credenciales o datos SMTP.
             error_label = "smtp_delivery_failed"
