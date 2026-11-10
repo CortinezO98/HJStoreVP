@@ -17,6 +17,7 @@ from app.models.models import (
     Order, OrderStatus, Shipment, ShipmentEvent, User, UserRole,
 )
 from app.services.stock_reservations import lock_web_order
+from app.services.notifications import enqueue_order_notification
 
 router = APIRouter(prefix="/shipments", tags=["Despachos y seguimiento"])
 
@@ -186,6 +187,10 @@ def dispatch_order(
         created_by_id=admin.id,
     ))
     order.status = OrderStatus.SHIPPED
+    enqueue_order_notification(
+        db, order, "shipment_dispatched", f"shipment:{shipment.id}:dispatched",
+        carrier=shipment.carrier, tracking_number=shipment.tracking_number,
+    )
     db.commit()
     db.refresh(shipment)
     return _serialize(shipment, order)
@@ -207,12 +212,19 @@ def correct_tracking_guide(
         raise HTTPException(status_code=409, detail="La guía nueva coincide con la actual")
     previous = shipment.tracking_number
     shipment.tracking_number = data.tracking_number
-    db.add(ShipmentEvent(
+    correction = ShipmentEvent(
         shipment_id=shipment.id,
         status=shipment.status,
         note=f"Guía corregida: {previous} → {data.tracking_number}. Motivo: {data.reason}",
         created_by_id=admin.id,
-    ))
+    )
+    db.add(correction)
+    db.flush()
+    enqueue_order_notification(
+        db, order, "shipment_guide_updated",
+        f"shipment:{shipment.id}:guide:{correction.id}",
+        carrier=shipment.carrier, tracking_number=shipment.tracking_number,
+    )
     db.commit()
     db.refresh(shipment)
     return _serialize(shipment, order)
@@ -235,12 +247,19 @@ def add_shipment_event(
     if data.status == "delivered":
         shipment.delivered_at = datetime.utcnow()
         order.status = OrderStatus.DELIVERED
-    db.add(ShipmentEvent(
+    history = ShipmentEvent(
         shipment_id=shipment.id,
         status=data.status,
         note=data.note.strip() if data.note else None,
         created_by_id=admin.id,
-    ))
+    )
+    db.add(history)
+    db.flush()
+    enqueue_order_notification(
+        db, order, f"shipment_{data.status}",
+        f"shipment:{shipment.id}:event:{history.id}",
+        carrier=shipment.carrier, tracking_number=shipment.tracking_number,
+    )
     db.commit()
     db.refresh(shipment)
     return _serialize(shipment, order)
