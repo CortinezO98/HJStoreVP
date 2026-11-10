@@ -4,6 +4,10 @@ from typing import List, Optional
 import secrets
 
 
+# La clave generada automáticamente es útil solo en desarrollo local.
+_DEFAULT_DEV_SECRET_KEY = secrets.token_urlsafe(32)
+
+
 class Settings(BaseSettings):
     # ─── App ───────────────────────────────────────────────────
     APP_NAME: str = "HJStoreVP API"
@@ -14,7 +18,7 @@ class Settings(BaseSettings):
     API_BASE_URL: str = "http://localhost:8000"
 
     # ─── Seguridad ─────────────────────────────────────────────
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = _DEFAULT_DEV_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -114,7 +118,7 @@ class Settings(BaseSettings):
                 raise ValueError("DEBUG debe ser false en producción")
             if not self.AUTH_RATE_LIMIT_ENABLED or not self.AUTH_REFRESH_REPLAY_PROTECTION_ENABLED:
                 raise ValueError("Protecciones Redis de autenticación obligatorias en producción")
-            if len(self.SECRET_KEY) < 32 or self.SECRET_KEY in ("changeme_in_production_use_long_random_string",):
+            if len(self.SECRET_KEY) < 32 or self.SECRET_KEY == _DEFAULT_DEV_SECRET_KEY or self.SECRET_KEY in ("changeme_in_production_use_long_random_string",):
                 raise ValueError("SECRET_KEY insegura para producción")
             if self.FIRST_ADMIN_PASSWORD in ("Admin123!", "Vendedor123!"):
                 raise ValueError("Configura FIRST_ADMIN_PASSWORD segura antes de producción")
