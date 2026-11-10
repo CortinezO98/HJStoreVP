@@ -74,6 +74,15 @@ export const productsApi = {
   delete: (id) => apiClient.delete(`/products/${id}`),
 }
 
+// ── RECOMENDACIONES COMERCIALES ─────────────────────────────────────────────
+export const recommendationsApi = {
+  product: (id, limit = 4) => apiClient.get(`/recommendations/products/${id}`, { params: { limit } }),
+  cart: (ids, limit = 4) => apiClient.get('/recommendations/cart', {
+    params: { product_ids: ids, limit },
+    paramsSerializer: { indexes: null },
+  }),
+}
+
 // ── CATEGORÍAS ───────────────────────────────────────────────────────────────
 export const categoriesApi = {
   list: () => apiClient.get('/categories'),
