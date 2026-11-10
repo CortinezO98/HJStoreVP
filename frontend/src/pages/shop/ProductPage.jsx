@@ -9,12 +9,14 @@ import {
   Truck,
   BadgeCheck,
   Heart,
+  Share2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { productsApi, recommendationsApi } from '../../services/api'
 import { useCartStore, useWishlistStore, useBrowsingStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
 import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
+import { updateMeta, updateCanonical, updateStructuredData } from '../../components/shop/StoreMetadata'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -56,18 +58,40 @@ export default function ProductPage() {
   })
 
   useEffect(() => {
-    if (!product) return undefined
-    document.title = `${product.name} | HJStoreVP`
-    const description = document.querySelector('meta[name="description"]')
-    const previous = description?.getAttribute('content')
-    const excerpt = String(product.description || `Compra ${product.name} en HJStoreVP.`)
+    if (!product) return
+    const canonical = `${window.location.origin}/producto/${encodeURIComponent(product.slug)}`
+    const description = String(product.description || `Compra ${product.name} en HJStoreVP.`)
       .replace(/\s+/g, ' ').slice(0, 155)
-    description?.setAttribute('content', excerpt)
-    return () => {
-      if (previous !== null && previous !== undefined) {
-        description?.setAttribute('content', previous)
-      }
+    const title = `${product.name} | HJStoreVP`
+    document.title = title
+    updateMeta('name', 'description', description)
+    updateMeta('name', 'robots', 'index,follow')
+    updateMeta('property', 'og:type', 'product')
+    updateMeta('property', 'og:title', title)
+    updateMeta('property', 'og:description', description)
+    updateMeta('property', 'og:url', canonical)
+    updateMeta('name', 'twitter:title', title)
+    updateMeta('name', 'twitter:description', description)
+    const photo = product.primary_image
+      ? buildImageUrl(product.primary_image)
+      : null
+    if (photo) updateMeta('property', 'og:image', photo)
+    updateCanonical(canonical)
+    const inStock = Number(product.total_stock || 0) > 0
+    const data = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name, description, sku: product.sku, url: canonical,
+      ...(photo ? { image: [photo] } : {}),
+      offers: {
+        '@type': 'Offer', priceCurrency: 'COP',
+        price: Number(product.sale_price || 0).toFixed(2),
+        availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url: canonical,
+      },
     }
+    updateStructuredData(data)
+    return () => updateStructuredData(null)
   }, [product])
 
   useEffect(() => {
@@ -154,6 +178,21 @@ export default function ProductPage() {
   const maxQtyAllowed = hasVariants && !selectedVariant
     ? 0
     : availableStock === null ? 99 : Math.max(availableStock - cartQty, 0)
+
+  const shareProduct = async () => {
+    const link = `${window.location.origin}/share/product/${encodeURIComponent(product.slug)}`
+    const data = { title: product.name, text: `Mira ${product.name} en HJStoreVP`, url: link }
+    try {
+      if (navigator.share) {
+        await navigator.share(data)
+      } else {
+        await navigator.clipboard.writeText(link)
+        toast.success('Enlace del producto copiado')
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') toast.error('No se pudo compartir este producto')
+    }
+  }
 
   const handleDecrease = () => setQty((prev) => Math.max(1, prev - 1))
 
@@ -323,12 +362,18 @@ export default function ProductPage() {
               {!selectedVariant && <p className="text-sm text-gray-500">Debes seleccionar una referencia para agregarla al carrito.</p>}
             </div>
           )}
+          <div className="flex flex-wrap gap-2 items-center">
+          <button type="button" onClick={shareProduct}
+            className="mt-3 inline-flex items-center gap-2 border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50">
+            <Share2 size={17}/> Compartir producto
+          </button>
           <button type="button" onClick={() => toggleFavorite(product)}
             className="mt-3 inline-flex items-center gap-2 border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
             aria-pressed={favorites.some((item) => item.id === product.id)}>
             <Heart size={17} fill={favorites.some((item) => item.id === product.id) ? 'currentColor' : 'none'} />
             {favorites.some((item) => item.id === product.id) ? 'Guardado en favoritos' : 'Guardar en favoritos'}
           </button>
+          </div>
 
           <div className="mt-5">
             <div className="flex items-end gap-3">
