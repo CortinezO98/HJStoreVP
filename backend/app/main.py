@@ -6,6 +6,7 @@ import os
 
 from app.core.config import settings
 from app.api.v1.router import api_router
+from app.api.v1.endpoints.seo import router as seo_router
 from app.db.session import engine, Base
 
 
@@ -58,6 +59,7 @@ if settings.STORAGE_BACKEND == "local":
 
 # ─── RUTAS ───────────────────────────────────────────────────────────────────
 app.include_router(api_router)
+app.include_router(seo_router)
 
 
 @app.get("/", tags=["Health"])
