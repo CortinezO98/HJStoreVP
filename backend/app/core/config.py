@@ -52,7 +52,10 @@ class Settings(BaseSettings):
     # Producción: https://comercios.wompi.co
     WOMPI_PUBLIC_KEY: Optional[str] = None
     WOMPI_PRIVATE_KEY: Optional[str] = None
+    WOMPI_INTEGRITY_SECRET: Optional[str] = None
     WOMPI_EVENTS_SECRET: Optional[str] = None
+    WOMPI_ENV: str = "sandbox"  # sandbox | production
+    WOMPI_ALLOW_LIVE_PAYMENTS: bool = False  # opt-in independiente
     WOMPI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
 
     # ─── Sistecréditos ─────────────────────────────────────────

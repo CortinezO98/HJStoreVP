@@ -1,4 +1,5 @@
 import { useSearchParams, Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle2, XCircle, Clock3, LoaderCircle, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react'
 import { apiClient } from '../../services/api'
@@ -33,6 +34,8 @@ const STATES = {
 export default function PaymentConfirmationPage() {
   const [params] = useSearchParams()
   const orderNumber = params.get('order')
+  const provider = params.get('provider')
+  const transactionId = params.get('id')
   const { data: payment, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['payment-status', orderNumber],
     queryFn: () => apiClient.get(`/payments/status/${encodeURIComponent(orderNumber)}`).then(({ data }) => data),
@@ -40,6 +43,22 @@ export default function PaymentConfirmationPage() {
     retry: 1,
     refetchInterval: ({ state }) => state.data?.status === 'pending' ? 20000 : false,
   })
+
+  const shouldReconcile = provider === 'wompi' && Boolean(transactionId && orderNumber)
+  const { isLoading: isReconciling, isError: reconcileError, data: reconciliation } = useQuery({
+    queryKey: ['wompi-transaction-reconcile', orderNumber, transactionId],
+    queryFn: () => apiClient.post('/payments/wompi/reconcile', {
+      order_number: orderNumber,
+      transaction_id: transactionId,
+    }).then(({ data }) => data),
+    enabled: shouldReconcile,
+    retry: false,
+    staleTime: 60_000,
+  })
+
+  useEffect(() => {
+    if (reconciliation) refetch()
+  }, [reconciliation, refetch])
 
   const status = !orderNumber || isError ? 'error' : payment?.status === 'paid'
     ? 'paid' : payment?.status === 'cancelled' ? 'cancelled' : 'pending'
@@ -65,6 +84,8 @@ export default function PaymentConfirmationPage() {
             {payment?.total_amount != null &&
               <p className="text-3xl font-black mt-6">{formatCOP(payment.total_amount)}</p>}
             <p className="store-muted mt-7 mx-auto max-w-md">{config.detail}</p>
+            {isReconciling && <p role="status" className="text-xs text-neutral-500 mt-4">Consultando la transacción directamente con Wompi…</p>}
+            {reconcileError && <p role="status" className="text-xs text-amber-800 mt-4">La verificación directa no fue posible. El estado se actualizará cuando llegue la notificación del proveedor.</p>}
             {orderNumber && (status === 'pending' || status === 'error') &&
               <button type="button" disabled={isFetching} className="store-button store-button-outline w-full sm:w-auto mt-7"
                 onClick={() => refetch()} aria-busy={isFetching}>

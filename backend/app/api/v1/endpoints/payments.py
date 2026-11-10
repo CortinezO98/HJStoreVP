@@ -2,6 +2,7 @@
 Endpoints de pagos — Wompi + Sistecréditos + Addi.
 """
 import json
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
@@ -14,7 +15,8 @@ from app.core.config import settings
 from app.models.models import User, Order, OrderStatus, OrderChannel, OrderItem
 from app.services.stock_reservations import cancel_web_order, lock_web_order, mark_paid
 from app.services.wompi import (
-    build_checkout_url, verify_webhook_signature as verify_wompi_sig
+    build_checkout_url, verify_webhook_signature as verify_wompi_sig,
+    get_transaction as get_wompi_transaction, wompi_enabled,
 )
 from app.services.credito import (
     build_sistecreditos_url, sistecreditos_enabled,
@@ -65,7 +67,7 @@ def get_payment_methods():
             id="wompi",
             name="Wompi",
             description="Tarjeta débito, crédito o PSE",
-            enabled=bool(settings.WOMPI_PUBLIC_KEY and "PLACEHOLDER" not in (settings.WOMPI_PUBLIC_KEY or "")),
+            enabled=wompi_enabled(),
             logo="/logos/wompi.svg",
         ),
         PaymentMethodInfo(
@@ -103,6 +105,9 @@ async def initiate_payment(
     if not order:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
 
+    # Bloqueo compatible con cancelación y webhooks concurrentes.
+    order = lock_web_order(db, order.id)
+
     if order.status != OrderStatus.PENDING:
         raise HTTPException(
             status_code=400,
@@ -124,26 +129,26 @@ async def initiate_payment(
 
     # ── Wompi ─────────────────────────────────────────────────
     if method == "wompi":
-        wompi_enabled = bool(settings.WOMPI_PUBLIC_KEY and "PLACEHOLDER" not in (settings.WOMPI_PUBLIC_KEY or ""))
+        is_wompi_enabled = wompi_enabled()
         redirect = settings.WOMPI_REDIRECT_URL or redirect_base
 
-        if wompi_enabled:
+        if not is_wompi_enabled:
+            raise HTTPException(status_code=503, detail="Wompi no está configurado")
+        try:
             url = build_checkout_url(
                 order_number=order.order_number,
                 amount_in_cents=amount_cents,
                 customer_email=current_user.email,
                 customer_name=current_user.full_name,
-                redirect_url=f"{redirect}?order={order.order_number}&provider=wompi",
+                redirect_url=f"{redirect}{'&' if '?' in redirect else '?'}order={order.order_number}&provider=wompi",
             )
-        else:
-            url = f"http://localhost:5173/pago-demo?order={order.order_number}&provider=wompi&amount={amount}"
-
-        if wompi_enabled:
-            order.payment_method = "wompi"
-            db.commit()
+        except ValueError:
+            raise HTTPException(status_code=503, detail="Configuración Wompi inválida")
+        order.payment_method = "wompi"
+        db.commit()
         return InitiatePaymentResponse(
             order_number=order.order_number, method="wompi",
-            checkout_url=url, amount=amount, enabled=wompi_enabled,
+            checkout_url=url, amount=amount, enabled=is_wompi_enabled,
         )
 
     # ── Sistecréditos ─────────────────────────────────────────
@@ -199,64 +204,114 @@ async def initiate_payment(
         raise HTTPException(status_code=400, detail=f"Método de pago no válido: {method}")
 
 
-# ── Webhook: Wompi ────────────────────────────────────────────────────────────
+# ── Wompi: conciliación y webhook ───────────────────────────────────────────
+
+
+def apply_wompi_transaction(db: Session, order: Order, tx: dict) -> dict:
+    """Aplicar solo una transacción consultada con llave privada en Wompi."""
+    tx_id = tx.get("id")
+    reference = tx.get("reference")
+    amount = tx.get("amount_in_cents")
+    currency = tx.get("currency")
+    provider_status = tx.get("status")
+
+    if not tx_id or not reference or tx.get("currency") != "COP":
+        raise HTTPException(status_code=409, detail="Datos Wompi incompletos; conciliación requerida")
+    if str(reference) != order.order_number or type(amount) is not int or amount != int(order.total_amount * 100):
+        raise HTTPException(status_code=409, detail="Referencia o monto inconsistente; conciliación requerida")
+    if order.payment_method not in (None, "wompi"):
+        raise HTTPException(status_code=409, detail="El pedido usa otra pasarela")
+    if order.payment_ref and str(order.payment_ref) != str(tx_id):
+        raise HTTPException(status_code=409, detail="Otra transacción ya vinculada al pedido")
+
+    if provider_status == "APPROVED":
+        if order.status == OrderStatus.CANCELLED:
+            raise HTTPException(status_code=409, detail="Pago tardío en pedido cancelado; conciliación requerida")
+        changed = mark_paid(db, order, "wompi", str(tx_id))
+        return {"status": "paid", "changed": changed}
+    if provider_status in ("DECLINED", "ERROR", "VOIDED"):
+        if order.status == OrderStatus.PENDING:
+            changed = cancel_web_order(
+                db, order, f"Wompi {provider_status}", provider_confirmed_failure=True
+            )
+            order.payment_ref = str(tx_id)
+            return {"status": "cancelled", "changed": changed}
+        if order.status == OrderStatus.CANCELLED:
+            return {"status": "cancelled", "changed": False}
+        raise HTTPException(status_code=409, detail="Pedido pagado con resultado contradictorio")
+    return {"status": "pending", "changed": False}
+
 
 @router.post("/webhook/wompi", status_code=status.HTTP_200_OK)
 async def wompi_webhook(request: Request, db: Session = Depends(get_db)):
-    body = await request.body()
-    payload_str = body.decode("utf-8")
-    timestamp  = request.headers.get("x-event-checksum-timestamp", "")
-    signature  = request.headers.get("x-event-checksum", "")
-
-    if not verify_wompi_sig(payload_str, timestamp, signature):
-        raise HTTPException(status_code=401, detail="Firma inválida")
-
+    if not wompi_enabled():
+        raise HTTPException(status_code=503, detail="Wompi no configurado")
     try:
-        event = json.loads(payload_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-
-    tx = event.get("data", {}).get("transaction", {})
-    reference   = tx.get("reference")
-    wompi_status = tx.get("status")
-    tx_id        = tx.get("id")
-
-    if not reference:
+        event = await request.json()
+    except (ValueError, json.JSONDecodeError):
+        raise HTTPException(status_code=400, detail="Evento JSON inválido")
+    if not isinstance(event, dict) or event.get("event") != "transaction.updated":
         return {"status": "ignored"}
+    expected_env = "test" if settings.WOMPI_ENV == "sandbox" else "prod"
+    if event.get("environment") != expected_env:
+        raise HTTPException(status_code=401, detail="Ambiente de evento incorrecto")
+    if not verify_wompi_sig(event, request.headers.get("x-event-checksum", "")):
+        raise HTTPException(status_code=401, detail="Firma Wompi inválida")
+
+    event_tx = event.get("data", {}).get("transaction", {})
+    if not isinstance(event_tx, dict) or not event_tx.get("id"):
+        raise HTTPException(status_code=400, detail="Transacción inválida")
+    try:
+        tx = await get_wompi_transaction(str(event_tx["id"]))
+    except (httpx.HTTPError, ValueError, KeyError):
+        raise HTTPException(status_code=503, detail="No fue posible consultar Wompi")
+    if tx.get("reference") != event_tx.get("reference"):
+        raise HTTPException(status_code=409, detail="Referencia del evento no coincide")
 
     order = db.query(Order).filter(
-        Order.order_number == reference,
+        Order.order_number == tx.get("reference"),
         Order.channel == OrderChannel.WEB,
     ).first()
     if not order:
-        return {"status": "order_not_found"}
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
     order = lock_web_order(db, order.id)
-    if wompi_status == "APPROVED":
-        # No aceptar una referencia o importe diferente al pedido interno.
-        try:
-            cents = int(tx["amount_in_cents"])
-        except (KeyError, TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="Importe faltante en la notificación")
-        if tx.get("currency") != "COP" or cents != int(order.total_amount * 100):
-            raise HTTPException(status_code=409, detail="El importe no coincide; conciliación manual")
-        if order.status == OrderStatus.CANCELLED:
-            return {"status": "manual_review", "reason": "late_payment"}
-        mark_paid(db, order, "wompi", str(tx_id) if tx_id else None)
-    elif wompi_status in ["DECLINED", "ERROR", "VOIDED"]:
-        if order.status == OrderStatus.PENDING:
-            try:
-                cancel_web_order(db, order, f"Wompi {wompi_status}", provider_confirmed_failure=True)
-            except HTTPException as exc:
-                if exc.status_code == 409:
-                    return {"status": "manual_review", "reason": "legacy_reservation"}
-                raise
-        elif order.status != OrderStatus.CANCELLED:
-            return {"status": "ignored", "reason": "final_order"}
-    else:
-        return {"status": "ignored", "reason": "unhandled_event"}
-    db.commit()
-    return {"status": "processed"}
+    result = apply_wompi_transaction(db, order, tx)
+    if result["changed"]:
+        db.commit()
+    return {"status": result["status"]}
+
+
+class WompiReconcileRequest(BaseModel):
+    order_number: str
+    transaction_id: str
+
+
+@router.post("/wompi/reconcile")
+async def reconcile_wompi(
+    data: WompiReconcileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """El cliente puede pedir consulta, pero jamás definir el estado de pago."""
+    if not wompi_enabled():
+        raise HTTPException(status_code=503, detail="Wompi no configurado")
+    order = db.query(Order).filter(
+        Order.order_number == data.order_number,
+        Order.customer_id == current_user.id,
+        Order.channel == OrderChannel.WEB,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    try:
+        tx = await get_wompi_transaction(data.transaction_id)
+    except (httpx.HTTPError, ValueError, KeyError):
+        raise HTTPException(status_code=503, detail="No fue posible verificar la transacción")
+    order = lock_web_order(db, order.id)
+    result = apply_wompi_transaction(db, order, tx)
+    if result["changed"]:
+        db.commit()
+    return result
 
 
 # ── Webhook: Sistecréditos ────────────────────────────────────────────────────
