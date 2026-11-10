@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import validator
+from pydantic import validator, model_validator
 from typing import List, Optional
 import secrets
 
@@ -99,6 +99,19 @@ class Settings(BaseSettings):
     # ─── Primer admin ──────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@hjstorevp.com"
     FIRST_ADMIN_PASSWORD: str = "Admin123!"
+
+    @model_validator(mode="after")
+    def require_safe_production_settings(self):
+        if self.ENVIRONMENT.lower() == "production":
+            if self.DEBUG:
+                raise ValueError("DEBUG debe ser false en producción")
+            if len(self.SECRET_KEY) < 32 or self.SECRET_KEY in ("changeme_in_production_use_long_random_string",):
+                raise ValueError("SECRET_KEY insegura para producción")
+            if self.FIRST_ADMIN_PASSWORD in ("Admin123!", "Vendedor123!"):
+                raise ValueError("Configura FIRST_ADMIN_PASSWORD segura antes de producción")
+            if "hjstore123" in self.DATABASE_URL or "rootpass" in self.DATABASE_URL:
+                raise ValueError("Credenciales de base de datos de desarrollo prohibidas en producción")
+        return self
 
     class Config:
         env_file = ".env"

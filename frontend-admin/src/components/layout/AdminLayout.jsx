@@ -23,6 +23,7 @@ import {
   FileCheck2,
   TicketPercent,
   HeartHandshake,
+  PlugZap,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -111,6 +112,12 @@ const NAV_ITEMS = [
     to: '/fidelizacion',
     icon: HeartHandshake,
     label: 'Fidelización y carritos',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/integraciones',
+    icon: PlugZap,
+    label: 'Centro de integraciones',
     roles: ['super_admin', 'admin'],
   },
   {
