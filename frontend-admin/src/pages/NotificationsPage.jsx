@@ -41,8 +41,13 @@ export default function NotificationsPage() {
     onSuccess: () => {
       toast.success('Aviso devuelto a la cola de envío')
       queryClient.invalidateQueries({ queryKey: ['admin-notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-notification-stats'] })
     },
     onError: err => toast.error(err?.response?.data?.detail || 'No fue posible reintentar'),
+  })
+  const { data: totals = { pending: 0, sending: 0, sent: 0, failed: 0 } } = useQuery({
+    queryKey: ['admin-notification-stats'],
+    queryFn: () => notificationsApi.stats().then(r => r.data),
   })
   const visible = notifications.filter(n =>
     [n.event_key, n.recipient, n.kind, n.subject].some(
@@ -50,7 +55,7 @@ export default function NotificationsPage() {
     )
   )
   const counts = ['pending', 'sending', 'sent', 'failed'].map(key =>
-    ({ key, count: notifications.filter(n => n.status === key).length })
+    ({ key, count: totals[key] ?? 0 })
   )
   return (
     <div className="space-y-6">
@@ -60,7 +65,10 @@ export default function NotificationsPage() {
           <h1 className="text-3xl font-black tracking-tight">Notificaciones de pedidos</h1>
           <p className="text-sm text-slate-500 mt-2">Historial de avisos transaccionales generados por los pedidos y despachos.</p>
         </div>
-        <button type="button" onClick={() => refetch()} className="btn-secondary inline-flex gap-2 items-center self-start">
+        <button type="button" onClick={() => {
+          refetch()
+          queryClient.invalidateQueries({ queryKey: ['admin-notification-stats'] })
+        }} className="btn-secondary inline-flex gap-2 items-center self-start">
           <RefreshCw size={16}/> Actualizar
         </button>
       </header>
