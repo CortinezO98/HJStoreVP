@@ -257,3 +257,14 @@ export const taxReadinessApi = {
 export const integrationsApi = {
   overview: () => apiClient.get('/integrations/overview'),
 }
+
+
+// Caja de puntos físicos y arqueos
+export const cashApi = {
+  sessions: (params = {}) => apiClient.get('/cash/sessions', { params }),
+  open: (data) => apiClient.post('/cash/sessions', data),
+  detail: (id) => apiClient.get(`/cash/sessions/${id}`),
+  movements: (id) => apiClient.get(`/cash/sessions/${id}/movements`),
+  movement: (id, data) => apiClient.post(`/cash/sessions/${id}/movements`, data),
+  close: (id, data) => apiClient.post(`/cash/sessions/${id}/close`, data),
+}
