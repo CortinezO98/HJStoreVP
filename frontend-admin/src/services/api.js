@@ -91,6 +91,9 @@ export const productsApi = {
   create: (data) => apiClient.post('/products', data),
   update: (id, data) => apiClient.put(`/products/${id}`, data),
   delete: (id) => apiClient.delete(`/products/${id}`),
+  variants: (id) => apiClient.get(`/products/${id}/variants`),
+  createVariant: (id, payload) => apiClient.post(`/products/${id}/variants`, payload),
+  updateVariant: (id, variantId, payload) => apiClient.patch(`/products/${id}/variants/${variantId}`, payload),
 }
 
 // ─────────────────────────────────────────────────────────
