@@ -12,17 +12,78 @@ const TITLES = {
   '/mi-cuenta': 'Mi cuenta y pedidos',
   '/pago-confirmado': 'Estado de mi pago',
 }
-const DESCRIPTION = 'Descubre gorras, perfumes, relojes, bolsos y accesorios en HJStoreVP. Explora el catálogo y compra en Colombia.'
+export const DEFAULT_DESCRIPTION = 'Descubre gorras, perfumes, relojes, bolsos y accesorios en HJStoreVP. Explora el catálogo y compra en Colombia.'
+const PRIVATE_ROUTES = new Set(['/carrito', '/favoritos', '/checkout', '/login', '/registro', '/mi-cuenta', '/pago-confirmado'])
+
+export function updateMeta(attribute, name, value) {
+  const selector = `meta[${attribute}="${name}"]`
+  let element = document.head.querySelector(selector)
+  if (!element) {
+    element = document.createElement('meta')
+    element.setAttribute(attribute, name)
+    document.head.appendChild(element)
+  }
+  element.setAttribute('content', String(value))
+}
+
+export function updateCanonical(url) {
+  let link = document.head.querySelector('link[rel="canonical"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.setAttribute('rel', 'canonical')
+    document.head.appendChild(link)
+  }
+  link.setAttribute('href', url)
+}
+
+export function updateStructuredData(value) {
+  const id = 'hjstore-seo-structured-data'
+  let node = document.getElementById(id)
+  if (!value) {
+    node?.remove()
+    return
+  }
+  if (!node) {
+    node = document.createElement('script')
+    node.id = id
+    node.type = 'application/ld+json'
+    document.head.appendChild(node)
+  }
+  node.textContent = JSON.stringify(value).replace(/</g, '\\u003c')
+}
 
 export default function StoreMetadata() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useEffect(() => {
-    const title = pathname.startsWith('/producto/')
-      ? 'Detalle de producto'
+    const product = pathname.startsWith('/producto/')
+    const params = new URLSearchParams(search)
+    const categoryOnly = pathname === '/catalogo' && params.has('categoria') &&
+      [...params.keys()].every((key) => key === 'categoria')
+    const categoryName = categoryOnly
+      ? params.get('categoria').replace(/-/g, ' ')
+      : ''
+    const description = categoryOnly
+      ? `Explora ${categoryName} en HJStoreVP. Descubre productos y accesorios disponibles en Colombia.`
+      : DEFAULT_DESCRIPTION
+    const title = product ? 'Detalle de producto'
+      : categoryOnly ? `${categoryName} | Catálogo`
       : TITLES[pathname] || 'Moda y accesorios'
     document.title = `${title} | HJStoreVP`
-    const description = document.querySelector('meta[name="description"]')
-    if (description) description.setAttribute('content', DESCRIPTION)
-  }, [pathname])
+    updateMeta('name', 'description', description)
+    updateMeta('name', 'robots', PRIVATE_ROUTES.has(pathname) || pathname === '/catalogo' && !!search && !categoryOnly
+      ? 'noindex,follow' : 'index,follow')
+    updateMeta('property', 'og:type', 'website')
+    updateMeta('property', 'og:title', document.title)
+    updateMeta('property', 'og:description', description)
+    const canonicalUrl = window.location.origin + pathname +
+      (categoryOnly ? `?categoria=${encodeURIComponent(params.get('categoria'))}` : '')
+    updateMeta('property', 'og:url', canonicalUrl)
+    updateMeta('name', 'twitter:title', document.title)
+    updateMeta('name', 'twitter:description', description)
+    const ogImage = document.head.querySelector('meta[property="og:image"]')
+    ogImage?.remove()
+    updateCanonical(canonicalUrl)
+    updateStructuredData(null)
+  }, [pathname, search])
   return null
 }

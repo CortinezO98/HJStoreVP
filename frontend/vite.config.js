@@ -10,6 +10,9 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
+      '/sitemap.xml': { target: 'http://localhost:8000', changeOrigin: true },
+      '/robots.txt': { target: 'http://localhost:8000', changeOrigin: true },
+      '/share': { target: 'http://localhost:8000', changeOrigin: true },
       '/uploads': {
         target: 'http://localhost:8000',
         changeOrigin: true,
