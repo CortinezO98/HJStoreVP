@@ -146,3 +146,8 @@ export const analyticsApi = {
   dashboard: () =>
     apiClient.get('/analytics/dashboard-summary'),
 }
+
+// ── IDENTIDAD PÚBLICA Y POLÍTICAS COMERCIALES ──────────────────────────────
+export const storefrontSettingsApi = {
+  public: () => apiClient.get('/storefront-settings/public'),
+}
