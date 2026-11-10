@@ -315,7 +315,7 @@ export default function ProductPage() {
               </select>
               {!selectedVariant && <p className="text-sm text-gray-500">Debes seleccionar una referencia para agregarla al carrito.</p>}
             </div>
-          )
+          )}
           <button type="button" onClick={() => toggleFavorite(product)}
             className="mt-3 inline-flex items-center gap-2 border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
             aria-pressed={favorites.some((item) => item.id === product.id)}>
