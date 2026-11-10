@@ -227,3 +227,29 @@ export const useCartStore = create(
     }
   )
 )
+
+// Favoritos locales por navegador. No modifica inventario, precios ni pedidos.
+// El backend sigue siendo la fuente de verdad al añadir productos al carrito.
+export const useWishlistStore = create(
+  persist(
+    (set, get) => ({
+      items: [],
+      has: (productId) => get().items.some((item) => item.id === productId),
+      toggle: (product) => {
+        const { id, name, slug, primary_image, sale_price } = product || {}
+        if (!isPositiveInteger(Number(id)) || !slug) return
+        const items = get().items
+        if (items.some((item) => item.id === id)) {
+          set({ items: items.filter((item) => item.id !== id) })
+        } else {
+          set({ items: [...items, { id, name, slug, primary_image, sale_price }].slice(-100) })
+        }
+      },
+      remove: (productId) => set({
+        items: get().items.filter((item) => item.id !== productId),
+      }),
+      clear: () => set({ items: [] }),
+    }),
+    { name: 'hjstore-wishlist-v1' }
+  )
+)
