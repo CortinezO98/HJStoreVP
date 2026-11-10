@@ -12,6 +12,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
+from app.services.notifications import enqueue_order_notification
 
 from app.models.models import (
     Inventory, Order, OrderChannel, OrderStatus, OrderStockReservation,
@@ -117,6 +118,9 @@ def cancel_web_order(
         r.resolved_at = datetime.utcnow()
 
     order.status = OrderStatus.CANCELLED
+    enqueue_order_notification(
+        db, order, "order_cancelled", f"order:{order.id}:cancelled"
+    )
     return True
 
 
@@ -150,4 +154,7 @@ def mark_paid(db: Session, order: Order, method: str, reference: str | None) -> 
     order.payment_method = method
     order.payment_ref = reference
     order.paid_at = datetime.utcnow()
+    enqueue_order_notification(
+        db, order, "payment_confirmed", f"order:{order.id}:paid"
+    )
     return True
