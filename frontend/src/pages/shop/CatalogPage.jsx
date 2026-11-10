@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { SlidersHorizontal, Search, X, ArrowUpDown } from 'lucide-react'
+import { SlidersHorizontal, Search, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { productsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
+import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 
 const CATEGORIES = [
   { name: 'Todos',    slug: '' },
@@ -40,32 +41,46 @@ export default function CatalogPage() {
   const minPrice   = searchParams.get('min_price') || ''
   const maxPrice   = searchParams.get('max_price') || ''
   const featured   = searchParams.get('featured') || ''
-  const page       = parseInt(searchParams.get('page') || '1')
+  const currentSearch = searchParams.get('q') || ''
+  const inStock = searchParams.get('in_stock') === 'true'
+  const requestedPage = Number(searchParams.get('page') || '1')
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
 
   // Sync search input con URL
   useEffect(() => {
     setSearch(searchParams.get('q') || '')
   }, [searchParams])
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ['products', 'catalog', categoria, search, sort, minPrice, maxPrice, featured, page],
+  const { data: products, isLoading, isError, refetch } = useQuery({
+    queryKey: ['products', 'catalog', categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock, page],
     queryFn: () => productsApi.list({
-      search:    search || undefined,
+      search:    currentSearch || undefined,
       category:  categoria || undefined,
       sort:      sort || undefined,
       min_price: minPrice || undefined,
       max_price: maxPrice || undefined,
       featured:  featured === 'true' ? true : undefined,
+      in_stock: inStock || undefined,
       page,
       per_page: 24,
     }).then((r) => r.data),
   })
 
   const setFilter = (key, value) => {
-    const params = Object.fromEntries(searchParams)
-    if (value) params[key] = value
-    else delete params[key]
-    params.page = '1'
+    const params = new URLSearchParams(searchParams)
+    if (value) params.set(key, value)
+    else params.delete(key)
+    if (key !== 'page') params.set('page', '1')
+    setSearchParams(params)
+  }
+
+  const setPriceFilter = (min, max) => {
+    const params = new URLSearchParams(searchParams)
+    if (min) params.set('min_price', min)
+    else params.delete('min_price')
+    if (max) params.set('max_price', max)
+    else params.delete('max_price')
+    params.set('page', '1')
     setSearchParams(params)
   }
 
@@ -74,7 +89,7 @@ export default function CatalogPage() {
     setSearchParams({})
   }
 
-  const activeFiltersCount = [categoria, search, sort, minPrice, maxPrice, featured].filter(Boolean).length
+  const activeFiltersCount = [categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock].filter(Boolean).length
 
   // Etiqueta del título según filtros
   const pageTitle = categoria
@@ -82,7 +97,7 @@ export default function CatalogPage() {
     : featured === 'true' ? '⭐ Productos destacados' : 'Catálogo'
 
   return (
-    <div className="editorial-catalog max-w-[1480px] mx-auto px-5 sm:px-10 lg:px-12 py-12">
+    <div className="editorial-catalog store-container store-section">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -91,7 +106,7 @@ export default function CatalogPage() {
           {!isLoading && (
             <p className="text-gray-500 text-sm mt-1">
               {products?.length || 0} productos encontrados
-              {search && <> para "<span className="font-medium text-gray-700">{search}</span>"</>}
+              {currentSearch && <> para "<span className="font-medium text-gray-700">{currentSearch}</span>"</>}
             </p>
           )}
         </div>
@@ -131,19 +146,19 @@ export default function CatalogPage() {
           {categoria && (
             <span className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-3 py-1 rounded-full">
               {CATEGORIES.find(c => c.slug === categoria)?.name}
-              <button onClick={() => setFilter('categoria', '')}><X size={12} /></button>
+              <button type="button" aria-label="Quitar filtro de categoría" onClick={() => setFilter('categoria', '')}><X size={12} /></button>
             </span>
           )}
-          {search && (
+          {currentSearch && (
             <span className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-3 py-1 rounded-full">
-              "{search}"
-              <button onClick={() => { setSearch(''); setFilter('q', '') }}><X size={12} /></button>
+              "{currentSearch}"
+              <button type="button" aria-label="Quitar filtro de búsqueda" onClick={() => { setSearch(''); setFilter('q', '') }}><X size={12} /></button>
             </span>
           )}
           {(minPrice || maxPrice) && (
             <span className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-3 py-1 rounded-full">
               Precio filtrado
-              <button onClick={() => { setFilter('min_price', ''); setFilter('max_price', '') }}><X size={12} /></button>
+              <button type="button" aria-label="Quitar filtro de precio" onClick={() => setPriceFilter('', '')}><X size={12} /></button>
             </span>
           )}
           <button
@@ -226,10 +241,7 @@ export default function CatalogPage() {
                   return (
                     <button
                       key={range.label}
-                      onClick={() => {
-                        setFilter('min_price', range.min)
-                        setFilter('max_price', range.max)
-                      }}
+                      onClick={() => setPriceFilter(range.min, range.max)}
                       className={`text-left text-sm px-3 py-2 rounded-lg transition-colors ${
                         isActive
                           ? 'bg-brand-100 text-brand-700 font-semibold'
@@ -275,26 +287,25 @@ export default function CatalogPage() {
         {/* ── GRID PRODUCTOS ──────────────────────────────────── */}
         <div className="flex-1">
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-gray-100 rounded-2xl aspect-square animate-pulse" />
-              ))}
-            </div>
+            <LoadingGrid count={8} />
+          ) : isError ? (
+            <ErrorState onRetry={() => refetch()} />
           ) : products?.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-5xl mb-4">🔍</div>
               <p className="text-gray-500 text-lg font-medium mb-2">No encontramos productos</p>
               <p className="text-gray-400 text-sm mb-6">
-                {search
-                  ? `No hay resultados para "${search}"`
+                {currentSearch
+                  ? `No hay resultados para "${currentSearch}"`
                   : 'Prueba con otros filtros'
                 }
               </p>
               <button
-                onClick={clearAllFilters}
-                className="btn-primary text-sm"
+                type="button"
+                onClick={page > 1 ? () => setFilter('page', String(page - 1)) : clearAllFilters}
+                className="store-button store-button-dark"
               >
-                Limpiar filtros y ver todo
+                {page > 1 ? 'VOLVER A LA PÁGINA ANTERIOR' : 'LIMPIAR FILTROS'}
               </button>
             </div>
           ) : (
@@ -305,16 +316,18 @@ export default function CatalogPage() {
                 ))}
               </div>
 
-              {/* Paginación simple */}
-              {products.length === 24 && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={() => setFilter('page', String(page + 1))}
-                    className="editorial-load-more"
-                  >
-                    Cargar más productos
+              {(page > 1 || products.length === 24) && (
+                <nav aria-label="Paginación del catálogo" className="mt-12 flex flex-wrap items-center justify-center gap-4">
+                  <button type="button" className="store-button store-button-outline"
+                    disabled={page <= 1} onClick={() => setFilter('page', String(page - 1))}>
+                    ANTERIOR
                   </button>
-                </div>
+                  <span className="text-xs font-bold text-neutral-500 uppercase" aria-current="page">PÁGINA {page}</span>
+                  <button type="button" className="store-button store-button-dark"
+                    disabled={products.length < 24} onClick={() => setFilter('page', String(page + 1))}>
+                    SIGUIENTE
+                  </button>
+                </nav>
               )}
             </>
           )}

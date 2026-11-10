@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useCartStore, useAuthStore } from '../../store'
@@ -19,10 +19,16 @@ export default function ShopLayout() {
   const cartCount = useCartStore((s) => s.count())
   const { isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus()
   }, [searchOpen])
+
+  useEffect(() => {
+    setMenuOpen(false)
+    setSearchOpen(false)
+  }, [location.pathname, location.search])
 
   const handleSearch = (event) => {
     event.preventDefault()
@@ -36,6 +42,7 @@ export default function ShopLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-black">
+      <a href="#store-main-content" className="store-skip-link">Saltar al contenido principal</a>
       <div className="editorial-announcement">
         DESCUBRE LA NUEVA COLECCIÓN · ENVÍOS A TODO COLOMBIA
       </div>
@@ -62,7 +69,7 @@ export default function ShopLayout() {
               aria-label={isAuthenticated ? 'Mi cuenta' : 'Iniciar sesión'}>
               <UserRound size={19} strokeWidth={1.5} />
             </Link>
-            <Link to="/carrito" className="editorial-bag" aria-label="Ver carrito">
+            <Link to="/carrito" className="editorial-bag" aria-label={`Ver carrito, ${cartCount} productos`}>
               <ShoppingBag size={19} strokeWidth={1.5} />
               {cartCount > 0 && <span>{cartCount > 99 ? '99+' : cartCount}</span>}
             </Link>
@@ -73,9 +80,9 @@ export default function ShopLayout() {
           </div>
         </div>
         {searchOpen && (
-          <form className="editorial-search" onSubmit={handleSearch}>
+          <form className="editorial-search" role="search" onSubmit={handleSearch}>
             <Search size={19} strokeWidth={1.5} />
-            <input ref={searchRef} value={searchText} onChange={(e) => setSearchText(e.target.value)}
+            <input ref={searchRef} value={searchText} onChange={(e) => setSearchText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setSearchOpen(false) }}
               placeholder="¿Qué estás buscando?" aria-label="Buscar" />
             <button type="submit">BUSCAR <ArrowRight size={15} /></button>
           </form>
@@ -94,7 +101,7 @@ export default function ShopLayout() {
         )}
       </header>
 
-      <main className="flex-1"><Outlet /></main>
+      <main id="store-main-content" tabIndex={-1} className="flex-1"><Outlet /></main>
 
       <footer className="editorial-footer">
         <div className="editorial-footer-inner">
@@ -117,7 +124,7 @@ export default function ShopLayout() {
           <div>
             <strong>CONTACTO</strong>
             <p>Atención y envíos en Colombia.</p>
-            <p>Consultas: info@hjstorevp.com</p>
+            <p>Consulta el estado de tus pedidos desde tu cuenta.</p>
             <span className="inline-flex items-center gap-2"><Instagram size={15} /> HJStoreVP</span>
           </div>
         </div>
