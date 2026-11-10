@@ -1,6 +1,5 @@
 """Imágenes de catálogo: validación real, escritura segura y cambios consistentes."""
 import io
-import os
 import uuid
 from pathlib import Path
 from typing import List
@@ -183,7 +182,7 @@ def set_primary_image(
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
     db.query(ProductImage).filter(
         ProductImage.product_id == product_id
-    ).update({"is_primary": False}, synchronize_session=False)
+    ).update({"is_primary": False}, synchronize_session="fetch")
     image.is_primary = True
     db.commit()
     db.refresh(image)
