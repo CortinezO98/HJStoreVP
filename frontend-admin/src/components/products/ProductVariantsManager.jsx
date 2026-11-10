@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { inventoryApi, locationsApi, productsApi } from '../../services/api'
+import { apiClient, inventoryApi, locationsApi, productsApi } from '../../services/api'
 import toast from 'react-hot-toast'
 
 const asMoney = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(v || 0))
 const detail = (error) => error?.response?.data?.detail || error?.message || 'No se pudo completar la operación'
+const API_URL = import.meta.env.VITE_API_URL || ''
+const imageUrl = (url) => url?.startsWith('http') ? url : url ? `${API_URL}${url}` : null
 const emptyForm = { label: '', sku: '', color: '', talla: '', presentacion: '', cost_price: '', sale_price: '' }
 
 export default function ProductVariantsManager({ product, onClose }) {
@@ -14,6 +16,9 @@ export default function ProductVariantsManager({ product, onClose }) {
   const [stockTarget, setStockTarget] = useState('')
   const [stockLocation, setStockLocation] = useState('')
   const [stockQty, setStockQty] = useState('')
+  const [imageTarget, setImageTarget] = useState('')
+  const [imageFiles, setImageFiles] = useState([])
+  const [imageBusy, setImageBusy] = useState(false)
 
   const { data: variants = [], isLoading } = useQuery({
     queryKey: ['admin-variants', product.id],
@@ -28,6 +33,7 @@ export default function ProductVariantsManager({ product, onClose }) {
     client.invalidateQueries({ queryKey: ['admin-variants', product.id] })
     client.invalidateQueries({ queryKey: ['admin-products'] })
     client.invalidateQueries({ queryKey: ['products'] })
+    client.invalidateQueries({ queryKey: ['product-detail'] })
   }
   const save = useMutation({
     mutationFn: (payload) => editing
@@ -56,6 +62,40 @@ export default function ProductVariantsManager({ product, onClose }) {
     onSuccess: invalidate,
     onError: (error) => toast.error(detail(error)),
   })
+
+  const uploadImages = async (variantId) => {
+    if (!imageFiles.length) return toast.error('Selecciona las imágenes')
+    const formData = new FormData()
+    imageFiles.forEach((file) => formData.append('files', file))
+    setImageBusy(true)
+    try {
+      await apiClient.post(`/products/${variantId}/images`, formData)
+      toast.success('Fotos de la variante guardadas')
+      setImageFiles([])
+      invalidate()
+    } catch (error) {
+      toast.error(detail(error))
+    } finally {
+      setImageBusy(false)
+    }
+  }
+
+  const updateImage = async (variantId, imageId, operation) => {
+    setImageBusy(true)
+    try {
+      if (operation === 'primary') {
+        await apiClient.patch(`/products/${variantId}/images/primary`, { image_id: imageId })
+      } else {
+        await apiClient.delete(`/products/${variantId}/images/${imageId}`)
+      }
+      toast.success(operation === 'primary' ? 'Foto principal actualizada' : 'Foto eliminada')
+      invalidate()
+    } catch (error) {
+      toast.error(detail(error))
+    } finally {
+      setImageBusy(false)
+    }
+  }
 
   const options = Object.fromEntries(
     ['color', 'talla', 'presentacion']
@@ -121,15 +161,43 @@ export default function ProductVariantsManager({ product, onClose }) {
         {isLoading && <p className="text-sm text-gray-500">Cargando referencias...</p>}
         {variants.map((item) => <div key={item.id} className="border rounded-lg p-3 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><strong>{item.label}</strong><p className="text-xs text-gray-500">SKU: {item.sku} · ID inventario: {item.id} · {item.active ? 'Activo' : 'Inactivo'}</p>
-              <p className="text-sm">Precio: {asMoney(item.sale_price)} · Existencias: {item.total_stock}</p></div>
+            <div className="flex items-center gap-3">
+              {item.primary_image && <img src={imageUrl(item.primary_image)} alt={item.label} className="w-16 h-16 object-cover rounded-lg border" />}
+              <div><strong>{item.label}</strong><p className="text-xs text-gray-500">SKU: {item.sku} · ID inventario: {item.id} · {item.active ? 'Activo' : 'Inactivo'}</p>
+              <p className="text-sm">Precio: {asMoney(item.sale_price)} · Existencias: {item.total_stock}</p></div></div>
             <div className="flex flex-wrap gap-2">
               <button className="btn-secondary" type="button" onClick={() => handleEdit(item)}>Editar</button>
               <button className="btn-secondary" type="button" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: item.id, active: !item.active })}>
                 {item.active ? 'Desactivar' : 'Activar'}</button>
               {item.active && <button type="button" className="btn-primary" onClick={() => setStockTarget(String(item.id))}>Ingresar stock</button>}
+              <button type="button" className="btn-secondary" onClick={() => { setImageTarget(imageTarget === String(item.id) ? '' : String(item.id)); setImageFiles([]) }}>
+                {imageTarget === String(item.id) ? 'Cerrar fotos' : `Gestionar fotos (${item.images?.length || 0})`}
+              </button>
             </div>
           </div>
+          {imageTarget === String(item.id) && <div className="rounded-lg bg-gray-50 p-3 space-y-3">
+            <p className="font-medium text-sm">Fotografías de esta variante</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {(item.images || []).map((img) => <div key={img.id} className="bg-white border rounded-lg p-2 space-y-2">
+                <img src={imageUrl(img.url)} alt={img.alt_text || item.label} className="w-full aspect-square object-cover rounded" />
+                <div className="flex flex-wrap gap-2">
+                  {img.is_primary
+                    ? <span className="text-xs text-green-700">Principal</span>
+                    : <button type="button" disabled={imageBusy} onClick={() => updateImage(item.id, img.id, 'primary')} className="text-xs text-brand-700 underline">Hacer principal</button>}
+                  <button type="button" disabled={imageBusy} onClick={() => updateImage(item.id, img.id, 'delete')} className="text-xs text-red-700 underline">Eliminar</button>
+                </div>
+              </div>)}
+            </div>
+            <label className="block text-xs">Subir hasta diez fotografías
+              <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="input w-full mt-1"
+                onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
+            </label>
+            <button type="button" disabled={imageBusy || imageFiles.length === 0 || imageFiles.length > 10}
+              onClick={() => uploadImages(item.id)} className="btn-primary">
+              {imageBusy ? 'Guardando...' : 'Subir fotografías'}
+            </button>
+            <p className="text-xs text-gray-500">Si esta variante no tiene fotos, la tienda utilizará las imágenes generales del producto.</p>
+          </div>}
           {stockTarget === String(item.id) && <form className="grid grid-cols-1 sm:grid-cols-3 gap-2" onSubmit={(e) => {
             e.preventDefault()
             replenish.mutate({ product_id: item.id, location_id: Number(stockLocation),
