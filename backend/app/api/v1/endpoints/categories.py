@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
-from app.core.deps import require_admin, get_current_user
+from app.core.deps import require_admin, get_optional_user, is_catalog_admin
 from app.models.models import Category, Product, User
 from pydantic import BaseModel
 from slugify import slugify
@@ -51,7 +51,10 @@ def unique_slug(db: Session, name: str, exclude_id: int = None) -> str:
 def list_categories(
     include_inactive: bool = False,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ):
+    if include_inactive and not is_catalog_admin(current_user):
+        raise HTTPException(status_code=403, detail="Consultar categorías inactivas requiere permisos de administración")
     q = db.query(Category)
     if not include_inactive:
         q = q.filter(Category.active == True)
