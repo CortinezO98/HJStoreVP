@@ -99,6 +99,8 @@ export default function AccountPage() {
                     </div>
                     <div className="flex flex-col gap-2 border-t border-neutral-100 py-4 text-sm">
                       <div className="flex justify-between gap-3"><span className="text-neutral-500">Productos</span><strong>{formatCOP(order.subtotal)}</strong></div>
+                      {Number(order.discount_amount || 0) > 0 &&
+                        <div className="flex justify-between gap-3 text-emerald-700"><span>Descuento {order.coupon_code || ''}</span><strong>− {formatCOP(order.discount_amount)}</strong></div>}
                       <div className="flex justify-between gap-3"><span className="text-neutral-500">Envío</span><strong>{formatCOP(order.shipping_amount || 0)}</strong></div>
                       {order.shipping_address?.carrier &&
                         <p className="text-neutral-500 text-xs">{order.shipping_address.carrier} · {order.shipping_address.shipping_service}</p>}
