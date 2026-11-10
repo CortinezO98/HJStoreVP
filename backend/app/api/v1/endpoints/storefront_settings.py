@@ -1,13 +1,17 @@
 """Configuración pública del comercio; identidad, contenido y políticas."""
 from typing import Optional
 from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.core.deps import require_super_admin
+from app.core.config import settings
+from app.api.v1.endpoints.images import normalize_image, MAX_SIZE_BYTES
 from app.db.session import get_db
 from app.models.models import StorefrontSettings, User
 
@@ -129,3 +133,21 @@ def update_admin_settings(
         db.rollback()
         raise HTTPException(status_code=409, detail="La configuración fue modificada simultáneamente, vuelve a cargar")
     return public_settings(db)
+
+
+@router.post("/admin/upload-image", status_code=201)
+async def upload_brand_image(
+    file: UploadFile = File(...),
+    _: User = Depends(require_super_admin),
+):
+    if settings.STORAGE_BACKEND != "local":
+        raise HTTPException(status_code=409, detail="Configura almacenamiento de imágenes antes de subir")
+    raw = await file.read(MAX_SIZE_BYTES + 1)
+    data, ext = normalize_image(raw)
+    folder = Path(settings.UPLOAD_DIR).resolve() / "branding"
+    folder.mkdir(parents=True, exist_ok=True)
+    name = f"{uuid4().hex}.{ext}"
+    target = folder / name
+    with target.open("xb") as handle:
+        handle.write(data)
+    return {"url": f"/uploads/branding/{name}"}
