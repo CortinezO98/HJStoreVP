@@ -2,18 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal, Search, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { productsApi } from '../../services/api'
+import { productsApi, categoriesApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 
-const CATEGORIES = [
-  { name: 'Todos',    slug: '' },
-  { name: 'Gorras',   slug: 'gorras',   emoji: '🧢' },
-  { name: 'Perfumes', slug: 'perfumes', emoji: '🌸' },
-  { name: 'Relojes',  slug: 'relojes',  emoji: '⌚' },
-  { name: 'Bolsos',   slug: 'bolsos',   emoji: '👜' },
-  { name: 'Canguros', slug: 'canguros', emoji: '🎽' },
-]
 
 const SORT_OPTIONS = [
   { value: '',          label: 'Relevancia' },
@@ -35,6 +27,14 @@ export default function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch]             = useState(searchParams.get('q') || '')
   const [filtersOpen, setFiltersOpen]   = useState(false)
+  const { data: categoryRows = [] } = useQuery({
+    queryKey: ['storefront-categories'],
+    queryFn: () => categoriesApi.list().then((r) => r.data),
+  })
+  const categories = [
+    { name: 'Todos', slug: '' },
+    ...categoryRows.filter((c) => c.active !== false).map((c) => ({ name: c.name, slug: c.slug })),
+  ]
 
   const categoria  = searchParams.get('categoria') || ''
   const sort       = searchParams.get('sort') || ''
@@ -93,7 +93,7 @@ export default function CatalogPage() {
 
   // Etiqueta del título según filtros
   const pageTitle = categoria
-    ? CATEGORIES.find(c => c.slug === categoria)?.name || 'Catálogo'
+    ? categories.find(c => c.slug === categoria)?.name || 'Catálogo'
     : featured === 'true' ? '⭐ Productos destacados' : 'Catálogo'
 
   return (
@@ -145,7 +145,7 @@ export default function CatalogPage() {
         <div className="flex flex-wrap gap-2 mb-4">
           {categoria && (
             <span className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-3 py-1 rounded-full">
-              {CATEGORIES.find(c => c.slug === categoria)?.name}
+              {categories.find(c => c.slug === categoria)?.name}
               <button type="button" aria-label="Quitar filtro de categoría" onClick={() => setFilter('categoria', '')}><X size={12} /></button>
             </span>
           )}
@@ -215,7 +215,7 @@ export default function CatalogPage() {
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Categoría</p>
               <div className="flex flex-col gap-0.5">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.slug}
                     onClick={() => setFilter('categoria', cat.slug)}
