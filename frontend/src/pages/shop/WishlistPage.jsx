@@ -11,17 +11,18 @@ export default function WishlistPage() {
   // Consultar el catálogo vigente: nunca mostrar un precio histórico guardado
   // en navegador como si fuese precio actual.
   const { data: products = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['wishlist-products', saved.map((p) => p.id).join(',')],
+    queryKey: ['wishlist-products', saved.map((p) => p.slug).join(',')],
     queryFn: async () => {
       if (!saved.length) return []
-      const pages = await Promise.all(
-        Array.from({ length: 10 }, (_, i) => i + 1).map(async (page) => {
-          const { data } = await productsApi.list({ page, per_page: 100 })
-          return data
-        })
+      const details = await Promise.all(
+        saved.map((item) => productsApi.get(item.slug)
+          .then(({ data }) => data)
+          .catch((error) => {
+            if (error?.response?.status === 404) return null
+            throw error
+          }))
       )
-      const wanted = new Set(saved.map((p) => p.id))
-      return pages.flat().filter((p) => wanted.has(p.id))
+      return details.filter(Boolean)
     },
     enabled: saved.length > 0,
   })
