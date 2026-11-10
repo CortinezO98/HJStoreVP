@@ -526,3 +526,42 @@ class TestWebOrderStockReservations:
             order_id=created.json()["id"]
         ).one().status == "released"
         db.close()
+
+
+# ── PUBLIC CATALOG PRIVACY / AUTHORIZATION ──────────────────────────────────
+
+def test_public_catalog_does_not_expose_commercial_costs(client, auth_headers):
+    created = client.post("/api/v1/products/", json={
+        "name": "Gorra privada", "sku": "PRIV-COST-001",
+        "cost_price": 20000, "margin_pct": 45,
+    }, headers=auth_headers)
+    assert created.status_code == 201
+    item_id = created.json()["id"]
+
+    public_list = client.get("/api/v1/products/").json()
+    record = next(item for item in public_list if item["id"] == item_id)
+    assert "cost_price" not in record
+    assert "margin_pct" not in record
+
+    public_detail = client.get(f"/api/v1/products/{item_id}").json()
+    assert "cost_price" not in public_detail
+    assert "margin_pct" not in public_detail
+
+    admin_list = client.get("/api/v1/products/", headers=auth_headers).json()
+    admin_record = next(item for item in admin_list if item["id"] == item_id)
+    assert "cost_price" in admin_record
+    assert "margin_pct" in admin_record
+
+
+def test_public_cannot_request_inactive_catalog(client, auth_headers):
+    for path in ("/api/v1/products/?include_inactive=true",
+                 "/api/v1/categories?include_inactive=true"):
+        assert client.get(path).status_code == 403
+        assert client.get(path, headers=auth_headers).status_code == 200
+
+
+def test_http_security_headers(client):
+    response = client.get("/health")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"]

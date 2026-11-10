@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from slugify import slugify
 
-from app.core.deps import require_admin
+from app.core.deps import require_admin, get_optional_user, is_catalog_admin
 from app.db.session import get_db
 from app.models.models import Category, Inventory, Product, ProductImage, User
 from app.schemas.schemas import ProductCreate, ProductUpdate
@@ -31,8 +31,8 @@ def unique_slug(db: Session, name: str, exclude_id: int | None = None) -> str:
         counter += 1
 
 
-def serialize_product_list_row(row) -> dict:
-    return {
+def serialize_product_list_row(row, admin: bool = False) -> dict:
+    payload = {
         "id": row.id,
         "name": row.name,
         "slug": row.slug,
@@ -45,10 +45,12 @@ def serialize_product_list_row(row) -> dict:
         "category_slug": row.category_slug,
         "primary_image": row.primary_image,
         "total_stock": int(row.total_stock or 0),
-        "cost_price": float(row.cost_price or 0),
-        "margin_pct": float(row.margin_pct or 0),
         "stock_min_alert": row.stock_min_alert,
     }
+    if admin:
+        payload["cost_price"] = float(row.cost_price or 0)
+        payload["margin_pct"] = float(row.margin_pct or 0)
+    return payload
 
 
 @router.get("/")
@@ -64,7 +66,11 @@ def list_products(
     per_page: int = Query(24, ge=1, le=100),
     include_inactive: bool = Query(False),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ):
+    admin = is_catalog_admin(current_user)
+    if include_inactive and not admin:
+        raise HTTPException(status_code=403, detail="Consultar productos inactivos requiere permisos de administración")
     primary_image_subq = (
         db.query(
             ProductImage.product_id.label("product_id"),
@@ -147,11 +153,15 @@ def list_products(
     offset = (page - 1) * per_page
     rows = q.offset(offset).limit(per_page).all()
 
-    return [serialize_product_list_row(row) for row in rows]
+    return [serialize_product_list_row(row, admin=admin) for row in rows]
 
 
 @router.get("/{slug_or_id}")
-def get_product(slug_or_id: str, db: Session = Depends(get_db)):
+def get_product(
+    slug_or_id: str,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
     q = (
         db.query(Product)
         .options(
@@ -184,7 +194,7 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
     if sorted_images:
         primary_image = sorted_images[0].url
 
-    return {
+    payload = {
         "id": product.id,
         "name": product.name,
         "slug": product.slug,
@@ -203,8 +213,6 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
         }
         if product.category
         else None,
-        "cost_price": float(product.cost_price or 0),
-        "margin_pct": float(product.margin_pct or 0),
         "sale_price": float(product.sale_price or 0),
         "stock_min_alert": product.stock_min_alert,
         "active": product.active,
@@ -224,6 +232,10 @@ def get_product(slug_or_id: str, db: Session = Depends(get_db)):
         ],
         "created_at": product.created_at,
     }
+    if is_catalog_admin(current_user):
+        payload["cost_price"] = float(product.cost_price or 0)
+        payload["margin_pct"] = float(product.margin_pct or 0)
+    return payload
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

@@ -55,3 +55,32 @@ def require_roles(*roles: UserRole):
 require_admin = require_roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 require_super_admin = require_roles(UserRole.SUPER_ADMIN)
 require_seller = require_roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SELLER)
+
+
+optional_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Public access remains available; invalid credentials gain no privileges."""
+    if credentials is None:
+        return None
+    payload = decode_token(credentials.credentials)
+    if not payload or payload.get("type") != "access":
+        return None
+    try:
+        user_id = int(payload.get("sub", ""))
+    except (TypeError, ValueError):
+        return None
+    user = db.query(User).filter(
+        User.id == user_id, User.active.is_(True)
+    ).first()
+    if not user or not credential_version_matches(payload, user.hashed_password):
+        return None
+    return user
+
+
+def is_catalog_admin(user: User | None) -> bool:
+    return user is not None and user.role in (UserRole.SUPER_ADMIN, UserRole.ADMIN)
