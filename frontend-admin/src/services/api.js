@@ -243,3 +243,8 @@ export const taxReadinessApi = {
   saveProductTax: (id, data) => apiClient.put(`/tax-readiness/products/${id}`, data),
   readiness: () => apiClient.get('/tax-readiness/readiness'),
 }
+
+// Centro de integraciones (solo estados, no secretos)
+export const integrationsApi = {
+  overview: () => apiClient.get('/integrations/overview'),
+}
