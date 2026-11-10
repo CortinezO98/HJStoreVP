@@ -174,6 +174,20 @@ class Product(Base, TimestampMixin):
         Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
+    # Una variante es una referencia vendible con SKU y stock propios.
+    # El producto padre se usa para exhibición y no es vendible cuando tiene variantes.
+    parent_product_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("products.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    variant_options: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    variants: Mapped[list["Product"]] = relationship(
+        "Product", back_populates="parent_product", foreign_keys="Product.parent_product_id"
+    )
+    parent_product: Mapped[Optional["Product"]] = relationship(
+        "Product", back_populates="variants", remote_side="Product.id",
+        foreign_keys=[parent_product_id],
+    )
+
     # Precios
     cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     margin_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
