@@ -52,3 +52,35 @@ La rutina usa únicamente GET/HEAD con timeout corto y sólo localhost; NO solic
 - Revisión de TLS, proxy, logs, respaldos y prácticas de despliegue.
 
 **Criterio de cierre:** alto/crítico mitigado y demostrado en staging; medios con plan y fecha; pruebas integrales completas con evidencias. No publicar conclusiones de seguridad definitiva desde este análisis.
+
+
+## Etapa adicional: protección de autenticación (PR siguiente)
+
+- Intentos de inicio de sesión: Redis guarda contadores por IP y por cuenta,
+  con claves HMAC para no exponer correos o IP en los nombres de clave.
+- Política inicial: 5 fallos por cuenta o 30 por IP durante 900 segundos;
+  el siguiente intento recibe HTTP 429 y Retry-After. No se bloquean
+  cuentas en la base de datos ni se alteran usuarios.
+- La autenticación correcta limpia el contador de la cuenta; el contador
+  de IP se mantiene para limitar enumeración distribuida.
+- Los refresh JWT contienen un `jti` distinto en cada emisión; cualquier
+  refresh JWT válido (incluso legado, sin jti) puede canjearse una sola vez.
+  Redis realiza la operación de reclamación con SET NX EX.
+- Se mantiene la revocación existente de tokens cuando cambia la contraseña.
+- Errores temporales de Redis: en desarrollo se permite seguir (fail-open,
+  con aviso en logs); en producción se rechaza la operación protegida con
+  HTTP 503 (fail-closed). Nunca desactivar estas protecciones en producción.
+- En producción es obligatorio definir explícitamente SECRET_KEY de longitud
+  adecuada; no es válida la clave aleatoria generada al iniciar la aplicación.
+
+**Aspectos de operación:** los clientes de la API deben sustituir y guardar
+el refresh token devuelto en cada renovación, pues la reutilización será
+rechazada. Si varias peticiones renuevan a la vez con el mismo token, una
+obtendrá 401: el frontend debe serializar la renovación compartida.
+El bloqueo por IP usa la IP de conexión observada por ASGI; **no** se debe
+confiar en X-Forwarded-For sin declarar proxies confiables. Cuando se
+despliegue tras un proxy que concentre el tráfico, configurar proxy confiable
+y revisar el umbral IP para evitar bloquear a clientes legítimos.
+
+No se realizan ataques de fuerza bruta sobre cuentas reales ni se ejecutan
+pruebas integrales antes del cierre del proyecto.
