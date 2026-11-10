@@ -13,7 +13,7 @@ from app.db.session import Base
 # Importar todos los modelos para que Alembic los detecte
 from app.models.models import (
     Location, User, Address, Category, Product, ProductImage,
-    Inventory, StockMovement, Order, OrderItem, OrderStockReservation, ShippingRate, Shipment, ShipmentEvent, CustomerNotification, PostSaleCase, PostSaleEvent, CommercialDocument, CommercialDocumentEvent, TaxIssuerProfile, ProductTaxProfile, PromotionCoupon, CouponRedemption
+    Inventory, StockMovement, Order, OrderItem, OrderStockReservation, ShippingRate, Shipment, ShipmentEvent, CustomerNotification, PostSaleCase, PostSaleEvent, CommercialDocument, CommercialDocumentEvent, TaxIssuerProfile, ProductTaxProfile, PromotionCoupon, CouponRedemption, CustomerEngagementPreference, SavedCustomerCart, CartRecoveryNotice, LoyaltyLedger
 )
 
 config = context.config
