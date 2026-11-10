@@ -7,7 +7,7 @@ from pydantic import Field, model_validator
 from sqlalchemy import update
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 import random, string
 
@@ -15,9 +15,11 @@ from app.db.session import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.models import (
     User, UserRole, Order, OrderItem, OrderStatus, OrderChannel,
-    Product, Inventory, Location, LocationType
+    Product, Inventory, Location, LocationType, OrderStockReservation
 )
 from pydantic import BaseModel
+from app.services.stock_reservations import cancel_web_order, lock_web_order
+from app.core.config import settings
 
 router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 
@@ -129,6 +131,7 @@ def reserve_stock(db: Session, product_id: int, qty: int):
     )
     if updated.rowcount != 1:
         raise HTTPException(status_code=400, detail="Stock insuficiente; actualiza tu carrito")
+    return inv.location_id
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -206,8 +209,18 @@ def create_web_order(
             margin_pct=p.margin_pct,
         )
         db.add(oi)
+        db.flush()
         order_items.append(oi)
-        reserve_stock(db, p.id, item.qty)
+        location_id = reserve_stock(db, p.id, item.qty)
+        db.add(OrderStockReservation(
+            order_id=order.id,
+            order_item_id=oi.id,
+            product_id=p.id,
+            location_id=location_id,
+            qty=item.qty,
+            status="held",
+            expires_at=datetime.utcnow() + timedelta(minutes=settings.ORDER_RESERVATION_MINUTES),
+        ))
 
     db.commit()
     db.refresh(order)
@@ -325,16 +338,39 @@ def update_order_status(
     _: User = Depends(require_admin),
 ):
     """Actualiza el estado de una orden (admin)."""
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    order = lock_web_order(db, order_id)
     try:
         next_status = OrderStatus(status)
-        if next_status == OrderStatus.PAID:
-            raise HTTPException(status_code=403, detail="Los pagos deben confirmarse mediante el proveedor de pagos")
-        order.status = next_status
-
-        db.commit()
-        return {"message": f"Estado actualizado a {status}"}
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Estado inválido: {status}")
+
+    if next_status == OrderStatus.PAID:
+        raise HTTPException(status_code=403, detail="Los pagos deben confirmarse mediante el proveedor de pagos")
+    if order.status == next_status:
+        return {"message": "Sin cambios", "status": order.status.value}
+    if next_status == OrderStatus.CANCELLED:
+        cancel_web_order(db, order, "Cancelación por administrador")
+    elif order.status == OrderStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Confirma el pago antes de preparar o despachar")
+    elif order.status == OrderStatus.CANCELLED:
+        raise HTTPException(status_code=409, detail="No es posible cambiar un pedido cancelado")
+    else:
+        order.status = next_status
+    db.commit()
+    return {"message": f"Estado actualizado a {status}"}
+
+
+@router.post("/{order_id}/cancel")
+def cancel_my_web_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cliente cancela únicamente su pedido web pendiente."""
+    order = lock_web_order(db, order_id)
+    if order.customer_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    changed = cancel_web_order(db, order, "Cancelación solicitada por cliente")
+    if changed:
+        db.commit()
+    return {"status": "cancelled", "changed": changed}

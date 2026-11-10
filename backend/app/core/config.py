@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     ADDI_ENV: str = "sandbox"   # "sandbox" o "production"
     ADDI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
 
+    # ─── Reservas de pedidos web ──────────────────────────────
+    # La expiración NO cancela automáticamente pagos: requiere conciliación.
+    ORDER_RESERVATION_MINUTES: int = 30
+
     # ─── Email ─────────────────────────────────────────────────
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

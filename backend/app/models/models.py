@@ -353,3 +353,36 @@ class OrderItem(Base):
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
     product: Mapped["Product"] = relationship("Product", back_populates="order_items")
+
+
+class OrderStockReservation(Base):
+    """Asignación exacta de inventario por línea de pedido web.
+
+    HELD: qty_available ya está descontado; COMMITTED: venta pagada;
+    RELEASED: stock devuelto a la ubicación original una sola vez.
+    Se gestiona desde app.services.stock_reservations.
+    """
+    __tablename__ = "order_stock_reservations"
+    __table_args__ = (
+        UniqueConstraint("order_item_id", name="uq_order_stock_reservation_item"),
+        Index("ix_order_stock_reservations_expiration", "status", "expires_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_item_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False
+    )
+    product_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("products.id"), nullable=False
+    )
+    location_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("locations.id"), nullable=False
+    )
+    qty: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="held")
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

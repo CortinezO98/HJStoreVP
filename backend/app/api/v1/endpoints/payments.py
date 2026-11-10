@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.core.deps import get_current_user
 from app.core.config import settings
 from app.models.models import User, Order, OrderStatus, OrderChannel, OrderItem
+from app.services.stock_reservations import cancel_web_order, lock_web_order, mark_paid
 from app.services.wompi import (
     build_checkout_url, verify_webhook_signature as verify_wompi_sig
 )
@@ -108,6 +109,14 @@ async def initiate_payment(
             detail=f"Esta orden ya tiene estado: {order.status.value}"
         )
 
+    # Registrar método iniciado. Evita liberar stock mientras una pasarela
+    # todavía puede confirmar un cobro; no equivale a confirmar el pago.
+    if order.payment_method and order.payment_method != data.method:
+        raise HTTPException(
+            status_code=409,
+            detail="Ya hay un método de pago iniciado para este pedido; verifica su estado",
+        )
+
     amount = float(order.total_amount)
     amount_cents = int(order.total_amount * 100)
     redirect_base = "http://localhost:5173/pago-confirmado"
@@ -129,6 +138,9 @@ async def initiate_payment(
         else:
             url = f"http://localhost:5173/pago-demo?order={order.order_number}&provider=wompi&amount={amount}"
 
+        if wompi_enabled:
+            order.payment_method = "wompi"
+            db.commit()
         return InitiatePaymentResponse(
             order_number=order.order_number, method="wompi",
             checkout_url=url, amount=amount, enabled=wompi_enabled,
@@ -145,6 +157,9 @@ async def initiate_payment(
             customer_phone=data.customer_phone or current_user.phone or "",
             customer_id=data.customer_id or "",
         )
+        if sistecreditos_enabled():
+            order.payment_method = "sistecreditos"
+            db.commit()
         return InitiatePaymentResponse(
             order_number=order.order_number, method="sistecreditos",
             checkout_url=url, amount=amount, enabled=sistecreditos_enabled(),
@@ -171,6 +186,8 @@ async def initiate_payment(
         )
         # Guardar el ID de la aplicación Addi en la orden para seguimiento
         order.payment_ref = result.get("applicationId")
+        if addi_enabled():
+            order.payment_method = "addi"
         db.commit()
 
         return InitiatePaymentResponse(
@@ -207,19 +224,37 @@ async def wompi_webhook(request: Request, db: Session = Depends(get_db)):
     if not reference:
         return {"status": "ignored"}
 
-    order = db.query(Order).filter(Order.order_number == reference).first()
+    order = db.query(Order).filter(
+        Order.order_number == reference,
+        Order.channel == OrderChannel.WEB,
+    ).first()
     if not order:
         return {"status": "order_not_found"}
 
+    order = lock_web_order(db, order.id)
     if wompi_status == "APPROVED":
-        order.status = OrderStatus.PAID
-        order.payment_method = "wompi"
-        order.payment_ref = tx_id
-        order.paid_at = datetime.utcnow()
+        # No aceptar una referencia o importe diferente al pedido interno.
+        try:
+            cents = int(tx["amount_in_cents"])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Importe faltante en la notificación")
+        if tx.get("currency") != "COP" or cents != int(order.total_amount * 100):
+            raise HTTPException(status_code=409, detail="El importe no coincide; conciliación manual")
+        if order.status == OrderStatus.CANCELLED:
+            return {"status": "manual_review", "reason": "late_payment"}
+        mark_paid(db, order, "wompi", str(tx_id) if tx_id else None)
     elif wompi_status in ["DECLINED", "ERROR", "VOIDED"]:
-        order.status = OrderStatus.CANCELLED
-        order.payment_ref = tx_id
-
+        if order.status == OrderStatus.PENDING:
+            try:
+                cancel_web_order(db, order, f"Wompi {wompi_status}", provider_confirmed_failure=True)
+            except HTTPException as exc:
+                if exc.status_code == 409:
+                    return {"status": "manual_review", "reason": "legacy_reservation"}
+                raise
+        elif order.status != OrderStatus.CANCELLED:
+            return {"status": "ignored", "reason": "final_order"}
+    else:
+        return {"status": "ignored", "reason": "unhandled_event"}
     db.commit()
     return {"status": "processed"}
 
@@ -248,19 +283,29 @@ async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db))
     if not order_id:
         return {"status": "ignored"}
 
-    order = db.query(Order).filter(Order.order_number == order_id).first()
+    order = db.query(Order).filter(
+        Order.order_number == order_id, Order.channel == OrderChannel.WEB,
+    ).first()
     if not order:
         return {"status": "order_not_found"}
+    order = lock_web_order(db, order.id)
 
     if sc_status in ["APPROVED", "DISBURSED", "ACTIVE"]:
-        order.status = OrderStatus.PAID
-        order.payment_method = "sistecreditos"
-        order.payment_ref = tx_id
-        order.paid_at = datetime.utcnow()
+        if order.status == OrderStatus.CANCELLED:
+            return {"status": "manual_review", "reason": "late_payment"}
+        mark_paid(db, order, "sistecreditos", str(tx_id) if tx_id else None)
     elif sc_status in ["REJECTED", "CANCELLED", "EXPIRED"]:
-        order.status = OrderStatus.CANCELLED
-        order.payment_ref = tx_id
-
+        if order.status == OrderStatus.PENDING:
+            try:
+                cancel_web_order(db, order, f"Sistecréditos {sc_status}", provider_confirmed_failure=True)
+            except HTTPException as exc:
+                if exc.status_code == 409:
+                    return {"status": "manual_review", "reason": "legacy_reservation"}
+                raise
+        elif order.status != OrderStatus.CANCELLED:
+            return {"status": "ignored", "reason": "final_order"}
+    else:
+        return {"status": "ignored", "reason": "unhandled_event"}
     db.commit()
     return {"status": "processed"}
 
@@ -289,19 +334,29 @@ async def addi_webhook(request: Request, db: Session = Depends(get_db)):
     if not order_id:
         return {"status": "ignored"}
 
-    order = db.query(Order).filter(Order.order_number == order_id).first()
+    order = db.query(Order).filter(
+        Order.order_number == order_id, Order.channel == OrderChannel.WEB,
+    ).first()
     if not order:
         return {"status": "order_not_found"}
+    order = lock_web_order(db, order.id)
 
     if addi_status in ["APPROVED", "PAID", "ACTIVE"]:
-        order.status = OrderStatus.PAID
-        order.payment_method = "addi"
-        order.payment_ref = app_id
-        order.paid_at = datetime.utcnow()
+        if order.status == OrderStatus.CANCELLED:
+            return {"status": "manual_review", "reason": "late_payment"}
+        mark_paid(db, order, "addi", str(app_id) if app_id else None)
     elif addi_status in ["REJECTED", "CANCELLED", "EXPIRED"]:
-        order.status = OrderStatus.CANCELLED
-        order.payment_ref = app_id
-
+        if order.status == OrderStatus.PENDING:
+            try:
+                cancel_web_order(db, order, f"Addi {addi_status}", provider_confirmed_failure=True)
+            except HTTPException as exc:
+                if exc.status_code == 409:
+                    return {"status": "manual_review", "reason": "legacy_reservation"}
+                raise
+        elif order.status != OrderStatus.CANCELLED:
+            return {"status": "ignored", "reason": "final_order"}
+    else:
+        return {"status": "ignored", "reason": "unhandled_event"}
     db.commit()
     return {"status": "processed"}
 
@@ -353,10 +408,8 @@ async def confirm_demo(
     if order.status != OrderStatus.PENDING:
         raise HTTPException(status_code=409, detail="Solo se pueden confirmar pedidos pendientes")
 
-    order.status = OrderStatus.PAID
-    order.payment_method = f"demo-{data.method}"
-    order.payment_ref = f"DEMO-{order.order_number}"
-    order.paid_at = datetime.utcnow()
+    order = lock_web_order(db, order.id)
+    mark_paid(db, order, f"demo-{data.method}", f"DEMO-{order.order_number}")
     db.commit()
 
     return {"status": "paid", "order_number": order.order_number}
