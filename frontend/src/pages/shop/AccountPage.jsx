@@ -4,6 +4,7 @@ import { ShoppingBag, Package, Clock, CheckCircle2, Truck, XCircle, LogOut, User
 import { apiClient } from '../../services/api'
 import { useAuthStore } from '../../store'
 import { PageHeading, EmptyState, ErrorState } from '../../components/shop/StoreUI'
+import ShipmentTimeline from '../../components/shop/ShipmentTimeline'
 
 const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
@@ -110,6 +111,7 @@ export default function AccountPage() {
                         <p className="font-black text-xl mt-1">{formatCOP(order.total_amount)}</p>
                       </div>
                     </div>
+                    <ShipmentTimeline orderId={order.id} orderStatus={order.status} />
                     {order.status === 'pending' && (
                       <p role="status" className="text-xs text-amber-800 bg-amber-50 px-4 py-3 mt-5">El pago de este pedido aún está pendiente de confirmación.</p>
                     )}

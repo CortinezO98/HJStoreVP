@@ -410,3 +410,47 @@ class ShippingRate(Base, TimestampMixin):
     days_min: Mapped[int] = mapped_column(Integer, nullable=False)
     days_max: Mapped[int] = mapped_column(Integer, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+# ─── DESPACHOS Y SEGUIMIENTO WEB ────────────────────────────────────────────
+class Shipment(Base, TimestampMixin):
+    """Un envío gestionado internamente por pedido web, sin sincronización
+    externa de transportadora. Se conserva la trazabilidad de cada transición.
+    """
+    __tablename__ = "shipments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"),
+        unique=True, nullable=False, index=True,
+    )
+    carrier: Mapped[str] = mapped_column(String(120), nullable=False)
+    service: Mapped[str] = mapped_column(String(120), nullable=False)
+    tracking_number: Mapped[str] = mapped_column(String(150), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="dispatched")
+    dispatched_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    events: Mapped[list["ShipmentEvent"]] = relationship(
+        "ShipmentEvent", back_populates="shipment", cascade="all, delete-orphan",
+        order_by="ShipmentEvent.id",
+    )
+
+
+class ShipmentEvent(Base):
+    """Historial inmutable de novedades registradas por la administración."""
+    __tablename__ = "shipment_events"
+    __table_args__ = (Index("ix_shipment_events_shipment_created", "shipment_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    shipment_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("shipments.id", ondelete="CASCADE"), nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    shipment: Mapped["Shipment"] = relationship("Shipment", back_populates="events")

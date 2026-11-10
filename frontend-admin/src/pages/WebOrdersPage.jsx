@@ -15,6 +15,7 @@ import {
     X,
 } from 'lucide-react'
 import { ordersApi } from '../services/api'
+import ShipmentManager from '../components/ShipmentManager'
 import toast from 'react-hot-toast'
 
 function formatCOP(n) {
@@ -86,13 +87,15 @@ function OrderDetailModal({ order, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden">
+        <div role="dialog" aria-modal="true" aria-label="Detalle del pedido y despacho" className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl max-h-[92dvh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
                 <h3 className="text-lg font-bold text-gray-900">Detalle del pedido web</h3>
                 <p className="text-sm text-gray-500 mt-1">{order.order_number}</p>
             </div>
             <button
+                type="button"
+                aria-label="Cerrar detalle del pedido"
                 onClick={onClose}
                 className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             >
@@ -224,6 +227,9 @@ function OrderDetailModal({ order, onClose }) {
                     <p className="text-2xl font-black text-brand-700">{formatCOP(order.total_amount)}</p>
                 </div>
                 </div>
+            </div>
+            <div className="px-6 pb-6">
+              <ShipmentManager order={order} />
             </div>
             </div>
         </div>
@@ -471,7 +477,8 @@ export default function WebOrdersPage() {
                             disabled={statusMutation.isPending}
                             >
                             {NEXT_STATUS_OPTIONS.map((status) => (
-                                <option key={`${order.id}-${status}`} value={status}>
+                                <option key={`${order.id}-${status}`} value={status}
+                                  disabled={status === 'shipped' || status === 'delivered'}>
                                 {STATUS_META[status]?.label || status}
                                 </option>
                             ))}
