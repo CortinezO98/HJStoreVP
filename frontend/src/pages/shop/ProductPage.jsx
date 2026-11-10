@@ -87,6 +87,10 @@ export default function ProductPage() {
     enabled: !!product?.id,
   })
 
+  const selectedVariant = (product?.variants || []).find(
+    (variant) => String(variant.id) === selectedVariantId
+  )
+
   const images = useMemo(() => {
     if (!product) return []
 
@@ -110,15 +114,21 @@ export default function ProductPage() {
         ]
       : []
 
-    return productImages.length ? productImages : fallbackPrimary
-  }, [product])
+    const variantImages = Array.isArray(selectedVariant?.images)
+      ? selectedVariant.images.map((img) => ({
+          id: `variant-${img.id}`,
+          url: buildImageUrl(img.url),
+          alt: img.alt_text || selectedVariant.label || product.name,
+        }))
+      : []
+    return variantImages.length ? variantImages : productImages.length ? productImages : fallbackPrimary
+  }, [product, selectedVariant])
 
-  const mainImage = selectedImage || images[0]?.url || null
+  const mainImage = images.some((img) => img.url === selectedImage)
+    ? selectedImage
+    : images[0]?.url || null
 
   const hasVariants = Boolean(product?.has_variants)
-  const selectedVariant = (product?.variants || []).find(
-    (variant) => String(variant.id) === selectedVariantId
-  )
   const sellableProduct = hasVariants
     ? selectedVariant
       ? {
@@ -129,6 +139,7 @@ export default function ProductPage() {
           slug: product.slug,
           sale_price: selectedVariant.sale_price,
           total_stock: selectedVariant.total_stock,
+          primary_image: selectedVariant.primary_image || product.primary_image,
         }
       : null
     : product
@@ -305,7 +316,7 @@ export default function ProductPage() {
               <label className="block text-sm font-semibold" htmlFor="variant-choice">Elige tu presentación, talla o color</label>
               <select id="variant-choice" className="input w-full"
                 value={selectedVariantId}
-                onChange={(e) => { setSelectedVariantId(e.target.value); setQty(1) }}>
+                onChange={(e) => { setSelectedVariantId(e.target.value); setSelectedImage(null); setQty(1) }}>
                 <option value="">Selecciona una opción</option>
                 {(product.variants || []).map((variant) => (
                   <option key={variant.id} value={variant.id} disabled={!variant.total_stock}>
