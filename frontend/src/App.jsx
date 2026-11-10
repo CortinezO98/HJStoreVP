@@ -10,6 +10,7 @@ import HomePage                 from './pages/shop/HomePage'
 import CatalogPage              from './pages/shop/CatalogPage'
 import ProductPage              from './pages/shop/ProductPage'
 import CartPage                 from './pages/shop/CartPage'
+import WishlistPage             from './pages/shop/WishlistPage'
 import CheckoutPage             from './pages/shop/CheckoutPage'
 import LoginPage                from './pages/shop/LoginPage'
 import RegisterPage             from './pages/shop/RegisterPage'
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/catalogo"            element={<CatalogPage />} />
         <Route path="/producto/:slug"      element={<ProductPage />} />
         <Route path="/carrito"             element={<CartPage />} />
+        <Route path="/favoritos"           element={<WishlistPage />} />
         <Route path="/pago-confirmado"     element={<PaymentConfirmationPage />} />
         <Route path="/checkout"            element={
           <ProtectedRoute><CheckoutPage /></ProtectedRoute>

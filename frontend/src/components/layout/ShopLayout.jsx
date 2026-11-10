@@ -1,15 +1,10 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
-import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram } from 'lucide-react'
+import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram, Heart } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useCartStore, useAuthStore } from '../../store'
+import { useQuery } from '@tanstack/react-query'
+import { categoriesApi } from '../../services/api'
+import { useCartStore, useAuthStore, useWishlistStore } from '../../store'
 
-const CATEGORIES = [
-  { name: 'Gorras', slug: 'gorras' },
-  { name: 'Perfumes', slug: 'perfumes' },
-  { name: 'Relojes', slug: 'relojes' },
-  { name: 'Bolsos', slug: 'bolsos' },
-  { name: 'Canguros', slug: 'canguros' },
-]
 
 export default function ShopLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -17,6 +12,12 @@ export default function ShopLayout() {
   const [searchText, setSearchText] = useState('')
   const searchRef = useRef(null)
   const cartCount = useCartStore((s) => s.count())
+  const wishlistCount = useWishlistStore((s) => s.items.length)
+  const { data: categories = [] } = useQuery({
+    queryKey: ['storefront-categories'],
+    queryFn: () => categoriesApi.list().then((r) => r.data),
+  })
+  const navigationCategories = categories.filter((c) => c.active !== false)
   const { isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -54,7 +55,7 @@ export default function ShopLayout() {
           </Link>
           <nav className="editorial-nav" aria-label="Navegación principal">
             <Link to="/">INICIO</Link>
-            {CATEGORIES.map((cat) => (
+            {navigationCategories.map((cat) => (
               <Link key={cat.slug} to={`/catalogo?categoria=${cat.slug}`}>{cat.name.toUpperCase()}</Link>
             ))}
             <Link to="/catalogo?sort=newest">NOVEDADES</Link>
@@ -68,6 +69,10 @@ export default function ShopLayout() {
             <Link to={isAuthenticated ? '/mi-cuenta' : '/login'}
               aria-label={isAuthenticated ? 'Mi cuenta' : 'Iniciar sesión'}>
               <UserRound size={19} strokeWidth={1.5} />
+            </Link>
+            <Link to="/favoritos" className="editorial-bag" aria-label={`Ver favoritos, ${wishlistCount} productos`}>
+              <Heart size={19} strokeWidth={1.5} />
+              {wishlistCount > 0 && <span>{wishlistCount > 99 ? '99+' : wishlistCount}</span>}
             </Link>
             <Link to="/carrito" className="editorial-bag" aria-label={`Ver carrito, ${cartCount} productos`}>
               <ShoppingBag size={19} strokeWidth={1.5} />
@@ -90,12 +95,13 @@ export default function ShopLayout() {
         {menuOpen && (
           <nav className="editorial-mobile-nav" aria-label="Menú móvil">
             <Link to="/" onClick={() => setMenuOpen(false)}>INICIO</Link>
-            {CATEGORIES.map((cat) => (
+            {navigationCategories.map((cat) => (
               <Link key={cat.slug} to={`/catalogo?categoria=${cat.slug}`}
                 onClick={() => setMenuOpen(false)}>{cat.name.toUpperCase()}</Link>
             ))}
             <Link to="/catalogo?sort=newest" onClick={() => setMenuOpen(false)}>NOVEDADES</Link>
             <Link to="/catalogo?featured=true" onClick={() => setMenuOpen(false)}>DESTACADOS</Link>
+            <Link to="/favoritos" onClick={() => setMenuOpen(false)}>MIS FAVORITOS</Link>
             {isAuthenticated && <button type="button" onClick={() => { logout(); setMenuOpen(false); navigate('/') }}>CERRAR SESIÓN</button>}
           </nav>
         )}
@@ -112,12 +118,13 @@ export default function ShopLayout() {
           <div>
             <strong>EXPLORA</strong>
             <Link to="/catalogo">Todos los productos</Link>
-            {CATEGORIES.map((c) => <Link key={c.slug} to={`/catalogo?categoria=${c.slug}`}>{c.name}</Link>)}
+            {navigationCategories.map((c) => <Link key={c.slug} to={`/catalogo?categoria=${c.slug}`}>{c.name}</Link>)}
           </div>
           <div>
             <strong>TU CUENTA</strong>
             <Link to="/mi-cuenta">Mis pedidos</Link>
             <Link to="/carrito">Carrito</Link>
+            <Link to="/favoritos">Mis favoritos</Link>
             <Link to="/login">Iniciar sesión</Link>
             <Link to="/registro">Crear cuenta</Link>
           </div>
