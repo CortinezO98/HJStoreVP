@@ -15,7 +15,7 @@ from app.db.session import get_db
 from app.core.deps import get_current_user, require_seller
 from app.models.models import (
     User, UserRole, Order, OrderItem, OrderStatus, OrderChannel,
-    Product, Inventory, Location, StockMovement, StockMovementType
+    Product, Inventory, Location, StockMovement, StockMovementType, CashSession, CashMovement
 )
 from app.schemas.schemas import OrderOut
 from pydantic import BaseModel, Field, model_validator
@@ -248,6 +248,22 @@ def create_physical_sale(
 
         # Descontar stock del punto físico
         discount_stock(db, p.id, location_id, item.qty, order.id, current_user.id)
+
+    # Si existe un turno de caja activo, la venta en efectivo queda asociada
+    # a ese turno dentro de la MISMA transacción de la venta y el inventario.
+    cash_session = db.query(CashSession).filter(
+        CashSession.location_id == location_id,
+        CashSession.status == "open",
+    ).with_for_update().first()
+    if cash_session:
+        db.add(CashMovement(
+            session_id=cash_session.id,
+            order_id=order.id,
+            movement_type="sale",
+            amount=subtotal,
+            note=f"Venta física {order.order_number}",
+            created_by=current_user.id,
+        ))
 
     db.commit()
     db.refresh(order)
