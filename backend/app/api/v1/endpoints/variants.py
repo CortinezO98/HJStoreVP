@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import require_admin, get_optional_user, is_catalog_admin
 from app.db.session import get_db
-from app.models.models import Inventory, Product, User
+from app.models.models import Inventory, Product, ProductImage, User
 
 router = APIRouter(prefix="/products", tags=["Variantes"])
 
@@ -52,6 +52,16 @@ def variant_snapshot(db: Session, parent_id: int, admin: bool = False) -> list[d
     children = db.query(Product).filter(
         Product.parent_product_id == parent_id
     ).order_by(Product.id).all()
+    images = db.query(ProductImage).filter(
+        ProductImage.product_id.in_([child.id for child in children])
+    ).order_by(ProductImage.product_id, ProductImage.is_primary.desc(),
+               ProductImage.sort_order, ProductImage.id).all() if children else []
+    images_by_variant: dict[int, list[dict]] = {}
+    for image in images:
+        images_by_variant.setdefault(image.product_id, []).append({
+            "id": image.id, "url": image.url, "alt_text": image.alt_text,
+            "is_primary": image.is_primary, "sort_order": image.sort_order,
+        })
     result = []
     for item in children:
         if not admin and not item.active:
@@ -64,6 +74,8 @@ def variant_snapshot(db: Session, parent_id: int, admin: bool = False) -> list[d
             "options": item.variant_options or {},
             "sale_price": float(item.sale_price),
             "total_stock": int(stock or 0), "active": item.active,
+            "primary_image": images_by_variant.get(item.id, [{}])[0].get("url"),
+            "images": images_by_variant.get(item.id, []),
         }
         if admin:
             entry["cost_price"] = float(item.cost_price)
