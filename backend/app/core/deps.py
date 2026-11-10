@@ -22,7 +22,14 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id = int(payload.get("sub"))
+    try:
+        user_id = int(payload.get("sub", ""))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user = db.query(User).filter(User.id == user_id, User.active == True).first()
 
     if not user:

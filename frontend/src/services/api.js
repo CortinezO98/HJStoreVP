@@ -19,6 +19,11 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+
+// Renovación única compartida: evita canjear el mismo refresh token dos veces
+// cuando varias peticiones reciben 401 simultáneamente.
+let refreshPromise = null
+
 // Manejar expiración de token
 apiClient.interceptors.response.use(
   (res) => res,
@@ -30,14 +35,19 @@ apiClient.interceptors.response.use(
       const refresh = sessionStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const { data } = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
-            refresh_token: refresh,
-          })
-
-          sessionStorage.setItem('access_token', data.access_token)
-          sessionStorage.setItem('refresh_token', data.refresh_token)
-
-          original.headers.Authorization = `Bearer ${data.access_token}`
+          if (!refreshPromise) {
+            refreshPromise = axios.post(`${API_URL}/api/v1/auth/refresh`, {
+              refresh_token: refresh,
+            }).then(({ data }) => {
+              sessionStorage.setItem('access_token', data.access_token)
+              sessionStorage.setItem('refresh_token', data.refresh_token)
+              return data.access_token
+            }).finally(() => {
+              refreshPromise = null
+            })
+          }
+          const accessToken = await refreshPromise
+          original.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(original)
         } catch {
           sessionStorage.removeItem('access_token')

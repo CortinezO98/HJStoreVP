@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import hashlib
 import hmac
+import uuid
 from typing import Optional, Union
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -50,7 +51,7 @@ def create_access_token(subject: Union[str, int], extra: Optional[dict] = None) 
 
 def create_refresh_token(subject: Union[str, int], extra: Optional[dict] = None) -> str:
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"sub": str(subject), "exp": expire, "type": "refresh", **(extra or {})}
+    payload = {"sub": str(subject), "exp": expire, "type": "refresh", "jti": uuid.uuid4().hex, **(extra or {})}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
