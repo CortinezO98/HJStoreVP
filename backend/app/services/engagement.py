@@ -9,7 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.models import (
     CustomerEngagementPreference, SavedCustomerCart, CartRecoveryNotice,
-    LoyaltyLedger, Order, User,
+    LoyaltyLedger, Order, User, UserRole,
 )
 
 
@@ -22,6 +22,9 @@ def loyalty_balance(db: Session, user_id: int) -> int:
 def award_paid_order(db: Session, order: Order) -> bool:
     """1 punto por $1.000 COP de productos pagados, no envío."""
     if not order.customer_id or not order.paid_at:
+        return False
+    customer = db.get(User, order.customer_id)
+    if not customer or customer.role != UserRole.CUSTOMER:
         return False
     key = f"loyalty:order:{order.id}:paid"
     if db.query(LoyaltyLedger.id).filter_by(event_key=key).first():
