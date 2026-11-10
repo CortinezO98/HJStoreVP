@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.models import (
-    CommercialDocument, CommercialDocumentEvent, Order, OrderChannel,
+    CommercialDocument, CommercialDocumentEvent, Order, OrderItem, OrderChannel,
     OrderStatus, PostSaleCase, User, UserRole,
 )
 
@@ -182,8 +182,7 @@ def create_credit_note_draft(
             "case_id": case.id,
             "reason": case.reason,
             "qty": case.qty,
-            "product": db.get(__import__("app.models.models", fromlist=["OrderItem"]).OrderItem,
-                              case.order_item_id).product_name if case.order_item_id else "",
+            "product": db.get(OrderItem, case.order_item_id).product_name if case.order_item_id else "",
             "amount": str(case.refund_amount),
             "external_refund_reference": case.refund_reference,
         },
