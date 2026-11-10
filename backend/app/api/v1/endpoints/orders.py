@@ -193,6 +193,12 @@ def create_web_order(
         if child_parent_ids != active_parents:
             raise HTTPException(status_code=409, detail="Una referencia ya no está disponible")
 
+    parent_names = {}
+    if child_parent_ids:
+        parent_names = dict(db.query(Product.id, Product.name).filter(
+            Product.id.in_(child_parent_ids)
+        ).all())
+
     # Calcular totales
     subtotal = Decimal("0")
     total_cost = Decimal("0")
@@ -263,7 +269,7 @@ def create_web_order(
         oi = OrderItem(
             order_id=order.id,
             product_id=p.id,
-            product_name=p.name,
+            product_name=f"{parent_names[p.parent_product_id]} — {p.name}" if p.parent_product_id else p.name,
             product_sku=p.sku,
             qty=item.qty,
             unit_price=p.sale_price,
