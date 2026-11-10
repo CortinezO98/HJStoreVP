@@ -19,6 +19,7 @@ import {
   Truck,
   Mail,
   RotateCcw,
+  ReceiptText,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -83,6 +84,12 @@ const NAV_ITEMS = [
     to: '/posventa',
     icon: RotateCcw,
     label: 'Devoluciones y posventa',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/comprobantes',
+    icon: ReceiptText,
+    label: 'Comprobantes',
     roles: ['super_admin', 'admin'],
   },
   {
