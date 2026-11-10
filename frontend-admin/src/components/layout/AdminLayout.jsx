@@ -25,6 +25,7 @@ import {
   HeartHandshake,
   PlugZap,
   Wallet,
+  Settings2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -126,6 +127,12 @@ const NAV_ITEMS = [
     icon: PlugZap,
     label: 'Centro de integraciones',
     roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/configuracion-tienda',
+    icon: Settings2,
+    label: 'Configuración de tienda',
+    roles: ['super_admin'],
   },
   {
     to: '/usuarios',
