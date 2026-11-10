@@ -11,8 +11,8 @@ import {
   Heart,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { recommendationsApi } from '../../services/api'
-import { useCartStore, useWishlistStore } from '../../store'
+import { productsApi, recommendationsApi } from '../../services/api'
+import { useCartStore, useWishlistStore, useBrowsingStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
 import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
 
@@ -40,6 +40,7 @@ export default function ProductPage() {
   const favorites = useWishlistStore((s) => s.items)
   const getItemQty = useCartStore((s) => s.getItemQty)
   const syncProduct = useCartStore((s) => s.syncProduct)
+  const recordView = useBrowsingStore((s) => s.recordView)
 
   const [qty, setQty] = useState(1)
   const [selectedImage, setSelectedImage] = useState(null)
@@ -68,6 +69,10 @@ export default function ProductPage() {
       }
     }
   }, [product])
+
+  useEffect(() => {
+    if (product?.id) recordView(product)
+  }, [product?.id, product?.slug, recordView])
 
   const categorySlug = product?.category?.slug || product?.category_slug || ''
   const categoryName = product?.category?.name || product?.category_name || ''
