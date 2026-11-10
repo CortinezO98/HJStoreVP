@@ -24,9 +24,9 @@ def request(path, method="GET"):
     try:
         with urlopen(Request(url, method=method), timeout=TIMEOUT) as response:
             payload = response.read(256_000) if method == "GET" else b""
-            return response.status, dict(response.headers), payload
+            return response.status, {key.lower(): value for key, value in response.headers.items()}, payload
     except HTTPError as error:
-        return error.code, dict(error.headers), b""
+        return error.code, {key.lower(): value for key, value in error.headers.items()}, b""
     except URLError as error:
         print(f"[ERROR] API local no disponible: {type(error.reason).__name__}")
         sys.exit(2)
@@ -77,9 +77,9 @@ def main():
     failed += report("Integraciones privadas", status in (401, 403), str(status))
 
     _, headers, _ = request("/health")
-    failed += report("Cabecera nosniff", headers.get("X-Content-Type-Options") == "nosniff")
-    failed += report("Cabecera anti-iframe", headers.get("X-Frame-Options") == "DENY")
-    failed += report("Política de referer", bool(headers.get("Referrer-Policy")))
+    failed += report("Cabecera nosniff", headers.get("x-content-type-options") == "nosniff")
+    failed += report("Cabecera anti-iframe", headers.get("x-frame-options") == "DENY")
+    failed += report("Política de referer", bool(headers.get("referrer-policy")))
 
     status, _, _ = request("/docs", method="HEAD")
     print(f"INFO | /docs responde {status} (en desarrollo puede estar disponible; en producción debería ser 404)")
