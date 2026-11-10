@@ -22,6 +22,7 @@ import {
   ReceiptText,
   FileCheck2,
   TicketPercent,
+  HeartHandshake,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -104,6 +105,12 @@ const NAV_ITEMS = [
     to: '/promociones',
     icon: TicketPercent,
     label: 'Promociones y cupones',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/fidelizacion',
+    icon: HeartHandshake,
+    label: 'Fidelización y carritos',
     roles: ['super_admin', 'admin'],
   },
   {

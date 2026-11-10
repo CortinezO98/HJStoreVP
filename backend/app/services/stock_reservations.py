@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 from app.services.notifications import enqueue_order_notification
+from app.services.engagement import award_paid_order, clear_saved_cart_after_purchase
 
 from app.models.models import (
     Inventory, Order, OrderChannel, OrderStatus, OrderStockReservation,
@@ -154,6 +155,8 @@ def mark_paid(db: Session, order: Order, method: str, reference: str | None) -> 
     order.payment_method = method
     order.payment_ref = reference
     order.paid_at = datetime.utcnow()
+    award_paid_order(db, order)
+    clear_saved_cart_after_purchase(db, order)
     enqueue_order_notification(
         db, order, "payment_confirmed", f"order:{order.id}:paid"
     )

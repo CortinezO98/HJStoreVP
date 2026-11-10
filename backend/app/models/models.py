@@ -687,3 +687,62 @@ class CouponRedemption(Base):
     code_snapshot: Mapped[str] = mapped_column(String(32), nullable=False)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ─── FIDELIZACIÓN Y RECUPERACIÓN DE CARRITO (OPT-IN) ────────────────────────
+class CustomerEngagementPreference(Base):
+    __tablename__ = "customer_engagement_preferences"
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    recovery_email_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    marketing_email_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class SavedCustomerCart(Base):
+    __tablename__ = "saved_customer_carts"
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    # Solo IDs y cantidades, sin precio ni datos privados del navegador.
+    items: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    recovered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class CartRecoveryNotice(Base):
+    __tablename__ = "cart_recovery_notices"
+    __table_args__ = (
+        UniqueConstraint("user_id", "cart_revision", name="uq_recovery_revision"),
+        Index("ix_cart_recovery_due", "status", "due_at"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    cart_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(22), nullable=False, default="scheduled")
+    due_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    lease_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class LoyaltyLedger(Base):
+    """Puntos por transacciones, no saldo editable; earn y reversal auditables."""
+    __tablename__ = "loyalty_ledger"
+    __table_args__ = (UniqueConstraint("event_key", name="uq_loyalty_ledger_event"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    event_key: Mapped[str] = mapped_column(String(140), nullable=False)
+    points_delta: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

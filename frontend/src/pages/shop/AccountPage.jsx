@@ -7,6 +7,7 @@ import { PageHeading, EmptyState, ErrorState } from '../../components/shop/Store
 import ShipmentTimeline from '../../components/shop/ShipmentTimeline'
 import PostSaleCustomer from '../../components/shop/PostSaleCustomer'
 import PurchaseReceipt from '../../components/shop/PurchaseReceipt'
+import CustomerEngagement from '../../components/shop/CustomerEngagement'
 
 const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
@@ -61,6 +62,7 @@ export default function AccountPage() {
         </aside>
 
         <section className="min-w-0" aria-label="Historial de pedidos">
+          <div className="mb-8"><CustomerEngagement /></div>
           <div className="flex items-center justify-between gap-4 mb-6">
             <h2 className="uppercase font-black text-xl">MIS PEDIDOS</h2>
             {!isLoading && !isError && <span className="text-neutral-500 text-xs">{orders.length} registros</span>}

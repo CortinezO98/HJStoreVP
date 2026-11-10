@@ -23,6 +23,7 @@ from app.models.models import (
 )
 from app.services.stock_reservations import lock_web_order
 from app.services.notifications import enqueue_order_notification
+from app.services.engagement import reverse_refunded_items
 
 router = APIRouter(prefix="/post-sale", tags=["Posventa"])
 
@@ -427,6 +428,7 @@ def record_external_refund(
     case.refund_status = "externally_recorded"
     case.refund_reference = data.external_reference
     case.refund_recorded_at = datetime.utcnow()
+    reverse_refunded_items(db, case)
     _log(db, case, admin, "refund_externally_recorded", (
         f"Referencia externa: {data.external_reference}. {data.confirmation_note}"
     ))
