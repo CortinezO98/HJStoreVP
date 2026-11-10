@@ -1,6 +1,5 @@
 """Variantes vendibles: heredan catálogo del padre pero mantienen SKU, precio e inventario propios."""
 from decimal import Decimal
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
