@@ -24,6 +24,7 @@ import {
   TicketPercent,
   HeartHandshake,
   PlugZap,
+  Wallet,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -58,6 +59,12 @@ const NAV_ITEMS = [
     to: '/pedidos',
     icon: ShoppingBag,
     label: 'Ventas físicas',
+    roles: ['super_admin', 'admin', 'seller'],
+  },
+  {
+    to: '/caja',
+    icon: Wallet,
+    label: 'Caja y arqueos',
     roles: ['super_admin', 'admin', 'seller'],
   },
   {
