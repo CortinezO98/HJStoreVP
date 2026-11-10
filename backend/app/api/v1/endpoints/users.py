@@ -8,7 +8,7 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.core.deps import require_admin, require_super_admin
 from app.core.security import hash_password
-from app.models.models import User, UserRole
+from app.models.models import User, UserRole, Location, LocationType
 from app.schemas.schemas import UserCreate, UserUpdate, UserOut
 from pydantic import BaseModel, EmailStr
 
@@ -44,6 +44,20 @@ class UserAdminOut(BaseModel):
     location_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+def _ensure_seller_location(db: Session, role: UserRole, location_id: Optional[int]):
+    if role != UserRole.SELLER:
+        return
+    if location_id is None:
+        raise HTTPException(status_code=422, detail="Asigna un punto físico al vendedor")
+    loc = db.query(Location).filter(
+        Location.id == location_id,
+        Location.active.is_(True),
+        Location.type == LocationType.PHYSICAL,
+    ).first()
+    if not loc:
+        raise HTTPException(status_code=422, detail="El punto físico no existe o está inactivo")
 
 
 @router.get("", response_model=List[UserAdminOut])
@@ -96,6 +110,8 @@ def create_user(
                 detail="Solo el super administrador puede crear usuarios administradores"
             )
 
+    _ensure_seller_location(db, data.role, data.location_id)
+
     # Verificar email único
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail=f"El correo '{data.email}' ya está registrado")
@@ -139,6 +155,16 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if current_user.role != UserRole.SUPER_ADMIN:
+        if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+            raise HTTPException(status_code=403, detail="Solo Super Admin administra cuentas administrativas")
+        if data.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+            raise HTTPException(status_code=403, detail="Solo Super Admin asigna roles administrativos")
+
+    target_role = data.role if data.role is not None else user.role
+    target_location = data.location_id if data.location_id is not None else user.location_id
+    _ensure_seller_location(db, target_role, target_location)
 
     # No puede editarse a sí mismo el role/active
     if user.id == current_user.id and (data.role is not None or data.active is not None):
@@ -187,5 +213,7 @@ def deactivate_user(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="No puedes desactivar tu propia cuenta")
 
+    if current_user.role != UserRole.SUPER_ADMIN and user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="Solo Super Admin desactiva cuentas administrativas")
     user.active = False
     db.commit()

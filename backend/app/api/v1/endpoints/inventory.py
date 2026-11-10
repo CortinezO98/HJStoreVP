@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import update
 from typing import List
 from app.db.session import get_db
 from app.core.deps import require_admin, require_seller
@@ -91,22 +92,28 @@ def replenish_stock(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Ingreso de mercancía nueva a un punto."""
-    product = db.query(Product).filter(Product.id == data.product_id).first()
+    """Ingreso de mercancía a una ubicación activa, auditable y serializado."""
+    # Todas las operaciones administrativas del mismo producto bloquean primero
+    # products.id para serializar la creación de una fila inventory inexistente.
+    product = db.query(Product).filter(
+        Product.id == data.product_id, Product.active.is_(True)
+    ).with_for_update().first()
     if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-
-    location = db.query(Location).filter(Location.id == data.location_id).first()
+        raise HTTPException(status_code=404, detail="Producto activo no encontrado")
+    location = db.query(Location).filter(
+        Location.id == data.location_id, Location.active.is_(True)
+    ).first()
     if not location:
-        raise HTTPException(status_code=404, detail="Ubicación no encontrada")
+        raise HTTPException(status_code=404, detail="Ubicación activa no encontrada")
 
     inv = _get_or_create_inventory(db, data.product_id, data.location_id)
-    qty_before = inv.qty_available
-    inv.qty_available += data.qty
-
+    # Bloqueo explícito de la fila para evitar perder incrementos concurrentes.
+    inv = db.query(Inventory).filter(Inventory.id == inv.id).with_for_update().one()
+    before = inv.qty_available
+    inv.qty_available = before + data.qty
     _record_movement(
         db, data.product_id, data.location_id,
-        StockMovementType.IN, data.qty, qty_before, inv.qty_available,
+        StockMovementType.IN, data.qty, before, inv.qty_available,
         notes=data.notes, created_by=current_user.id,
     )
     db.commit()
@@ -119,38 +126,68 @@ def transfer_stock(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Transferencia de stock entre dos puntos."""
-    inv_from = _get_or_create_inventory(db, data.product_id, data.from_location_id)
+    """Transferir stock de forma atómica, con bloqueos en orden estable."""
+    if data.from_location_id == data.to_location_id:
+        raise HTTPException(status_code=422, detail="Origen y destino deben ser diferentes")
 
-    if inv_from.qty_available < data.qty:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Stock insuficiente en el punto origen. Disponible: {inv_from.qty_available}"
-        )
+    product = db.query(Product).filter(
+        Product.id == data.product_id, Product.active.is_(True)
+    ).with_for_update().first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto activo no encontrado")
 
-    inv_to = _get_or_create_inventory(db, data.product_id, data.to_location_id)
+    locations = db.query(Location).filter(
+        Location.id.in_([data.from_location_id, data.to_location_id]),
+        Location.active.is_(True),
+    ).all()
+    if len(locations) != 2:
+        raise HTTPException(status_code=404, detail="Ambas ubicaciones deben estar activas")
 
-    from_before = inv_from.qty_available
-    to_before = inv_to.qty_available
+    # La fila del producto está bloqueada para impedir creaciones administrativas
+    # simultáneas del mismo inventario. Bloquear inventarios en orden determinista
+    # reduce interbloqueos con otras transferencias.
+    rows = {}
+    for location_id in sorted([data.from_location_id, data.to_location_id]):
+        inv = _get_or_create_inventory(db, data.product_id, location_id)
+        rows[location_id] = db.query(Inventory).filter(
+            Inventory.id == inv.id
+        ).with_for_update().one()
 
-    inv_from.qty_available -= data.qty
-    inv_to.qty_available += data.qty
+    origin = rows[data.from_location_id]
+    destination = rows[data.to_location_id]
+    if origin.qty_available < data.qty:
+        raise HTTPException(status_code=409, detail="Stock insuficiente en la ubicación origen")
 
+    before_origin = origin.qty_available
+    before_destination = destination.qty_available
+    # Actualización condicional: segura frente a ventas físicas/web concurrentes
+    # que no adquieren el bloqueo del producto pero sí modifican inventario.
+    applied = db.execute(
+        update(Inventory).where(
+            Inventory.id == origin.id,
+            Inventory.qty_available >= data.qty,
+        ).values(qty_available=Inventory.qty_available - data.qty)
+    )
+    if applied.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Stock modificado durante la transferencia")
+
+    db.refresh(origin)
+    destination.qty_available = before_destination + data.qty
     _record_movement(
         db, data.product_id, data.from_location_id,
-        StockMovementType.TRANSFER, -data.qty, from_before, inv_from.qty_available,
+        StockMovementType.TRANSFER, -data.qty, before_origin, origin.qty_available,
         notes=f"Transferencia a loc {data.to_location_id}. {data.notes or ''}",
         created_by=current_user.id,
     )
     _record_movement(
         db, data.product_id, data.to_location_id,
-        StockMovementType.TRANSFER, data.qty, to_before, inv_to.qty_available,
+        StockMovementType.TRANSFER, data.qty, before_destination, destination.qty_available,
         notes=f"Transferencia desde loc {data.from_location_id}. {data.notes or ''}",
         created_by=current_user.id,
     )
     db.commit()
     return {"message": "Transferencia realizada correctamente"}
-
 
 @router.get("/alerts/low-stock")
 def low_stock_alerts(
