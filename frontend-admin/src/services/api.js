@@ -194,5 +194,6 @@ export const shippingApi = {
 export const shipmentsApi = {
   get: (orderId) => apiClient.get(`/shipments/orders/${orderId}`),
   dispatch: (orderId, payload) => apiClient.post(`/shipments/orders/${orderId}/dispatch`, payload),
+  correctGuide: (orderId, payload) => apiClient.patch(`/shipments/orders/${orderId}/guide`, payload),
   addEvent: (orderId, payload) => apiClient.post(`/shipments/orders/${orderId}/events`, payload),
 }
