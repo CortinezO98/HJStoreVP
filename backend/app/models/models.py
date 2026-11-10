@@ -746,3 +746,45 @@ class LoyaltyLedger(Base):
     points_delta: Mapped[int] = mapped_column(Integer, nullable=False)
     event_type: Mapped[str] = mapped_column(String(24), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ─── CASH REGISTER / POS SHIFTS ──────────────────────────────────────────────
+
+class CashSession(Base):
+    """Turno de caja de un punto físico, con saldo inicial y arqueo final."""
+    __tablename__ = "cash_sessions"
+    __table_args__ = (
+        Index("ix_cash_sessions_location_status", "location_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    location_id: Mapped[int] = mapped_column(Integer, ForeignKey("locations.id"), nullable=False)
+    opened_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    closed_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="open")
+    opening_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    closing_counted: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
+    expected_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
+    difference: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
+    opening_note: Mapped[Optional[str]] = mapped_column(String(500))
+    closing_note: Mapped[Optional[str]] = mapped_column(String(500))
+    opened_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class CashMovement(Base):
+    """Movimientos inmutables: ingreso, gasto, retiro o venta en efectivo."""
+    __tablename__ = "cash_movements"
+    __table_args__ = (
+        UniqueConstraint("order_id", name="uq_cash_movement_order"),
+        Index("ix_cash_movements_session_id", "session_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(Integer, ForeignKey("cash_sessions.id"), nullable=False)
+    order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("orders.id"), nullable=True)
+    movement_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    note: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
