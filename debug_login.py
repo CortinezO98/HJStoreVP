@@ -3,6 +3,9 @@
 No modifica credenciales ni imprime hashes. El restablecimiento de
 contraseñas requiere un procedimiento administrativo independiente.
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'backend'))
 from app.db.session import SessionLocal
 from app.models.models import User
 
