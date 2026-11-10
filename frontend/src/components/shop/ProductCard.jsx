@@ -21,7 +21,7 @@ export default function ProductCard({ product, label }) {
   const addToCart = (event) => {
     event.preventDefault()
     event.stopPropagation()
-    if (soldOut) return
+    if (soldOut || product.has_variants) return
     if (!addItem(product, 1)) {
       toast.error('No hay suficiente stock disponible')
       return
@@ -56,7 +56,12 @@ export default function ProductCard({ product, label }) {
           aria-pressed={favorite} title={favorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}>
           <Heart size={18} fill={favorite ? 'currentColor' : 'none'} />
         </button>
-        {!soldOut && (
+        {product.has_variants && !soldOut ? (
+          <Link to={`/producto/${product.slug}`} className="editorial-product-add"
+            aria-label={`Elegir variante de ${product.name}`} title="Elegir variante">
+            <Plus size={19} strokeWidth={1.8} />
+          </Link>
+        ) : !soldOut && (
           <button type="button" className="editorial-product-add" onClick={addToCart}
             aria-label={`Agregar ${product.name} al carrito`} title="Agregar al carrito">
             <Plus size={19} strokeWidth={1.8}/>
