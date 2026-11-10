@@ -16,6 +16,7 @@ import ShippingRatesPage from './pages/ShippingRatesPage'
 import NotificationsPage from './pages/NotificationsPage'
 import PostSalePage from './pages/PostSalePage'
 import BillingPage from './pages/BillingPage'
+import TaxReadinessPage from './pages/TaxReadinessPage'
 
 function ProtectedAdmin({ roles }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -138,6 +139,13 @@ export default function App() {
             element={<ProtectedAdmin roles={['super_admin', 'admin']} />}
           >
             <Route index element={<BillingPage />} />
+          </Route>
+
+          <Route
+            path="configuracion-dian"
+            element={<ProtectedAdmin roles={['super_admin', 'admin']} />}
+          >
+            <Route index element={<TaxReadinessPage />} />
           </Route>
 
           <Route
