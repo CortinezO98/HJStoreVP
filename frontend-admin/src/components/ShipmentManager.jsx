@@ -30,6 +30,9 @@ export default function ShipmentManager({ order }) {
   const [dispatchNote, setDispatchNote] = useState('')
   const [status, setStatus] = useState('')
   const [note, setNote] = useState('')
+  const [showCorrection, setShowCorrection] = useState(false)
+  const [newGuide, setNewGuide] = useState('')
+  const [correctionReason, setCorrectionReason] = useState('')
 
   const { data: shipment, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['admin-shipment', order.id],
@@ -52,6 +55,20 @@ export default function ShipmentManager({ order }) {
       setDispatchNote('')
     },
     onError: error => toast.error(error?.response?.data?.detail || 'No fue posible registrar el despacho'),
+  })
+  const correctGuide = useMutation({
+    mutationFn: () => shipmentsApi.correctGuide(order.id, {
+      tracking_number: newGuide.trim(),
+      reason: correctionReason.trim(),
+    }),
+    onSuccess: () => {
+      toast.success('Número de guía corregido y auditado')
+      setShowCorrection(false)
+      setNewGuide('')
+      setCorrectionReason('')
+      refetch()
+    },
+    onError: error => toast.error(error?.response?.data?.detail || 'No fue posible corregir la guía'),
   })
   const saveEvent = useMutation({
     mutationFn: () => shipmentsApi.addEvent(order.id, { status, note: note.trim() || null }),
@@ -118,6 +135,28 @@ export default function ShipmentManager({ order }) {
             <div><p className="text-[11px] uppercase font-bold text-slate-500">Fecha de despacho</p>
               <p className="text-sm mt-1">{dateText(shipment.dispatched_at)}</p></div>
           </div>
+          {canUpdate && (
+            <div className="border border-slate-200 p-4">
+              <button type="button" className="text-sm font-semibold text-indigo-700 underline underline-offset-4"
+                aria-expanded={showCorrection} onClick={() => setShowCorrection(value => !value)}>
+                {showCorrection ? 'Ocultar corrección de guía' : 'Corregir número de guía'}
+              </button>
+              {showCorrection && (
+                <form onSubmit={event => {event.preventDefault();correctGuide.mutate()}}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  <div><label htmlFor="shipping-correct-guide" className="block text-xs font-bold mb-1">Nueva guía</label>
+                    <input id="shipping-correct-guide" className="input" minLength={4} maxLength={120} required
+                      value={newGuide} onChange={event => setNewGuide(event.target.value)}/></div>
+                  <div><label htmlFor="shipping-correct-reason" className="block text-xs font-bold mb-1">Motivo de corrección</label>
+                    <input id="shipping-correct-reason" className="input" minLength={5} maxLength={250} required
+                      value={correctionReason} onChange={event => setCorrectionReason(event.target.value)}/></div>
+                  <button type="submit" className="btn-primary sm:col-span-2" disabled={correctGuide.isPending}>
+                    {correctGuide.isPending ? 'Corrigiendo…' : 'Guardar corrección en el historial'}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
           {canUpdate && (
             <form className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 sm:items-end"
               onSubmit={event=>{event.preventDefault();saveEvent.mutate()}}>
