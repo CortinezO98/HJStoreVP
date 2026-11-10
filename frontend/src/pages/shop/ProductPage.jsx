@@ -11,7 +11,7 @@ import {
   Heart,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { productsApi } from '../../services/api'
+import { recommendationsApi } from '../../services/api'
 import { useCartStore, useWishlistStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
 import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
@@ -73,17 +73,8 @@ export default function ProductPage() {
   const categoryName = product?.category?.name || product?.category_name || ''
 
   const { data: relatedProducts = [] } = useQuery({
-    queryKey: ['related-products', categorySlug, product?.id],
-    queryFn: async () => {
-      const res = await productsApi.list({
-        category: categorySlug || undefined,
-        per_page: 8,
-      })
-
-      return Array.isArray(res.data)
-        ? res.data.filter((p) => p.id !== product.id).slice(0, 4)
-        : []
-    },
+    queryKey: ['commercial-recommendations-product', product?.id],
+    queryFn: () => recommendationsApi.product(product.id).then((response) => response.data),
     enabled: !!product?.id,
   })
 
@@ -448,7 +439,7 @@ export default function ProductPage() {
         <section className="mt-16 sm:mt-24">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-3xl uppercase font-black text-black">
-              También te puede gustar
+              Recomendados para ti
             </h2>
             <Link
               to={categorySlug ? `/catalogo?categoria=${categorySlug}` : '/catalogo'}
@@ -460,7 +451,7 @@ export default function ProductPage() {
 
           <div className="editorial-product-grid">
             {relatedProducts.map((item) => (
-              <ProductCard key={item.id} product={item} />
+              <ProductCard key={item.id} product={item} label={item.recommendation_reason} />
             ))}
           </div>
         </section>

@@ -1,4 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { recommendationsApi } from '../../services/api'
+import ProductCard from '../../components/shop/ProductCard'
 import { Trash2, ShoppingBag, ArrowRight, Truck, ShieldCheck } from 'lucide-react'
 import { useCartStore, useAuthStore } from '../../store'
 import { PageHeading, EmptyState, QuantityStepper } from '../../components/shop/StoreUI'
@@ -22,6 +25,12 @@ export default function CartPage() {
   const total = useCartStore((state) => state.total())
   const authenticated = useAuthStore((state) => state.isAuthenticated)
   const navigate = useNavigate()
+  const cartIds = [...new Set(items.map((item) => item.product.id))].sort((a, b) => a - b)
+  const { data: suggestions = [] } = useQuery({
+    queryKey: ['commercial-recommendations-cart', cartIds],
+    queryFn: () => recommendationsApi.cart(cartIds).then(({ data }) => data),
+    enabled: cartIds.length > 0,
+  })
 
   const goCheckout = () => {
     if (items.some(({ product, qty }) => !Number.isSafeInteger(qty) || qty <= 0 ||
@@ -111,6 +120,17 @@ export default function CartPage() {
             </div>
           </aside>
         </div>
+      )}
+      {items.length > 0 && suggestions.length > 0 && (
+        <section className="mt-16" aria-label="Productos que complementan tu compra">
+          <h2 className="text-2xl sm:text-3xl font-black uppercase mb-6">Completa tu compra</h2>
+          <p className="text-sm text-neutral-500 mb-6">Explora referencias disponibles que combinan con tu selección.</p>
+          <div className="editorial-product-grid">
+            {suggestions.map((product) => (
+              <ProductCard key={product.id} product={product} label={product.recommendation_reason} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )
