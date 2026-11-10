@@ -97,7 +97,7 @@ def create_variant(
     # Si el padre ya posee stock, requiere transferencia operativa antes de
     # activar variantes: no se convierte silenciosamente inventario existente.
     existing = db.query(func.coalesce(func.sum(Inventory.qty_available), 0)).filter(
-        Inventory.product_id == product.id
+        Inventory.product_id == parent.id
     ).scalar()
     if existing:
         raise HTTPException(status_code=409, detail="El producto base aún tiene inventario. Agota o ajusta su stock antes de crear variantes.")
