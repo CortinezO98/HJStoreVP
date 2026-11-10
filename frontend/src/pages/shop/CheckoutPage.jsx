@@ -739,13 +739,20 @@ export default function CheckoutPage() {
               </span>
             </div>
 
+            {(couponQuote || createdOrder?.discount_amount > 0) && (
+              <div className="flex justify-between items-center py-4 border-b border-gray-100 text-emerald-800">
+                <span className="text-sm">Descuento {createdOrder?.coupon_code || couponQuote?.code || ''}</span>
+                <strong>− {formatCOP(createdOrder?.discount_amount ?? couponDiscount)}</strong>
+              </div>
+            )}
+
             <div className="border-t border-neutral-200 pt-5 flex justify-between font-bold text-lg mt-4">
               <span>Total</span>
               <span className="text-neutral-950">{selectedShipping ? formatCOP(createdOrder?.total_amount ?? checkoutTotal) : '—'}</span>
             </div>
 
             <p className="text-xs text-neutral-500 mt-4">
-              El total incluye productos y el envío seleccionado. El servidor valida nuevamente la tarifa antes de crear el pedido.
+              El total incluye el descuento aplicado y el envío. El servidor vuelve a validar el cupón, los productos y la tarifa antes de crear el pedido.
             </p>
           </div>
         </div>
