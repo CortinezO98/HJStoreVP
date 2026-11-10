@@ -94,6 +94,12 @@ export default function AccountPage() {
                         </div>
                       ))}
                     </div>
+                    <div className="flex flex-col gap-2 border-t border-neutral-100 py-4 text-sm">
+                      <div className="flex justify-between gap-3"><span className="text-neutral-500">Productos</span><strong>{formatCOP(order.subtotal)}</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-neutral-500">Envío</span><strong>{formatCOP(order.shipping_amount || 0)}</strong></div>
+                      {order.shipping_address?.carrier &&
+                        <p className="text-neutral-500 text-xs">{order.shipping_address.carrier} · {order.shipping_address.shipping_service}</p>}
+                    </div>
                     <div className="border-t border-neutral-200 pt-5 flex flex-col sm:flex-row sm:justify-between gap-3 sm:items-center">
                       <div>
                         <p className="text-[11px] font-bold tracking-wider text-neutral-500 uppercase">DESTINO</p>

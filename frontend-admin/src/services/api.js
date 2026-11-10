@@ -177,3 +177,12 @@ export const locationsApi = {
   create: (data) => apiClient.post('/locations', data),
   update: (id, data) => apiClient.put(`/locations/${id}`, data),
 }
+
+// ─────────────────────────────────────────────────────────
+// 🚚 TARIFAS DE ENVÍO — solo usuarios administrativos
+// ─────────────────────────────────────────────────────────
+export const shippingApi = {
+  list: () => apiClient.get('/shipping/rates'),
+  create: (data) => apiClient.post('/shipping/rates', data),
+  update: (id, data) => apiClient.put(`/shipping/rates/${id}`, data),
+}

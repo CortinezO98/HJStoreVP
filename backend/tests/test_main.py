@@ -11,7 +11,7 @@ from app.main import app
 from app.db.session import Base, get_db
 from app.models.models import (
     User, UserRole, Location, LocationType, Product, Inventory,
-    Order, OrderItem, OrderChannel, OrderStatus, OrderStockReservation,
+    Order, OrderItem, OrderChannel, OrderStatus, OrderStockReservation, ShippingRate,
 )
 from app.core.security import hash_password
 
@@ -54,6 +54,13 @@ def setup_db():
         active=True,
     )
     db.add(admin)
+    # Tarifa configurable de prueba; sin costos inventados en producción.
+    db.add(ShippingRate(
+        department="Cundinamarca", department_key="cundinamarca",
+        city="Bogotá", city_key="bogota",
+        carrier="Transportadora de Prueba", service="Estándar",
+        price=12000, days_min=2, days_max=5, active=True,
+    ))
     db.commit()
     db.close()
 
@@ -296,8 +303,13 @@ class TestWebOrderStockReservations:
 
     @staticmethod
     def payload(product_id, qty=2):
+        db = TestingSession()
+        rate_id = db.query(ShippingRate).filter_by(active=True).first().id
+        db.close()
         return {
             "items": [{"product_id": product_id, "qty": qty}],
+            "shipping_rate_id": rate_id,
+            "shipping_price_confirmed": 12000,
             "shipping_address": {
                 "full_name": "Cliente Reserva", "phone": "3000000000",
                 "address_line1": "Calle 1", "city": "Bogotá",
@@ -407,6 +419,37 @@ class TestWebOrderStockReservations:
         db = TestingSession()
         assert db.get(Inventory, inv_id).qty_available == 5
         assert db.get(Order, order_id).status == OrderStatus.PENDING
+        db.close()
+
+    def test_shipping_price_is_server_authoritative(self, client, auth_headers):
+        product_id, inv_id = self.create_stock()
+        data = self.payload(product_id)
+        data["shipping_amount"] = -1000000  # Manipulación del navegador, ignorada.
+        result = client.post("/api/v1/orders/web", json=data, headers=auth_headers)
+        assert result.status_code == 201, result.text
+        assert result.json()["subtotal"] == 30000
+        assert result.json()["shipping_amount"] == 12000
+        assert result.json()["total_amount"] == 42000
+        assert result.json()["shipping_address"]["carrier"] == "Transportadora de Prueba"
+
+    def test_shipping_price_change_requires_new_confirmation(self, client, auth_headers):
+        product_id, inventory_id = self.create_stock()
+        data = self.payload(product_id)
+        data["shipping_price_confirmed"] = 5000
+        result = client.post("/api/v1/orders/web", json=data, headers=auth_headers)
+        assert result.status_code == 409
+        db = TestingSession()
+        assert db.get(Inventory, inventory_id).qty_available == 5
+        db.close()
+
+    def test_shipping_rate_cannot_apply_to_another_city(self, client, auth_headers):
+        product_id, inv_id = self.create_stock()
+        data = self.payload(product_id)
+        data["shipping_address"]["city"] = "Medellín"
+        result = client.post("/api/v1/orders/web", json=data, headers=auth_headers)
+        assert result.status_code == 409
+        db = TestingSession()
+        assert db.get(Inventory, inv_id).qty_available == 5
         db.close()
 
     def test_order_cannot_be_paid_by_admin_status_patch(

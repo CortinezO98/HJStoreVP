@@ -20,8 +20,8 @@ env/
 .env
 .env.*
 
-# Alembic
-alembic/versions/
+# Alembic: conservar migraciones versionadas en Git.
+# No ignorar alembic/versions/ ni backend/alembic/versions/.
 
 ##############################################
 # 🗄️ DATABASE

@@ -120,6 +120,11 @@ function OrderDetailModal({ order, onClose }) {
             </div>
 
             <div className="rounded-xl bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Envío</p>
+                <p className="font-bold text-gray-900">{formatCOP(order.shipping_amount || 0)}</p>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Total</p>
                 <p className="font-black text-brand-700">{formatCOP(order.total_amount)}</p>
             </div>
@@ -207,6 +212,13 @@ function OrderDetailModal({ order, onClose }) {
                     </div>
                 </div>
 
+                {shipping.carrier && (
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Transportadora y servicio</p>
+                    <p className="font-semibold text-gray-900">{shipping.carrier} · {shipping.shipping_service}</p>
+                    <p className="text-sm text-gray-500 mt-1">Entrega estimada: {shipping.shipping_days_min}–{shipping.shipping_days_max} días</p>
+                  </div>
+                )}
                 <div className="rounded-xl bg-brand-50 border border-brand-100 p-4">
                     <p className="text-sm text-gray-500 mb-1">Total del pedido</p>
                     <p className="text-2xl font-black text-brand-700">{formatCOP(order.total_amount)}</p>
