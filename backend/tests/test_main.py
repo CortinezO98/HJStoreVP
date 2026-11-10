@@ -565,3 +565,78 @@ def test_http_security_headers(client):
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["referrer-policy"]
+
+
+# ─── UNITARIOS DE FASE 4: PRODUCTOS CON VARIANTES ────────────────────────────
+
+def test_variant_has_own_sku_price_and_inventory(client, auth_headers):
+    created = client.post("/api/v1/products/", headers=auth_headers, json={
+        "name": "Perfume presentación", "sku": "PER-BASE-V4",
+        "cost_price": 40000, "margin_pct": 30,
+    })
+    assert created.status_code == 201, created.text
+    parent_id = created.json()["id"]
+
+    child = client.post(f"/api/v1/products/{parent_id}/variants", headers=auth_headers, json={
+        "sku": "PER-50ML-V4", "label": "50 ml",
+        "options": {"presentacion": "50 ml"}, "cost_price": 24000,
+        "sale_price": 43000,
+    })
+    assert child.status_code == 201, child.text
+    variant_id = child.json()["id"]
+    assert variant_id != parent_id
+
+    public_detail = client.get(f"/api/v1/products/{parent_id}")
+    assert public_detail.status_code == 200, public_detail.text
+    detail = public_detail.json()
+    assert detail["has_variants"] is True
+    assert detail["variants"][0]["id"] == variant_id
+    assert detail["variants"][0]["sale_price"] == 43000
+    assert "cost_price" not in detail["variants"][0]
+    assert "cost_price" not in detail
+
+    catalog = client.get("/api/v1/products/").json()
+    assert any(item["id"] == parent_id and item["has_variants"] for item in catalog)
+    assert all(item["id"] != variant_id for item in catalog)
+
+    # Productos principales con variantes no pueden venderse directamente:
+    # se exige seleccionar la referencia vendible antes de calcular envío.
+    order = client.post("/api/v1/orders/web", headers=auth_headers, json={
+        "items": [{"product_id": parent_id, "qty": 1}],
+        "shipping_address": {
+            "full_name": "Test", "phone": "3000000000",
+            "address_line1": "Calle de pruebas", "city": "Bogotá",
+            "department": "Cundinamarca",
+        },
+        "shipping_rate_id": 1, "shipping_price_confirmed": 12000,
+    })
+    assert order.status_code == 409, order.text
+
+
+def test_variant_admin_access_and_deactivation(client, auth_headers):
+    created = client.post("/api/v1/products/", headers=auth_headers, json={
+        "name": "Gorra colores", "sku": "GOR-BASE-V4",
+        "cost_price": 20000, "margin_pct": 50,
+    })
+    assert created.status_code == 201, created.text
+    parent_id = created.json()["id"]
+    payload = {
+        "sku": "GOR-RED-V4", "label": "Roja", "options": {"color": "Rojo"},
+        "cost_price": 20000, "sale_price": 39000,
+    }
+    assert client.post(f"/api/v1/products/{parent_id}/variants", json=payload).status_code in (401, 403)
+    created_variant = client.post(
+        f"/api/v1/products/{parent_id}/variants", headers=auth_headers, json=payload
+    )
+    assert created_variant.status_code == 201
+    variant_id = created_variant.json()["id"]
+    disabled = client.patch(
+        f"/api/v1/products/{parent_id}/variants/{variant_id}",
+        headers=auth_headers, json={"active": False},
+    )
+    assert disabled.status_code == 200
+    public = client.get(f"/api/v1/products/{parent_id}").json()
+    assert public["has_variants"] is True
+    assert public["variants"] == []
+    admin = client.get(f"/api/v1/products/{parent_id}/variants", headers=auth_headers).json()
+    assert admin[0]["active"] is False

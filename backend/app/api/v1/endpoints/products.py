@@ -2,8 +2,8 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, case
+from sqlalchemy.orm import Session, joinedload, aliased
 from slugify import slugify
 
 from app.core.deps import require_admin, get_optional_user, is_catalog_admin
@@ -45,6 +45,7 @@ def serialize_product_list_row(row, admin: bool = False) -> dict:
         "category_slug": row.category_slug,
         "primary_image": row.primary_image,
         "total_stock": int(row.total_stock or 0),
+        "has_variants": bool(row.variant_count),
         "stock_min_alert": row.stock_min_alert,
     }
     if admin:
@@ -90,13 +91,43 @@ def list_products(
         .subquery()
     )
 
+    child = aliased(Product)
+    variant_prices = (
+        db.query(
+            child.parent_product_id.label("parent_id"),
+            func.count(child.id).label("variant_count"),
+            func.min(case((child.active.is_(True), child.sale_price), else_=None)).label("min_price"),
+        )
+        .filter(child.parent_product_id.isnot(None))
+        .group_by(child.parent_product_id)
+        .subquery()
+    )
+    variant_stock = (
+        db.query(
+            child.parent_product_id.label("parent_id"),
+            func.coalesce(func.sum(case((child.active.is_(True), Inventory.qty_available), else_=0)), 0).label("stock"),
+        )
+        .join(Inventory, Inventory.product_id == child.id, isouter=True)
+        .filter(child.parent_product_id.isnot(None))
+        .group_by(child.parent_product_id)
+        .subquery()
+    )
+    effective_price = case(
+        (variant_prices.c.variant_count > 0, func.coalesce(variant_prices.c.min_price, Product.sale_price)),
+        else_=Product.sale_price,
+    )
+    effective_stock = case(
+        (variant_prices.c.variant_count > 0, func.coalesce(variant_stock.c.stock, 0)),
+        else_=func.coalesce(total_stock_subq.c.total_stock, 0),
+    )
+
     q = (
         db.query(
             Product.id,
             Product.name,
             Product.slug,
             Product.sku,
-            Product.sale_price,
+            effective_price.label("sale_price"),
             Product.cost_price,
             Product.margin_pct,
             Product.stock_min_alert,
@@ -106,11 +137,15 @@ def list_products(
             Category.name.label("category_name"),
             Category.slug.label("category_slug"),
             primary_image_subq.c.primary_image,
-            func.coalesce(total_stock_subq.c.total_stock, 0).label("total_stock"),
+            effective_stock.label("total_stock"),
+            func.coalesce(variant_prices.c.variant_count, 0).label("variant_count"),
         )
         .outerjoin(Category, Category.id == Product.category_id)
         .outerjoin(primary_image_subq, primary_image_subq.c.product_id == Product.id)
         .outerjoin(total_stock_subq, total_stock_subq.c.product_id == Product.id)
+        .outerjoin(variant_prices, variant_prices.c.parent_id == Product.id)
+        .outerjoin(variant_stock, variant_stock.c.parent_id == Product.id)
+        .filter(Product.parent_product_id.is_(None))
     )
 
     if not include_inactive:
@@ -131,18 +166,18 @@ def list_products(
         q = q.filter(Product.featured == True)
 
     if min_price is not None:
-        q = q.filter(Product.sale_price >= min_price)
+        q = q.filter(effective_price >= min_price)
 
     if max_price is not None:
-        q = q.filter(Product.sale_price <= max_price)
+        q = q.filter(effective_price <= max_price)
 
     if in_stock:
-        q = q.filter(func.coalesce(total_stock_subq.c.total_stock, 0) > 0)
+        q = q.filter(effective_stock > 0)
 
     if sort == "price_asc":
-        q = q.order_by(Product.sale_price.asc(), Product.name.asc())
+        q = q.order_by(effective_price.asc(), Product.name.asc())
     elif sort == "price_desc":
-        q = q.order_by(Product.sale_price.desc(), Product.name.asc())
+        q = q.order_by(effective_price.desc(), Product.name.asc())
     elif sort == "newest":
         q = q.order_by(Product.created_at.desc())
     elif sort == "featured":
@@ -183,7 +218,16 @@ def get_product(
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    total_stock = sum((inv.qty_available or 0) for inv in product.inventory)
+    from app.api.v1.endpoints.variants import variant_snapshot
+    variant_count = db.query(func.count(Product.id)).filter(
+        Product.parent_product_id == product.id
+    ).scalar() if product.parent_product_id is None else 0
+    variants = variant_snapshot(db, product.id, admin=is_catalog_admin(current_user)) if variant_count else []
+    total_stock = (
+        sum(int(entry["total_stock"]) for entry in variants)
+        if variant_count else sum((inv.qty_available or 0) for inv in product.inventory)
+    )
+    sale_price = min((Decimal(str(entry["sale_price"])) for entry in variants), default=product.sale_price) if variant_count else product.sale_price
     primary_image = None
 
     sorted_images = sorted(
@@ -213,7 +257,9 @@ def get_product(
         }
         if product.category
         else None,
-        "sale_price": float(product.sale_price or 0),
+        "sale_price": float(sale_price or 0),
+        "has_variants": bool(variant_count),
+        "variants": variants,
         "stock_min_alert": product.stock_min_alert,
         "active": product.active,
         "featured": product.featured,

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { categoriesApi, productsApi, apiClient } from '../services/api'
 import toast from 'react-hot-toast'
+import ProductVariantsManager from '../components/products/ProductVariantsManager'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -207,6 +208,7 @@ function ProductFormModal({ product, categories, onClose }) {
   const isEdit = !!product
   const queryClient = useQueryClient()
   const [showImages, setShowImages] = useState(false)
+  const [showVariants, setShowVariants] = useState(false)
 
   const [form, setForm] = useState({
     name: product?.name || '',
@@ -419,6 +421,14 @@ function ProductFormModal({ product, categories, onClose }) {
               {isEdit && (
                 <>
                   <button
+                    onClick={() => setShowVariants(true)}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    <Boxes size={16} />
+                    Gestionar variantes
+                  </button>
+
+                  <button
                     onClick={() => setShowImages(true)}
                     className="btn-secondary flex items-center gap-2"
                   >
@@ -453,6 +463,13 @@ function ProductFormModal({ product, categories, onClose }) {
           </div>
         </div>
       </div>
+
+      {showVariants && isEdit && (
+        <ProductVariantsManager
+          product={product}
+          onClose={() => setShowVariants(false)}
+        />
+      )}
 
       {showImages && isEdit && (
         <ProductImagesManager

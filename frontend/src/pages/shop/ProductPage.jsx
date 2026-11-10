@@ -43,6 +43,7 @@ export default function ProductPage() {
 
   const [qty, setQty] = useState(1)
   const [selectedImage, setSelectedImage] = useState(null)
+  const [selectedVariantId, setSelectedVariantId] = useState('')
 
   const { data: product, isLoading, isError, refetch } = useQuery({
     queryKey: ['product-detail', slug],
@@ -114,7 +115,27 @@ export default function ProductPage() {
 
   const mainImage = selectedImage || images[0]?.url || null
 
-  const availableStockRaw = product?.total_stock ?? product?.stock ?? null
+  const hasVariants = Boolean(product?.has_variants)
+  const selectedVariant = (product?.variants || []).find(
+    (variant) => String(variant.id) === selectedVariantId
+  )
+  const sellableProduct = hasVariants
+    ? selectedVariant
+      ? {
+          ...product,
+          id: selectedVariant.id,
+          name: `${product.name} — ${selectedVariant.label}`,
+          sku: selectedVariant.sku,
+          slug: product.slug,
+          sale_price: selectedVariant.sale_price,
+          total_stock: selectedVariant.total_stock,
+        }
+      : null
+    : product
+
+  const availableStockRaw = hasVariants && !selectedVariant
+    ? product?.total_stock ?? 0
+    : sellableProduct?.total_stock ?? sellableProduct?.stock ?? null
   const availableStock =
     availableStockRaw === null || availableStockRaw === undefined
       ? null
@@ -122,10 +143,10 @@ export default function ProductPage() {
 
   const isOutOfStock = availableStock !== null && availableStock <= 0
   const isLowStock = availableStock !== null && availableStock > 0 && availableStock <= 5
-
-  const cartQty = product?.id ? getItemQty(product.id) : 0
-  const maxQtyAllowed =
-    availableStock === null ? 99 : Math.max(availableStock - cartQty, 0)
+  const cartQty = sellableProduct?.id ? getItemQty(sellableProduct.id) : 0
+  const maxQtyAllowed = hasVariants && !selectedVariant
+    ? 0
+    : availableStock === null ? 99 : Math.max(availableStock - cartQty, 0)
 
   const handleDecrease = () => setQty((prev) => Math.max(1, prev - 1))
 
@@ -136,28 +157,29 @@ export default function ProductPage() {
     })
 
   const handleAddToCart = () => {
-    if (!product || isOutOfStock || qty > maxQtyAllowed) { toast.error('Revisa la cantidad disponible'); return }
+    if (!sellableProduct || isOutOfStock || qty > maxQtyAllowed) { toast.error('Selecciona una variante disponible y revisa la cantidad'); return }
 
-    const ok = addItem(product, qty)
+    const ok = addItem(sellableProduct, qty)
     if (!ok) {
       toast.error('No hay suficiente stock disponible')
       return
     }
 
-    syncProduct(product)
-    toast.success(`${product.name} agregado al carrito`)
+    syncProduct(sellableProduct)
+    toast.success(`${sellableProduct.name} agregado al carrito`)
   }
 
   const handleBuyNow = () => {
-    if (!product || isOutOfStock) return
+    if (!sellableProduct || isOutOfStock) { toast.error('Selecciona una variante disponible'); return }
 
-    const ok = addItem(product, qty)
+    if (qty > maxQtyAllowed) { toast.error('No hay unidades suficientes'); return }
+    const ok = addItem(sellableProduct, qty)
     if (!ok) {
       toast.error('No hay suficiente stock disponible')
       return
     }
 
-    syncProduct(product)
+    syncProduct(sellableProduct)
     navigate('/checkout')
   }
 
@@ -277,7 +299,23 @@ export default function ProductPage() {
             {product.name}
           </h1>
 
-          <p className="text-sm text-gray-400 mt-2">SKU: {product.sku}</p>
+          <p className="text-sm text-gray-400 mt-2">SKU: {selectedVariant?.sku || product.sku}</p>
+          {hasVariants && (
+            <div className="mt-5 space-y-2">
+              <label className="block text-sm font-semibold" htmlFor="variant-choice">Elige tu presentación, talla o color</label>
+              <select id="variant-choice" className="input w-full"
+                value={selectedVariantId}
+                onChange={(e) => { setSelectedVariantId(e.target.value); setQty(1) }}>
+                <option value="">Selecciona una opción</option>
+                {(product.variants || []).map((variant) => (
+                  <option key={variant.id} value={variant.id} disabled={!variant.total_stock}>
+                    {variant.label} · {formatCOP(variant.sale_price)}{variant.total_stock ? '' : ' · Agotado'}
+                  </option>
+                ))}
+              </select>
+              {!selectedVariant && <p className="text-sm text-gray-500">Debes seleccionar una referencia para agregarla al carrito.</p>}
+            </div>
+          )}
           <button type="button" onClick={() => toggleFavorite(product)}
             className="mt-3 inline-flex items-center gap-2 border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
             aria-pressed={favorites.some((item) => item.id === product.id)}>
@@ -288,7 +326,7 @@ export default function ProductPage() {
           <div className="mt-5">
             <div className="flex items-end gap-3">
               <span className="text-3xl md:text-4xl font-black text-neutral-950">
-                {formatCOP(product.sale_price)}
+                {formatCOP(selectedVariant?.sale_price ?? product.sale_price)}
               </span>
 
             </div>
@@ -302,7 +340,8 @@ export default function ProductPage() {
                   : 'text-green-600'
               }`}
             >
-              {isOutOfStock
+              {hasVariants && !selectedVariant ? 'Selecciona una referencia'
+                : isOutOfStock
                 ? 'Producto agotado'
                 : availableStock === null
                 ? 'Disponible'
@@ -372,7 +411,7 @@ export default function ProductPage() {
                 <button
                   onClick={handleAddToCart}
                   type="button"
-                  disabled={maxQtyAllowed <= 0}
+                  disabled={!sellableProduct || maxQtyAllowed <= 0}
                   className="store-button store-button-outline w-full"
                 >
                   <ShoppingCart size={18} />
