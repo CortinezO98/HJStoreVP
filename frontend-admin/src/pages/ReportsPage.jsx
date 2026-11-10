@@ -13,6 +13,7 @@ import {
     DollarSign,
     Boxes,
 } from 'lucide-react'
+import OperationalAnalytics from '../components/OperationalAnalytics'
 import {
     analyticsApi,
     ordersApi,
@@ -874,6 +875,11 @@ export default function ReportsPage() {
             Cargando reportes...
             </div>
         )}
+
+        {/* Nueva sección independiente; el reporte contable original se conserva íntegro. */}
+        <div className="border-t border-slate-200 pt-8 mt-8">
+          <OperationalAnalytics />
+        </div>
         </div>
     )
 }
