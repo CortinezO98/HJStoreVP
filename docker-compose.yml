@@ -80,6 +80,33 @@ services:
         condition: service_healthy
     command: python -m app.services.notification_worker --loop
 
+  cart-recovery-worker:
+    profiles: ["cart-recovery"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hjstorevp_cart_recovery
+    restart: on-failure
+    environment:
+      - DATABASE_URL=mysql+pymysql://${DB_USER:-hjstore}:${DB_PASSWORD:-hjstore123}@db:3306/${DB_NAME:-hjstorevp}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - EMAIL_NOTIFICATIONS_ENABLED=${EMAIL_NOTIFICATIONS_ENABLED:-false}
+      - EMAIL_LIVE_DELIVERY_ALLOWED=${EMAIL_LIVE_DELIVERY_ALLOWED:-false}
+      - CART_RECOVERY_DELIVERY_ENABLED=${CART_RECOVERY_DELIVERY_ENABLED:-false}
+      - CART_RECOVERY_LIVE_ALLOWED=${CART_RECOVERY_LIVE_ALLOWED:-false}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - EMAILS_FROM=${EMAILS_FROM:-}
+      - STORE_PUBLIC_URL=${STORE_PUBLIC_URL:-http://localhost:5173}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python -m app.services.cart_recovery_worker --loop
+
   frontend:
     build:
       context: ./frontend
