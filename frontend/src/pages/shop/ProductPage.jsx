@@ -133,7 +133,9 @@ export default function ProductPage() {
       : null
     : product
 
-  const availableStockRaw = sellableProduct?.total_stock ?? sellableProduct?.stock ?? (hasVariants ? 0 : null)
+  const availableStockRaw = hasVariants && !selectedVariant
+    ? product?.total_stock ?? 0
+    : sellableProduct?.total_stock ?? sellableProduct?.stock ?? null
   const availableStock =
     availableStockRaw === null || availableStockRaw === undefined
       ? null
@@ -142,8 +144,9 @@ export default function ProductPage() {
   const isOutOfStock = availableStock !== null && availableStock <= 0
   const isLowStock = availableStock !== null && availableStock > 0 && availableStock <= 5
   const cartQty = sellableProduct?.id ? getItemQty(sellableProduct.id) : 0
-  const maxQtyAllowed =
-    availableStock === null ? 99 : Math.max(availableStock - cartQty, 0)
+  const maxQtyAllowed = hasVariants && !selectedVariant
+    ? 0
+    : availableStock === null ? 99 : Math.max(availableStock - cartQty, 0)
 
   const handleDecrease = () => setQty((prev) => Math.max(1, prev - 1))
 
