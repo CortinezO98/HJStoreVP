@@ -8,10 +8,11 @@ import {
   ShieldCheck,
   Truck,
   BadgeCheck,
+  Heart,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { productsApi } from '../../services/api'
-import { useCartStore } from '../../store'
+import { useCartStore, useWishlistStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
 import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
 
@@ -35,6 +36,8 @@ export default function ProductPage() {
   const navigate = useNavigate()
 
   const addItem = useCartStore((s) => s.addItem)
+  const toggleFavorite = useWishlistStore((s) => s.toggle)
+  const favorites = useWishlistStore((s) => s.items)
   const getItemQty = useCartStore((s) => s.getItemQty)
   const syncProduct = useCartStore((s) => s.syncProduct)
 
@@ -260,6 +263,12 @@ export default function ProductPage() {
           </h1>
 
           <p className="text-sm text-gray-400 mt-2">SKU: {product.sku}</p>
+          <button type="button" onClick={() => toggleFavorite(product)}
+            className="mt-3 inline-flex items-center gap-2 border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50"
+            aria-pressed={favorites.some((item) => item.id === product.id)}>
+            <Heart size={17} fill={favorites.some((item) => item.id === product.id) ? 'currentColor' : 'none'} />
+            {favorites.some((item) => item.id === product.id) ? 'Guardado en favoritos' : 'Guardar en favoritos'}
+          </button>
 
           <div className="mt-5">
             <div className="flex items-end gap-3">
