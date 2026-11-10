@@ -172,13 +172,14 @@ export default function ProductPage() {
   const handleBuyNow = () => {
     if (!sellableProduct || isOutOfStock) { toast.error('Selecciona una variante disponible'); return }
 
-    const ok = addItem(product, qty)
+    if (qty > maxQtyAllowed) { toast.error('No hay unidades suficientes'); return }
+    const ok = addItem(sellableProduct, qty)
     if (!ok) {
       toast.error('No hay suficiente stock disponible')
       return
     }
 
-    syncProduct(product)
+    syncProduct(sellableProduct)
     navigate('/checkout')
   }
 
