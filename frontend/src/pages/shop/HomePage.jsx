@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
-import { productsApi, categoriesApi } from '../../services/api'
+import { productsApi, categoriesApi, storefrontSettingsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
 import PersonalizedShowcase from '../../components/shop/PersonalizedShowcase'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
@@ -33,6 +33,11 @@ function SectionHeading({ eyebrow, title, link = '/catalogo', action = 'VER TODO
 
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState(-1)
+  const { data: storeSettings = {} } = useQuery({
+    queryKey: ['storefront-settings-public'],
+    queryFn: () => storefrontSettingsApi.public().then(({ data }) => data),
+    staleTime: 60000,
+  })
   const { data: categories = [] } = useQuery({
     queryKey: ['storefront-categories'],
     queryFn: () => categoriesApi.list().then((r) => r.data),
@@ -47,7 +52,7 @@ export default function HomePage() {
     queryFn: () => productsApi.list({ featured: true, per_page: 8 }).then((r) => r.data),
   })
   const heroProduct = featured.find((p) => p.primary_image) || newest.find((p) => p.primary_image)
-  const heroImage = imageUrl(heroProduct?.primary_image)
+  const heroImage = imageUrl(storeSettings.hero_image_url) || imageUrl(heroProduct?.primary_image)
   const showcase = newest.slice(0, 8)
 
   return (
@@ -56,10 +61,10 @@ export default function HomePage() {
         {heroImage && <div className="editorial-hero-image" style={{ backgroundImage: `url("${heroImage.replaceAll('"', '%22')}")` }} />}
         <div className="editorial-hero-shade" />
         <div className="editorial-hero-content">
-          <span className="editorial-hero-kicker">HJSTOREVP / NUEVA TEMPORADA</span>
-          <h1>EL ESTILO<br />NO SE EXPLICA.<br /><em>SE LLEVA.</em></h1>
-          <p>Una selección de gorras, perfumes, relojes y accesorios para marcar tu propio ritmo.</p>
-          <Link to="/catalogo" className="editorial-hero-cta">EXPLORAR COLECCIÓN <ArrowUpRight size={18} /></Link>
+          <span className="editorial-hero-kicker">{storeSettings.hero_eyebrow || 'HJSTOREVP / NUEVA TEMPORADA'}</span>
+          <h1>{storeSettings.hero_title || 'EL ESTILO NO SE EXPLICA. SE LLEVA.'}</h1>
+          <p>{storeSettings.hero_description || 'Una selección de gorras, perfumes, relojes y accesorios para marcar tu propio ritmo.'}</p>
+          <Link to="/catalogo" className="editorial-hero-cta">{storeSettings.hero_button || 'EXPLORAR COLECCIÓN'} <ArrowUpRight size={18} /></Link>
         </div>
         <span className="editorial-hero-side">HJSTOREVP · COLOMBIA</span>
         <span className="editorial-hero-number">01 / 03</span>

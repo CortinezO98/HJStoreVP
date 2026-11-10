@@ -942,3 +942,72 @@ def test_robots_disallows_development_crawling(client):
     robots = client.get("/robots.txt")
     assert robots.status_code == 200
     assert "Disallow: /" in robots.text
+
+
+# ─── CONFIGURACIÓN GENERAL: EDICIÓN EXCLUSIVA DE SUPERADMIN ────────────────
+
+def test_storefront_settings_are_public_and_superadmin_only(client, auth_headers):
+    defaults = client.get("/api/v1/storefront-settings/public")
+    assert defaults.status_code == 200
+    assert defaults.json()["store_name"] == "HJStoreVP"
+    assert "contact_email" in defaults.json()
+
+    no_token = client.get("/api/v1/storefront-settings/admin")
+    assert no_token.status_code in (401, 403)
+    no_token_update = client.put("/api/v1/storefront-settings/admin", json=defaults.json())
+    assert no_token_update.status_code in (401, 403)
+
+    db = TestingSession()
+    from app.models.models import UserRole
+    admin = db.query(User).filter(User.email == "test@hjstorevp.com").one()
+    admin.role = UserRole.ADMIN
+    db.commit()
+    db.close()
+    assert client.put(
+        "/api/v1/storefront-settings/admin",
+        headers=auth_headers, json=defaults.json()
+    ).status_code == 403
+
+    db = TestingSession()
+    db.query(User).filter(User.email == "test@hjstorevp.com").one().role = UserRole.SUPER_ADMIN
+    db.commit()
+    db.close()
+
+    payload = {**defaults.json(), "store_name": "Tienda Prisma",
+               "hero_title": "Muestra tu estilo",
+               "privacy_policy": "Política revisada por el comercio."}
+    updated = client.put("/api/v1/storefront-settings/admin",
+                         headers=auth_headers, json=payload)
+    assert updated.status_code == 200, updated.text
+    assert client.get("/api/v1/storefront-settings/public").json()["store_name"] == "Tienda Prisma"
+    assert client.get("/api/v1/storefront-settings/admin", headers=auth_headers).json()["updated_by"]
+
+    invalid = client.put("/api/v1/storefront-settings/admin",
+                         headers=auth_headers,
+                         json={**payload, "instagram_url": "javascript:alert(1)"})
+    assert invalid.status_code == 422
+    assert client.get("/api/v1/storefront-settings/public").json()["store_name"] == "Tienda Prisma"
+
+
+def test_storefront_settings_branding_upload_is_restricted(client, auth_headers, tmp_path, monkeypatch):
+    from io import BytesIO
+    from PIL import Image
+    from app.api.v1.endpoints import storefront_settings as route
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+    data = BytesIO()
+    Image.new("RGB", (24, 24), (30, 50, 80)).save(data, format="PNG")
+    blob = data.getvalue()
+
+    response = client.post("/api/v1/storefront-settings/admin/upload-image",
+                           files={"file": ("logo.png", blob, "image/png")})
+    assert response.status_code in (401, 403)
+
+    uploaded = client.post("/api/v1/storefront-settings/admin/upload-image",
+                           files={"file": ("logo.png", blob, "image/png")},
+                           headers=auth_headers)
+    assert uploaded.status_code == 201, uploaded.text
+    assert uploaded.json()["url"].startswith("/uploads/branding/")
+    file_name = uploaded.json()["url"].rsplit("/", 1)[1]
+    assert (tmp_path / "branding" / file_name).exists()

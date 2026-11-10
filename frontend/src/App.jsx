@@ -7,6 +7,7 @@ import { useAuthStore } from './store'
 
 import ShopLayout               from './components/layout/ShopLayout'
 import HomePage                 from './pages/shop/HomePage'
+import StorePolicyPage          from './pages/shop/StorePolicyPage'
 import CatalogPage              from './pages/shop/CatalogPage'
 import ProductPage              from './pages/shop/ProductPage'
 import CartPage                 from './pages/shop/CartPage'
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/producto/:slug"      element={<ProductPage />} />
         <Route path="/carrito"             element={<CartPage />} />
         <Route path="/favoritos"           element={<WishlistPage />} />
+        <Route path="/politicas/:policy"    element={<StorePolicyPage />} />
         <Route path="/pago-confirmado"     element={<PaymentConfirmationPage />} />
         <Route path="/checkout"            element={
           <ProtectedRoute><CheckoutPage /></ProtectedRoute>

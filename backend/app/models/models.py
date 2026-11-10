@@ -159,6 +159,21 @@ class Category(Base, TimestampMixin):
         return f"<Category {self.name}>"
 
 
+# ─── CONFIGURACIÓN PÚBLICA DE LA TIENDA ─────────────────────────────────────
+class StorefrontSettings(Base):
+    """Configuración comercial, nunca secretos ni credenciales de proveedores."""
+    __tablename__ = "storefront_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    settings_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    updated_by: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
 # ─── PRODUCTS ───────────────────────────────────────────────────────────────
 
 class Product(Base, TimestampMixin):

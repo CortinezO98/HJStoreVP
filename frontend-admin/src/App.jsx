@@ -21,6 +21,7 @@ import PromotionsPage from './pages/PromotionsPage'
 import EngagementPage from './pages/EngagementPage'
 import IntegrationsPage from './pages/IntegrationsPage'
 import CashPage from './pages/CashPage'
+import StorefrontSettingsPage from './pages/StorefrontSettingsPage'
 
 function ProtectedAdmin({ roles }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -172,6 +173,10 @@ export default function App() {
 
           <Route path="integraciones" element={<ProtectedAdmin roles={['super_admin', 'admin']} />}>
             <Route index element={<IntegrationsPage />} />
+          </Route>
+
+          <Route path="configuracion-tienda" element={<ProtectedAdmin roles={['super_admin']} />}>
+            <Route index element={<StorefrontSettingsPage />} />
           </Route>
 
           <Route
