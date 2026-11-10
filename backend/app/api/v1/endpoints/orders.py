@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from app.services.stock_reservations import cancel_web_order, lock_web_order
 from app.core.config import settings
 from app.services.shipping import get_selected_rate, shipping_snapshot
+from app.services.notifications import enqueue_order_notification
 
 router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 
@@ -243,6 +244,9 @@ def create_web_order(
             expires_at=datetime.utcnow() + timedelta(minutes=settings.ORDER_RESERVATION_MINUTES),
         ))
 
+    enqueue_order_notification(
+        db, order, "order_created", f"order:{order.id}:created"
+    )
     db.commit()
     db.refresh(order)
 
@@ -390,6 +394,10 @@ def update_order_status(
         raise HTTPException(status_code=409, detail="No es posible cambiar un pedido cancelado")
     else:
         order.status = next_status
+        if next_status == OrderStatus.PREPARING:
+            enqueue_order_notification(
+                db, order, "order_preparing", f"order:{order.id}:preparing"
+            )
     db.commit()
     return {"message": f"Estado actualizado a {status}"}
 

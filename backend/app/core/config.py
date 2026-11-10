@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM: str = "noreply@hjstorevp.com"
+    STORE_PUBLIC_URL: str = "http://localhost:5173"
+    EMAIL_NOTIFICATIONS_ENABLED: bool = False
+    EMAIL_LIVE_DELIVERY_ALLOWED: bool = False
 
     # ─── Primer admin ──────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@hjstorevp.com"

@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Truck,
+  Mail,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -69,6 +70,12 @@ const NAV_ITEMS = [
     to: '/envios',
     icon: Truck,
     label: 'Envíos y tarifas',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/notificaciones',
+    icon: Mail,
+    label: 'Notificaciones',
     roles: ['super_admin', 'admin'],
   },
   {

@@ -197,3 +197,13 @@ export const shipmentsApi = {
   correctGuide: (orderId, payload) => apiClient.patch(`/shipments/orders/${orderId}/guide`, payload),
   addEvent: (orderId, payload) => apiClient.post(`/shipments/orders/${orderId}/events`, payload),
 }
+
+
+// ─────────────────────────────────────────────────────────
+// ✉️ COLA DE NOTIFICACIONES TRANSACCIONALES (ADMIN)
+ // ─────────────────────────────────────────────────────────
+export const notificationsApi = {
+  list: (params = {}) => apiClient.get('/notifications/admin', { params }),
+  stats: () => apiClient.get('/notifications/admin/stats'),
+  retry: (id) => apiClient.post(`/notifications/admin/${id}/retry`),
+}
