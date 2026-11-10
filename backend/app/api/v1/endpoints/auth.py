@@ -50,7 +50,11 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
     if not credential_version_matches(payload, user.hashed_password):
         raise HTTPException(status_code=401, detail="La sesión fue revocada; inicia sesión nuevamente")
 
-    consume_refresh_token(data.refresh_token, int(payload["exp"]))
+    try:
+        expires_at = int(payload.get("exp", ""))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido")
+    consume_refresh_token(data.refresh_token, expires_at)
     return TokenResponse(
         access_token=create_access_token(user.id, extra={"role": user.role, "ver": credential_version(user.hashed_password)}),
         refresh_token=create_refresh_token(user.id, extra={"ver": credential_version(user.hashed_password)}),
