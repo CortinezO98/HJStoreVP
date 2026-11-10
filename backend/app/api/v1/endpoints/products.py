@@ -54,6 +54,39 @@ def serialize_product_list_row(row, admin: bool = False) -> dict:
     return payload
 
 
+@router.get("/filters")
+def catalog_variant_filters(
+    category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None, max_length=150),
+    db: Session = Depends(get_db),
+):
+    """Facetas públicas calculadas a partir de variantes y padres activos."""
+    parent = aliased(Product)
+    q = (
+        db.query(Product.variant_options)
+        .join(parent, parent.id == Product.parent_product_id)
+        .outerjoin(Category, Category.id == parent.category_id)
+        .filter(Product.active.is_(True), parent.active.is_(True))
+    )
+    if category:
+        q = q.filter(Category.slug == category)
+    if search:
+        like = f"%{search.strip()}%"
+        q = q.filter(
+            parent.name.ilike(like) | parent.sku.ilike(like)
+            | parent.description.ilike(like)
+        )
+    values = {"color": set(), "talla": set(), "presentacion": set()}
+    for (options,) in q.all():
+        if not isinstance(options, dict):
+            continue
+        for key in values:
+            value = options.get(key)
+            if isinstance(value, str) and value.strip():
+                values[key].add(value.strip())
+    return {key: sorted(items, key=str.casefold) for key, items in values.items()}
+
+
 @router.get("/")
 def list_products(
     search: Optional[str] = Query(None),
@@ -62,6 +95,9 @@ def list_products(
     min_price: Optional[Decimal] = Query(None),
     max_price: Optional[Decimal] = Query(None),
     in_stock: Optional[bool] = Query(None),
+    color: Optional[str] = Query(None, max_length=80),
+    talla: Optional[str] = Query(None, max_length=80),
+    presentacion: Optional[str] = Query(None, max_length=80),
     sort: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(24, ge=1, le=100),
@@ -112,13 +148,61 @@ def list_products(
         .group_by(child.parent_product_id)
         .subquery()
     )
-    effective_price = case(
-        (variant_prices.c.variant_count > 0, func.coalesce(variant_prices.c.min_price, Product.sale_price)),
-        else_=Product.sale_price,
+    active_filters = {
+        key: value.strip()
+        for key, value in (
+            ("color", color), ("talla", talla), ("presentacion", presentacion)
+        )
+        if value and value.strip()
+    }
+    matched_variant = None
+    matching_variant_image = None
+    if active_filters:
+        # El filtro tiene semántica AND sobre la MISMA variante activa.
+        variant = aliased(Product)
+        matched = (
+            db.query(
+                variant.parent_product_id.label("parent_id"),
+                func.min(variant.sale_price).label("min_price"),
+                func.coalesce(func.sum(Inventory.qty_available), 0).label("stock"),
+            )
+            .outerjoin(Inventory, Inventory.product_id == variant.id)
+            .filter(variant.active.is_(True), variant.parent_product_id.isnot(None))
+        )
+        for key, value in active_filters.items():
+            matched = matched.filter(variant.variant_options[key].as_string() == value)
+        matched_variant = matched.group_by(variant.parent_product_id).subquery()
+
+        photo_variant = aliased(Product)
+        photo = aliased(ProductImage)
+        photo_q = db.query(photo.url).join(
+            photo_variant, photo_variant.id == photo.product_id
+        ).filter(
+            photo_variant.parent_product_id == Product.id,
+            photo_variant.active.is_(True),
+            photo.is_primary.is_(True),
+        )
+        for key, value in active_filters.items():
+            photo_q = photo_q.filter(photo_variant.variant_options[key].as_string() == value)
+        matching_variant_image = photo_q.order_by(photo_variant.id).limit(1).correlate(Product).scalar_subquery()
+
+    effective_price = (
+        matched_variant.c.min_price if matched_variant is not None
+        else case(
+            (variant_prices.c.variant_count > 0, func.coalesce(variant_prices.c.min_price, Product.sale_price)),
+            else_=Product.sale_price,
+        )
     )
-    effective_stock = case(
-        (variant_prices.c.variant_count > 0, func.coalesce(variant_stock.c.stock, 0)),
-        else_=func.coalesce(total_stock_subq.c.total_stock, 0),
+    effective_stock = (
+        matched_variant.c.stock if matched_variant is not None
+        else case(
+            (variant_prices.c.variant_count > 0, func.coalesce(variant_stock.c.stock, 0)),
+            else_=func.coalesce(total_stock_subq.c.total_stock, 0),
+        )
+    )
+    effective_image = (
+        func.coalesce(matching_variant_image, primary_image_subq.c.primary_image)
+        if matching_variant_image is not None else primary_image_subq.c.primary_image
     )
 
     q = (
@@ -136,7 +220,7 @@ def list_products(
             Product.category_id,
             Category.name.label("category_name"),
             Category.slug.label("category_slug"),
-            primary_image_subq.c.primary_image,
+            effective_image.label("primary_image"),
             effective_stock.label("total_stock"),
             func.coalesce(variant_prices.c.variant_count, 0).label("variant_count"),
         )
@@ -147,6 +231,8 @@ def list_products(
         .outerjoin(variant_stock, variant_stock.c.parent_id == Product.id)
         .filter(Product.parent_product_id.is_(None))
     )
+    if matched_variant is not None:
+        q = q.join(matched_variant, matched_variant.c.parent_id == Product.id)
 
     if not include_inactive:
         q = q.filter(Product.active == True)

@@ -43,6 +43,18 @@ export default function CatalogPage() {
   const featured   = searchParams.get('featured') || ''
   const currentSearch = searchParams.get('q') || ''
   const inStock = searchParams.get('in_stock') === 'true'
+  const variantFilters = {
+    color: searchParams.get('color') || '',
+    talla: searchParams.get('talla') || '',
+    presentacion: searchParams.get('presentacion') || '',
+  }
+  const { data: filterOptions = { color: [], talla: [], presentacion: [] } } = useQuery({
+    queryKey: ['catalog-variant-filters', categoria, currentSearch],
+    queryFn: () => productsApi.filters({
+      category: categoria || undefined,
+      search: currentSearch || undefined,
+    }).then((r) => r.data),
+  })
   const requestedPage = Number(searchParams.get('page') || '1')
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
 
@@ -52,7 +64,7 @@ export default function CatalogPage() {
   }, [searchParams])
 
   const { data: products, isLoading, isError, refetch } = useQuery({
-    queryKey: ['products', 'catalog', categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock, page],
+    queryKey: ['products', 'catalog', categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock, variantFilters.color, variantFilters.talla, variantFilters.presentacion, page],
     queryFn: () => productsApi.list({
       search:    currentSearch || undefined,
       category:  categoria || undefined,
@@ -61,6 +73,9 @@ export default function CatalogPage() {
       max_price: maxPrice || undefined,
       featured:  featured === 'true' ? true : undefined,
       in_stock: inStock || undefined,
+      color: variantFilters.color || undefined,
+      talla: variantFilters.talla || undefined,
+      presentacion: variantFilters.presentacion || undefined,
       page,
       per_page: 24,
     }).then((r) => r.data),
@@ -89,7 +104,8 @@ export default function CatalogPage() {
     setSearchParams({})
   }
 
-  const activeFiltersCount = [categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock].filter(Boolean).length
+  const activeFiltersCount = [categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock,
+    variantFilters.color, variantFilters.talla, variantFilters.presentacion].filter(Boolean).length
 
   // Etiqueta del título según filtros
   const pageTitle = categoria
@@ -155,6 +171,14 @@ export default function CatalogPage() {
               <button type="button" aria-label="Quitar filtro de búsqueda" onClick={() => { setSearch(''); setFilter('q', '') }}><X size={12} /></button>
             </span>
           )}
+          {[
+            ['color', 'Color'], ['talla', 'Talla'], ['presentacion', 'Presentación'],
+          ].filter(([key]) => variantFilters[key]).map(([key, label]) => (
+            <span key={key} className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-3 py-1 rounded-full">
+              {label}: {variantFilters[key]}
+              <button type="button" aria-label={`Quitar filtro de ${label}`} onClick={() => setFilter(key, '')}><X size={12} /></button>
+            </span>
+          ))}
           {(minPrice || maxPrice) && (
             <span className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-3 py-1 rounded-full">
               Precio filtrado
@@ -231,6 +255,24 @@ export default function CatalogPage() {
                 ))}
               </div>
             </div>
+
+            {/* Opciones reales de variantes activas en la categoría */}
+            {[
+              ['color', 'Color'], ['talla', 'Talla'], ['presentacion', 'Presentación'],
+            ].map(([key, label]) => {
+              const choices = filterOptions[key] || []
+              const selected = variantFilters[key]
+              if (!choices.length && !selected) return null
+              return <div key={key}>
+                <label htmlFor={`catalog-filter-${key}`} className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</label>
+                <select id={`catalog-filter-${key}`} className="input text-sm w-full"
+                  value={selected} onChange={(event) => setFilter(key, event.target.value)}>
+                  <option value="">Todos</option>
+                  {selected && !choices.includes(selected) && <option value={selected}>{selected} (sin coincidencias)</option>}
+                  {choices.map((value) => <option key={value} value={value}>{value}</option>)}
+                </select>
+              </div>
+            })}
 
             {/* Rango de precio */}
             <div>
