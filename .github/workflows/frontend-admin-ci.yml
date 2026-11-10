@@ -23,5 +23,7 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm install
+      - name: Verify administrative functionality contract
+        run: node scripts/verify-admin-modules.mjs
       - name: Build admin
         run: npm run build

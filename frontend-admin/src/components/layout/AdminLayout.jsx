@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Package,
@@ -13,8 +13,11 @@ import {
   Menu,
   X,
   Bell,
+  ExternalLink,
+  ChevronRight,
+  ShieldCheck,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
 import toast from 'react-hot-toast'
 
@@ -90,174 +93,141 @@ function roleLabel(role) {
 
 export default function AdminLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, logout } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const navItems = useMemo(() => {
-    return NAV_ITEMS.filter((item) => item.roles.includes(user?.role))
-  }, [user?.role])
+  const navItems = useMemo(
+    () => NAV_ITEMS.filter((item) => item.roles.includes(user?.role)),
+    [user?.role]
+  )
+  const activeItem = navItems.find((item) => item.to === location.pathname)
+  const activeLabel = activeItem?.label || 'Dashboard'
+  const storeUrl = import.meta.env.VITE_STORE_URL || 'http://localhost:5173/'
+
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!sidebarOpen) return undefined
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setSidebarOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [sidebarOpen])
 
   const handleLogout = () => {
     logout()
     toast.success('Sesión cerrada')
-    navigate('/login')
+    navigate('/login', { replace: true })
   }
 
-  return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* Sidebar desktop */}
-      <aside className="hidden lg:flex lg:w-72 bg-white border-r border-gray-100 flex-col">
-        <div className="px-6 py-5 border-b border-gray-100">
-          <h1 className="text-xl font-black text-gray-900">HJ Store Admin</h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Panel administrativo contable
-          </p>
+  const navLinkClass = ({ isActive }) =>
+    `admin-sidebar-link ${isActive ? 'admin-sidebar-link-active' : ''}`
+
+  const Navigation = ({ mobile = false }) => (
+    <nav className="admin-sidebar-nav" aria-label="Módulos de administración">
+      <span className="admin-sidebar-group-label">GESTIÓN DEL NEGOCIO</span>
+      {navItems.map((item) => {
+        const Icon = item.icon
+        return (
+          <NavLink key={item.to} to={item.to} end={item.to === '/'}
+            onClick={mobile ? () => setSidebarOpen(false) : undefined}
+            className={navLinkClass}>
+            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>{item.label}</span>
+            <ChevronRight size={14} className="admin-sidebar-arrow" aria-hidden="true" />
+          </NavLink>
+        )
+      })}
+    </nav>
+  )
+
+  const SidebarContent = ({ mobile = false }) => (
+    <>
+      <div className="admin-sidebar-brand">
+        <div className="admin-brand-mark" aria-hidden="true">HJ</div>
+        <div className="min-w-0">
+          <p className="admin-brand-name">HJSTORE<span>VP</span></p>
+          <p className="admin-brand-subtitle">PANEL ADMINISTRATIVO</p>
         </div>
-
-        <div className="px-4 py-4 border-b border-gray-100">
-          <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4">
-            <p className="text-sm font-semibold text-gray-900">
-              {user?.fullName || 'Usuario'}
-            </p>
-            <p className="text-xs text-brand-700 mt-1">
-              {roleLabel(user?.role)}
-            </p>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-brand-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`
-                }
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </NavLink>
-            )
-          })}
-        </nav>
-
-        <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <LogOut size={18} />
-            Cerrar sesión
+        {mobile && (
+          <button type="button" onClick={() => setSidebarOpen(false)}
+            className="admin-sidebar-close" aria-label="Cerrar menú">
+            <X size={20} />
           </button>
+        )}
+      </div>
+      <div className="admin-sidebar-user">
+        <span className="admin-sidebar-avatar" aria-hidden="true">
+          {(user?.fullName || 'A').slice(0, 1).toUpperCase()}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="admin-sidebar-user-name">{user?.fullName || 'Usuario'}</p>
+          <p className="admin-sidebar-role"><ShieldCheck size={13} /> {roleLabel(user?.role)}</p>
         </div>
+      </div>
+      <Navigation mobile={mobile} />
+      <div className="admin-sidebar-bottom">
+        <a href={storeUrl} target="_blank" rel="noopener noreferrer" className="admin-sidebar-store-link">
+          <ExternalLink size={17} /> Ver tienda pública
+        </a>
+        <button type="button" onClick={handleLogout} className="admin-sidebar-logout">
+          <LogOut size={18} /> Cerrar sesión
+        </button>
+        <p className="admin-sidebar-version">HJSTOREVP · GESTIÓN COMERCIAL</p>
+      </div>
+    </>
+  )
+
+  return (
+    <div className="admin-app-shell">
+      <a href="#admin-main" className="admin-skip-link">Saltar al contenido</a>
+
+      <aside className="admin-sidebar admin-sidebar-desktop" aria-label="Navegación administrativa">
+        <SidebarContent />
       </aside>
 
-      {/* Sidebar mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <aside className="absolute left-0 top-0 h-full w-72 bg-white border-r border-gray-100 flex flex-col">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-black text-gray-900">HJ Store Admin</h1>
-                <p className="text-xs text-gray-500 mt-1">
-                  Panel administrativo contable
-                </p>
-              </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="px-4 py-4 border-b border-gray-100">
-              <div className="rounded-2xl bg-brand-50 border border-brand-100 p-4">
-                <p className="text-sm font-semibold text-gray-900">
-                  {user?.fullName || 'Usuario'}
-                </p>
-                <p className="text-xs text-brand-700 mt-1">
-                  {roleLabel(user?.role)}
-                </p>
-              </div>
-            </div>
-
-            <nav className="flex-1 px-3 py-4 space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === '/'}
-                    onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-brand-600 text-white'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`
-                    }
-                  >
-                    <Icon size={18} />
-                    <span>{item.label}</span>
-                  </NavLink>
-                )
-              })}
-            </nav>
-
-            <div className="p-3 border-t border-gray-100">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <LogOut size={18} />
-                Cerrar sesión
-              </button>
-            </div>
+        <div className="admin-mobile-overlay" role="presentation">
+          <button type="button" className="admin-mobile-backdrop" aria-label="Cerrar menú"
+            onClick={() => setSidebarOpen(false)} />
+          <aside id="admin-mobile-sidebar" className="admin-sidebar admin-sidebar-mobile" aria-label="Navegación móvil">
+            <SidebarContent mobile />
           </aside>
         </div>
       )}
 
-      <div className="flex-1 min-w-0">
-        {/* Topbar */}
-        <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-            >
-              <Menu size={18} />
+      <div className="admin-workspace">
+        <header className="admin-topbar">
+          <div className="admin-topbar-main">
+            <button type="button" className="admin-icon-button admin-mobile-toggle"
+              onClick={() => setSidebarOpen(true)} aria-label="Abrir menú de administración"
+              aria-controls="admin-mobile-sidebar" aria-expanded={sidebarOpen}>
+              <Menu size={21} />
             </button>
-
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Operación del negocio</h2>
-              <p className="text-xs text-gray-500">
-                Tienda web + puntos físicos conectados
-              </p>
+            <div className="min-w-0">
+              <p className="admin-topbar-eyebrow">HJSTOREVP <ChevronRight size={13} /> OPERACIÓN</p>
+              <h2 className="admin-topbar-title">{activeLabel}</h2>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button className="p-2 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">
-              <Bell size={18} />
+          <div className="admin-topbar-actions">
+            <span className="admin-topbar-role"><ShieldCheck size={15}/> {roleLabel(user?.role)}</span>
+            <a href={storeUrl} target="_blank" rel="noopener noreferrer"
+              className="admin-topbar-store" aria-label="Abrir tienda pública en otra pestaña">
+              <ExternalLink size={16} /> <span>Tienda</span>
+            </a>
+            <button type="button" className="admin-icon-button" onClick={() => navigate('/inventario')}
+              aria-label="Revisar inventario y alertas" title="Inventario y alertas">
+              <Bell size={19} />
             </button>
           </div>
         </header>
 
-        <main className="p-4 md:p-6">
-          <Outlet />
+        <main className="admin-main" id="admin-main" tabIndex={-1}>
+          <div className="admin-main-inner"><Outlet /></div>
         </main>
       </div>
     </div>

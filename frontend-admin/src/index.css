@@ -17,3 +17,130 @@
   .badge-blue    { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700; }
   .badge-gray    { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700; }
 }
+
+
+/* HJStoreVP — Sistema visual del panel. No modifica reglas de negocio. */
+@layer base {
+  :root {
+    color-scheme: light;
+    font-synthesis: none;
+    --admin-bg: #f5f6f8;
+    --admin-border: #e6e8ee;
+    --admin-dark: #10141c;
+    --admin-dark-muted: #858d9d;
+    --admin-accent: #6478ff;
+  }
+  body { @apply antialiased; background: var(--admin-bg); color: #171b26; min-width: 320px; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid #485eed; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  }
+}
+@layer components {
+  /* General controls: compatible with existing admin forms, tables and modals */
+  .card { @apply bg-white rounded-2xl border shadow-none p-5 sm:p-6; border-color: var(--admin-border); box-shadow: 0 2px 15px rgba(18,29,49,.025); }
+  .btn-primary { @apply px-4 py-2.5 rounded-xl font-semibold text-sm bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 42px; }
+  .btn-secondary { @apply px-4 py-2.5 rounded-xl font-semibold text-sm bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 42px; }
+  .btn-danger { @apply px-4 py-2.5 rounded-xl font-semibold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 42px; }
+  .input { @apply w-full bg-white rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-500 transition; min-height: 42px; }
+  .badge-green, .badge-red, .badge-yellow, .badge-blue, .badge-gray { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold; }
+  .badge-green { @apply bg-emerald-50 text-emerald-700; }
+  .badge-red { @apply bg-red-50 text-red-700; }
+  .badge-yellow { @apply bg-amber-50 text-amber-800; }
+  .badge-blue { @apply bg-blue-50 text-blue-700; }
+  .badge-gray { @apply bg-slate-100 text-slate-700; }
+
+  /* Layout */
+  .admin-app-shell { @apply flex min-h-screen w-full; background: var(--admin-bg); }
+  .admin-sidebar { @apply flex flex-col shrink-0 text-white; width: 262px; background: var(--admin-dark); }
+  .admin-sidebar-desktop { @apply hidden lg:flex sticky top-0 h-screen overflow-y-auto; }
+  .admin-sidebar-brand { @apply flex items-center gap-3 px-5 pt-7 pb-7; }
+  .admin-brand-mark { @apply w-11 h-11 flex items-center justify-center rounded-xl font-black text-xl text-white shrink-0; background: linear-gradient(145deg,#7084ff,#3949b3); }
+  .admin-brand-name { @apply font-black tracking-tight text-white leading-none; font-size: 19px; }
+  .admin-brand-name span { @apply text-indigo-300; }
+  .admin-brand-subtitle { @apply text-[9px] tracking-[.17em] font-bold mt-1.5; color: var(--admin-dark-muted); }
+  .admin-sidebar-user { @apply mx-4 mb-8 p-3 flex items-center gap-3 rounded-xl border; background: #1c222e; border-color: #2b3342; }
+  .admin-sidebar-avatar { @apply w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-base font-black text-indigo-100; background: #36436f; }
+  .admin-sidebar-user-name { @apply text-sm font-semibold text-white truncate; }
+  .admin-sidebar-role { @apply flex items-center gap-1.5 mt-1 text-xs text-indigo-300; }
+  .admin-sidebar-nav { @apply flex-1 px-3 overflow-y-auto pb-6; }
+  .admin-sidebar-group-label { @apply block px-3.5 pb-3 text-[10px] font-bold tracking-[.15em]; color: var(--admin-dark-muted); }
+  .admin-sidebar-link { @apply flex items-center gap-3.5 w-full min-h-[46px] px-3.5 py-3 my-1 rounded-xl text-sm font-medium transition-all; color: #abb3c1; }
+  .admin-sidebar-link:hover { @apply text-white; background: #252d3d; }
+  .admin-sidebar-link-active { @apply text-white font-semibold; background: #3e4f98; box-shadow: inset 3px 0 #9eafff; }
+  .admin-sidebar-link-active:hover { background: #4558a5; }
+  .admin-sidebar-arrow { @apply ml-auto opacity-0; }
+  .admin-sidebar-link-active .admin-sidebar-arrow { @apply opacity-100; }
+  .admin-sidebar-bottom { @apply p-3 border-t; border-color: #29313e; }
+  .admin-sidebar-store-link, .admin-sidebar-logout { @apply flex items-center w-full gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-medium transition-colors; }
+  .admin-sidebar-store-link { @apply text-indigo-200 hover:text-white; }
+  .admin-sidebar-logout { @apply text-red-300 hover:text-white; }
+  .admin-sidebar-store-link:hover, .admin-sidebar-logout:hover { background: #252d3d; }
+  .admin-sidebar-version { @apply px-3.5 pt-4 pb-1 text-[9px] tracking-widest; color: #657084; }
+  .admin-workspace { @apply flex flex-col min-w-0 min-h-screen flex-1; }
+  .admin-topbar { @apply sticky top-0 z-30 flex justify-between items-center gap-4 px-4 sm:px-7 lg:px-9 py-4 bg-white border-b; min-height: 82px; border-color: var(--admin-border); }
+  .admin-topbar-main, .admin-topbar-actions { @apply flex items-center gap-3 sm:gap-4 min-w-0; }
+  .admin-topbar-eyebrow { @apply inline-flex items-center gap-1 uppercase tracking-[.15em] text-[10px] font-bold text-neutral-400; }
+  .admin-topbar-title { @apply text-lg sm:text-xl tracking-tight font-extrabold text-slate-900 truncate; }
+  .admin-topbar-role { @apply hidden md:inline-flex items-center gap-2 text-xs font-semibold rounded-full px-3 py-2; color: #4558a5; background: #f0f2ff; }
+  .admin-topbar-store { @apply hidden sm:inline-flex items-center gap-2 text-xs font-bold rounded-xl border px-3.5 py-2.5 text-slate-700 hover:text-brand-700 hover:bg-slate-50; border-color: var(--admin-border); }
+  .admin-icon-button { @apply flex items-center justify-center rounded-xl border border-transparent text-slate-600 hover:bg-slate-100; width: 42px; height: 42px; }
+  .admin-main { @apply flex-1 p-4 sm:p-7 lg:p-9; }
+  .admin-main-inner { @apply w-full max-w-[1700px] mx-auto min-w-0; }
+  .admin-main-inner > div { min-width: 0; }
+  .admin-mobile-toggle { @apply lg:hidden; }
+  .admin-mobile-overlay { @apply fixed inset-0 z-50 lg:hidden; }
+  .admin-mobile-backdrop { @apply absolute inset-0 w-full h-full border-0; background: rgba(5,10,19,.65); }
+  .admin-sidebar-mobile { @apply absolute top-0 left-0 h-full overflow-y-auto; width: min(300px, 88vw); box-shadow: 15px 0 60px rgba(0,0,0,.2); }
+  .admin-sidebar-close { @apply ml-auto min-w-10 min-h-10 text-indigo-100 flex justify-center items-center; }
+  .admin-skip-link { @apply fixed z-[100] left-3 top-2 bg-white text-black px-5 py-3 font-bold rounded-xl; transform: translateY(-200%); }
+  .admin-skip-link:focus { transform: translateY(0); }
+
+  /* Dashboard-specific visuals; query logic and KPI contents remain untouched */
+  .admin-dashboard-heading { @apply flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3; }
+  .admin-dashboard-overline { @apply uppercase font-bold tracking-[.16em] text-[10px] text-slate-500 mb-2; }
+  .admin-dashboard-metric { @apply relative overflow-hidden; }
+  .admin-dashboard-metric::before { content: ''; @apply absolute inset-x-0 top-0 h-[3px]; background: linear-gradient(90deg,#4a5dd5,#b1b9ff); opacity: .8; }
+  .admin-dashboard-metric-label { @apply uppercase tracking-wide font-semibold text-slate-500; font-size: 11px; }
+  .admin-dashboard-metric-value { @apply text-2xl sm:text-[28px] tracking-tight font-black text-slate-900 mt-2; }
+  .admin-dashboard-metric-icon { @apply w-11 h-11 rounded-xl border flex items-center justify-center; }
+  .admin-dashboard-section-title { @apply font-bold text-slate-900 text-base; }
+  .admin-dashboard-chart { @apply overflow-x-auto; }
+  .admin-dashboard-chart-inner { min-width: 500px; }
+  .admin-dashboard-grid-five { @apply grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4; }
+  .admin-dashboard-grid-three { @apply grid grid-cols-1 md:grid-cols-3 gap-4; }
+}
+@media (max-width: 639px) {
+  .admin-topbar { min-height: 70px; }
+  .admin-main { padding: 16px; }
+  .admin-dashboard-chart-inner { min-width: 440px; }
+  .admin-sidebar-link { min-height: 48px; }
+}
+
+
+/* Tables, search areas and dialogs across all nine existing modules. */
+@layer components {
+  .admin-main table { @apply border-separate border-spacing-0; }
+  .admin-main table thead { @apply bg-slate-50; }
+  .admin-main table thead th { @apply text-[11px] uppercase tracking-wide font-bold text-slate-500 whitespace-nowrap; }
+  .admin-main table tbody tr { @apply hover:bg-slate-50/70 transition-colors; }
+  .admin-main table tbody td { @apply text-slate-700; }
+  .admin-main .overflow-x-auto { overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #b5bfd0 transparent; }
+  .admin-main input[type="search"] { @apply min-w-0; }
+  .admin-main input, .admin-main select, .admin-main textarea { max-width: 100%; }
+  .admin-main input:disabled, .admin-main select:disabled { @apply bg-slate-50 text-slate-500; }
+  .admin-main .fixed.inset-0 { overflow-y: auto; }
+  .admin-main .fixed.inset-0 > div { max-height: calc(100dvh - 32px); overflow-y: auto; }
+  .admin-main button:disabled { cursor: not-allowed; }
+}
+@media (max-width: 639px) {
+  .admin-main .card { padding: 16px; }
+  .admin-main .fixed.inset-0 { padding: 10px; }
+  .admin-main .fixed.inset-0 > div { max-height: calc(100dvh - 20px); }
+}
+
+
+@layer components {
+  .admin-dashboard-no-data { @apply flex flex-col items-center justify-center text-center px-5 py-12 rounded-xl border border-dashed border-slate-200 text-slate-400; min-height: 228px; background: #fafbfe; }
+}

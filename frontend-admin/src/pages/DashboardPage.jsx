@@ -51,15 +51,15 @@ function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand' }) {
   }
 
   return (
-    <div className="card">
+    <div className="card admin-dashboard-metric">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-gray-500">{title}</p>
-          <p className="text-2xl font-black text-gray-900 mt-2">{value}</p>
+          <p className="admin-dashboard-metric-label">{title}</p>
+          <p className="admin-dashboard-metric-value">{value}</p>
           {subtitle && <p className="text-xs text-gray-400 mt-2">{subtitle}</p>}
         </div>
 
-        <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${tones[tone]}`}>
+        <div className={`admin-dashboard-metric-icon ${tones[tone]}`}>
           <Icon size={22} />
         </div>
       </div>
@@ -69,9 +69,20 @@ function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand' }) {
 
 function MiniBarChart({ data = [], valueKey = 'total_sales', labelKey = 'month_name' }) {
   const max = Math.max(...data.map((d) => Number(d[valueKey] || 0)), 1)
+  const hasSales = data.some((item) => Number(item[valueKey] || 0) > 0)
+
+  if (!hasSales) {
+    return (
+      <div className="admin-dashboard-no-data" role="status">
+        <BarChart3 size={33} strokeWidth={1.4} aria-hidden="true" />
+        <p className="font-semibold text-slate-700 mt-3">Aún no hay ventas registradas en este período</p>
+        <p className="text-xs text-slate-500 mt-1">La gráfica aparecerá cuando se registren ventas.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex items-end gap-2 h-56">
+    <div className="admin-dashboard-chart"><div className="admin-dashboard-chart-inner flex items-end gap-2 h-56">
       {data.map((item, idx) => {
         const value = Number(item[valueKey] || 0)
         const height = Math.max((value / max) * 100, value > 0 ? 8 : 4)
@@ -82,15 +93,15 @@ function MiniBarChart({ data = [], valueKey = 'total_sales', labelKey = 'month_n
               {value > 0 ? formatNumber(value) : ''}
             </div>
             <div
-              className="w-full rounded-t-xl bg-brand-600 hover:bg-brand-700 transition-colors"
+              className="w-full rounded-t-lg bg-brand-500 hover:bg-brand-700 transition-colors"
               style={{ height: `${height}%` }}
               title={`${item[labelKey]}: ${formatCOP(value)}`}
             />
-            <div className="text-[11px] text-gray-500">{item[labelKey]}</div>
+            <div className="text-[11px] font-medium text-slate-500">{item[labelKey]}</div>
           </div>
         )
       })}
-    </div>
+    </div></div>
   )
 }
 
@@ -230,16 +241,22 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard contable</h1>
-        <p className="text-sm text-gray-500 mt-1">
+    <div className="space-y-6 sm:space-y-7">
+      <div className="admin-dashboard-heading">
+        <div>
+          <p className="admin-dashboard-overline">RESUMEN EJECUTIVO · HJSTOREVP</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Dashboard contable</h1>
+          <p className="text-sm text-gray-500 mt-1">
           Resumen comercial y financiero de tienda web + puntos físicos
-        </p>
+          </p>
+        </div>
+        <div className="inline-flex items-center self-start sm:self-auto gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold">
+          <Clock size={14} /> PERÍODO {year}
+        </div>
       </div>
 
       {/* KPIs principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="admin-dashboard-grid-five">
         <MetricCard
           title="Pedidos del mes"
           value={loadingSummary ? '...' : formatNumber(dashboard?.orders_this_month)}
@@ -282,7 +299,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs secundarios */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="admin-dashboard-grid-three">
         <MetricCard
           title="Pedidos pendientes"
           value={loadingSummary ? '...' : formatNumber(dashboard?.pending_orders)}
@@ -312,7 +329,7 @@ export default function DashboardPage() {
       <div className="card">
         <div className="flex items-center justify-between gap-4 mb-5">
           <div>
-            <h2 className="font-bold text-gray-900">Ventas por mes</h2>
+            <h2 className="admin-dashboard-section-title">Ventas por mes</h2>
             <p className="text-xs text-gray-500 mt-1">
               Comportamiento mensual del año actual
             </p>
@@ -331,7 +348,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="card">
           <div className="mb-5">
-            <h2 className="font-bold text-gray-900">Productos más vendidos</h2>
+            <h2 className="admin-dashboard-section-title">Productos más vendidos</h2>
             <p className="text-xs text-gray-500 mt-1">
               Ordenados por ingresos generados
             </p>
@@ -357,7 +374,7 @@ export default function DashboardPage() {
 
         <div className="card">
           <div className="mb-5">
-            <h2 className="font-bold text-gray-900">Ventas por punto físico / canal</h2>
+            <h2 className="admin-dashboard-section-title">Ventas por punto físico / canal</h2>
             <p className="text-xs text-gray-500 mt-1">
               Comparativo por ubicación
             </p>
@@ -388,7 +405,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-5">
             <AlertTriangle size={18} className="text-amber-600" />
             <div>
-              <h2 className="font-bold text-gray-900">Productos con bajo stock</h2>
+              <h2 className="admin-dashboard-section-title">Productos con bajo stock</h2>
               <p className="text-xs text-gray-500 mt-1">
                 Prioridad para reposición
               </p>
@@ -435,7 +452,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-5">
             <Package size={18} className="text-brand-600" />
             <div>
-              <h2 className="font-bold text-gray-900">Productos de baja rotación</h2>
+              <h2 className="admin-dashboard-section-title">Productos de baja rotación</h2>
               <p className="text-xs text-gray-500 mt-1">
                 Candidatos a promoción o ajuste
               </p>
@@ -468,7 +485,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-gray-900">
+                    <p className="admin-dashboard-section-title">
                       {formatCOP(item.sale_price)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
@@ -488,7 +505,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-5">
             <ShoppingCart size={18} className="text-brand-600" />
             <div>
-              <h2 className="font-bold text-gray-900">Últimos pedidos web</h2>
+              <h2 className="admin-dashboard-section-title">Últimos pedidos web</h2>
               <p className="text-xs text-gray-500 mt-1">
                 Seguimiento rápido de la tienda
               </p>
@@ -523,7 +540,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-gray-900">{formatCOP(order.total_amount)}</p>
+                    <p className="admin-dashboard-section-title">{formatCOP(order.total_amount)}</p>
                     <p className="text-xs text-gray-500 mt-1 capitalize">{order.status}</p>
                   </div>
                 </div>
@@ -536,7 +553,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-5">
             <MapPin size={18} className="text-brand-600" />
             <div>
-              <h2 className="font-bold text-gray-900">Últimas ventas físicas</h2>
+              <h2 className="admin-dashboard-section-title">Últimas ventas físicas</h2>
               <p className="text-xs text-gray-500 mt-1">
                 Actividad reciente por puntos físicos
               </p>
@@ -571,7 +588,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-gray-900">{formatCOP(sale.total_amount)}</p>
+                    <p className="admin-dashboard-section-title">{formatCOP(sale.total_amount)}</p>
                     <p className="text-xs text-green-700 mt-1">
                       Utilidad: {formatCOP(sale.gross_profit)}
                     </p>
@@ -584,7 +601,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Resumen auxiliar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="admin-dashboard-grid-three">
         <div className="card">
           <div className="flex items-center gap-3">
             <Boxes className="text-brand-600" size={18} />
