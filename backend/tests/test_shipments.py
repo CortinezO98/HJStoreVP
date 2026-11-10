@@ -7,7 +7,10 @@ from app.models.models import (
     Order, OrderStatus, Shipment, ShipmentEvent, User, UserRole,
 )
 from app.core.security import hash_password
-from tests.test_main import TestingSession, TestWebOrderStockReservations
+from tests.test_main import (
+    TestingSession, TestWebOrderStockReservations,
+    setup_db, client, auth_headers,  # Reusar fixtures existentes
+)
 
 
 def paid_web_order(client, auth_headers):
