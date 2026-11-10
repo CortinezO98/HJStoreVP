@@ -175,6 +175,24 @@ def create_web_order(
         if item.qty <= 0:
             raise HTTPException(status_code=400, detail="La cantidad debe ser mayor a 0")
 
+    # Los padres con variantes son agrupadores, no referencias vendibles.
+    variant_parents = {
+        parent_id for (parent_id,) in db.query(Product.parent_product_id).filter(
+            Product.parent_product_id.in_(product_ids)
+        ).distinct().all()
+    }
+    if variant_parents:
+        raise HTTPException(status_code=409, detail="Selecciona una variante específica del producto")
+    child_parent_ids = {p.parent_product_id for p in products.values() if p.parent_product_id}
+    if child_parent_ids:
+        active_parents = {
+            pid for (pid,) in db.query(Product.id).filter(
+                Product.id.in_(child_parent_ids), Product.active.is_(True)
+            ).all()
+        }
+        if child_parent_ids != active_parents:
+            raise HTTPException(status_code=409, detail="Una referencia ya no está disponible")
+
     # Calcular totales
     subtotal = Decimal("0")
     total_cost = Decimal("0")
