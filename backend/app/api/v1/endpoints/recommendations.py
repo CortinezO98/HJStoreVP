@@ -1,7 +1,7 @@
 """Recomendaciones comerciales deterministas, públicas, sin datos personales ni descuentos ficticios."""
 from collections import defaultdict
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session, aliased
 
 from app.db.session import get_db
@@ -85,9 +85,9 @@ def _recommend(db: Session, source_ids: list[int], limit: int, mode: str):
         .group_by(ProductImage.product_id).subquery()
     )
     # Nunca se ofrece el padre como comprable si tiene cualquier variante.
-    stock = func.coalesce(
-        func.nullif(raw_variant_counts.c.children, 0) * 0 + variant_stock.c.qty,
-        own_stock.c.qty, 0
+    stock = case(
+        (raw_variant_counts.c.children > 0, func.coalesce(variant_stock.c.qty, 0)),
+        else_=func.coalesce(own_stock.c.qty, 0),
     )
     candidates = (
         db.query(Product.id, Product.name, Product.slug, Product.sku,
