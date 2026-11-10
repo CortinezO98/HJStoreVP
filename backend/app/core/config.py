@@ -93,6 +93,8 @@ class Settings(BaseSettings):
     STORE_PUBLIC_URL: str = "http://localhost:5173"
     EMAIL_NOTIFICATIONS_ENABLED: bool = False
     EMAIL_LIVE_DELIVERY_ALLOWED: bool = False
+    CART_RECOVERY_DELIVERY_ENABLED: bool = False
+    CART_RECOVERY_LIVE_ALLOWED: bool = False
 
     # ─── Primer admin ──────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@hjstorevp.com"
