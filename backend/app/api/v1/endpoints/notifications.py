@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.core.deps import require_admin
 from app.db.session import get_db
@@ -26,6 +27,21 @@ class NotificationOut(BaseModel):
     created_at: datetime
     last_error: str | None
     model_config = {"from_attributes": True}
+
+
+@router.get("/admin/stats")
+def admin_notification_stats(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    rows = db.query(
+        CustomerNotification.status, func.count(CustomerNotification.id)
+    ).group_by(CustomerNotification.status).all()
+    result = {"pending": 0, "sending": 0, "sent": 0, "failed": 0}
+    for status, count in rows:
+        if status in result:
+            result[status] = count
+    return result
 
 
 @router.get("/admin", response_model=list[NotificationOut])
