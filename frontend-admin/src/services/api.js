@@ -271,3 +271,17 @@ export const cashApi = {
   movement: (id, data) => apiClient.post(`/cash/sessions/${id}/movements`, data),
   close: (id, data) => apiClient.post(`/cash/sessions/${id}/close`, data),
 }
+
+
+// ── IDENTIDAD Y CONTENIDO COMERCIAL (SOLO SUPERADMIN) ────────────────────────
+export const storefrontSettingsApi = {
+  read: () => apiClient.get('/storefront-settings/admin'),
+  save: (data) => apiClient.put('/storefront-settings/admin', data),
+  upload: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post('/storefront-settings/admin/upload-image', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+}
