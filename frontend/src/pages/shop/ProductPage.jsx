@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -52,6 +52,21 @@ export default function ProductPage() {
     },
     enabled: !!slug,
   })
+
+  useEffect(() => {
+    if (!product) return undefined
+    document.title = `${product.name} | HJStoreVP`
+    const description = document.querySelector('meta[name="description"]')
+    const previous = description?.getAttribute('content')
+    const excerpt = String(product.description || `Compra ${product.name} en HJStoreVP.`)
+      .replace(/\s+/g, ' ').slice(0, 155)
+    description?.setAttribute('content', excerpt)
+    return () => {
+      if (previous !== null && previous !== undefined) {
+        description?.setAttribute('content', previous)
+      }
+    }
+  }, [product])
 
   const categorySlug = product?.category?.slug || product?.category_slug || ''
   const categoryName = product?.category?.name || product?.category_name || ''
