@@ -89,7 +89,7 @@ class TaxProductOut(TaxProductIn):
 
 def _issuer(db: Session) -> TaxIssuerProfile | None:
     # Solo hay un emisor en la instancia de HJStoreVP; sin multitenencia.
-    return db.query(TaxIssuerProfile).order_by(TaxIssuerProfile.id).first()
+    return db.get(TaxIssuerProfile, 1)
 
 
 @router.get("/issuer", response_model=IssuerOut | None)
@@ -106,11 +106,12 @@ def save_issuer(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    issuer = db.query(TaxIssuerProfile).order_by(
-        TaxIssuerProfile.id
+    issuer = db.query(TaxIssuerProfile).filter(
+        TaxIssuerProfile.id == 1
     ).with_for_update().first()
     if issuer is None:
-        issuer = TaxIssuerProfile()
+        # ID fijo + PK preservan un único emisor incluso en alta concurrente.
+        issuer = TaxIssuerProfile(id=1)
         db.add(issuer)
     for key, value in data.model_dump(mode="python").items():
         setattr(issuer, key, str(value) if key == "contact_email" else value)
