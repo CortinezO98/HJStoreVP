@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # Rate limiting global por cuenta e IP mediante Redis. Activado por defecto.
+    AUTH_RATE_LIMIT_ENABLED: bool = True
+    AUTH_LOGIN_ACCOUNT_MAX_FAILURES: int = 5
+    AUTH_LOGIN_IP_MAX_FAILURES: int = 30
+    AUTH_LOGIN_WINDOW_SECONDS: int = 900
+    # Evita canjear dos veces el mismo refresh token.
+    AUTH_REFRESH_REPLAY_PROTECTION_ENABLED: bool = True
 
     # ─── Base de datos ─────────────────────────────────────────
     DATABASE_URL: str = "mysql+pymysql://hjstore:hjstore123@localhost:3306/hjstorevp"
@@ -105,6 +112,8 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT.lower() == "production":
             if self.DEBUG:
                 raise ValueError("DEBUG debe ser false en producción")
+            if not self.AUTH_RATE_LIMIT_ENABLED or not self.AUTH_REFRESH_REPLAY_PROTECTION_ENABLED:
+                raise ValueError("Protecciones Redis de autenticación obligatorias en producción")
             if len(self.SECRET_KEY) < 32 or self.SECRET_KEY in ("changeme_in_production_use_long_random_string",):
                 raise ValueError("SECRET_KEY insegura para producción")
             if self.FIRST_ADMIN_PASSWORD in ("Admin123!", "Vendedor123!"):
