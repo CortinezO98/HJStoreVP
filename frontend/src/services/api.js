@@ -67,6 +67,7 @@ apiClient.interceptors.response.use(
 // ── PRODUCTOS ────────────────────────────────────────────────────────────────
 export const productsApi = {
   list: (params) => apiClient.get('/products', { params }),
+  filters: (params) => apiClient.get('/products/filters', { params }),
   get: (slugOrId) => apiClient.get(`/products/${slugOrId}`),
   create: (data) => apiClient.post('/products', data),
   update: (id, data) => apiClient.put(`/products/${id}`, data),
