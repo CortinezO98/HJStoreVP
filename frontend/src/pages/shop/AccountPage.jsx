@@ -5,6 +5,7 @@ import { apiClient } from '../../services/api'
 import { useAuthStore } from '../../store'
 import { PageHeading, EmptyState, ErrorState } from '../../components/shop/StoreUI'
 import ShipmentTimeline from '../../components/shop/ShipmentTimeline'
+import PostSaleCustomer from '../../components/shop/PostSaleCustomer'
 
 const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
@@ -112,6 +113,7 @@ export default function AccountPage() {
                       </div>
                     </div>
                     <ShipmentTimeline orderId={order.id} orderStatus={order.status} />
+                    <PostSaleCustomer order={order} />
                     {order.status === 'pending' && (
                       <p role="status" className="text-xs text-amber-800 bg-amber-50 px-4 py-3 mt-5">El pago de este pedido aún está pendiente de confirmación.</p>
                     )}

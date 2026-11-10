@@ -486,3 +486,66 @@ class CustomerNotification(Base):
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ─── POSVENTA: SOLICITUDES Y MOVIMIENTOS AUDITADOS ──────────────────────────
+class PostSaleCase(Base, TimestampMixin):
+    """Caso de devolución o incidencia. No realiza reembolsos por sí mismo."""
+    __tablename__ = "post_sale_cases"
+    __table_args__ = (
+        Index("ix_post_sale_cases_order_status", "order_id", "status"),
+        UniqueConstraint("refund_reference", name="uq_post_sale_refund_reference"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_item_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("order_items.id"), nullable=True
+    )
+    customer_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    reason: Mapped[str] = mapped_column(String(80), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    qty: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(28), nullable=False, default="submitted")
+    refund_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2), nullable=True)
+    refund_status: Mapped[str] = mapped_column(String(28), nullable=False, default="not_requested")
+    refund_reference: Mapped[Optional[str]] = mapped_column(String(180), nullable=True)
+    refund_recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    restocked_qty: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    restock_location_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("locations.id"), nullable=True
+    )
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    events: Mapped[list["PostSaleEvent"]] = relationship(
+        "PostSaleEvent", back_populates="case", cascade="all, delete-orphan",
+        order_by="PostSaleEvent.id"
+    )
+
+
+class PostSaleEvent(Base):
+    """Auditoría append-only de estados, notas y reembolsos externos."""
+    __tablename__ = "post_sale_events"
+    __table_args__ = (
+        Index("ix_post_sale_events_case_date", "case_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    case_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("post_sale_cases.id", ondelete="CASCADE"), nullable=False
+    )
+    actor_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String(48), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    case: Mapped["PostSaleCase"] = relationship("PostSaleCase", back_populates="events")

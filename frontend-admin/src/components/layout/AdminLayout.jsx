@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Truck,
   Mail,
+  RotateCcw,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../../store'
@@ -76,6 +77,12 @@ const NAV_ITEMS = [
     to: '/notificaciones',
     icon: Mail,
     label: 'Notificaciones',
+    roles: ['super_admin', 'admin'],
+  },
+  {
+    to: '/posventa',
+    icon: RotateCcw,
+    label: 'Devoluciones y posventa',
     roles: ['super_admin', 'admin'],
   },
   {

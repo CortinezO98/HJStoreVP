@@ -207,3 +207,15 @@ export const notificationsApi = {
   stats: () => apiClient.get('/notifications/admin/stats'),
   retry: (id) => apiClient.post(`/notifications/admin/${id}/retry`),
 }
+
+
+// ─────────────────────────────────────────────────────────
+// ♻️ POSVENTA — CASOS, RECEPCIÓN Y REEMBOLSOS EXTERNOS
+// ─────────────────────────────────────────────────────────
+export const postSaleApi = {
+  list: (params = {}) => apiClient.get('/post-sale/admin', { params }),
+  review: (id, data) => apiClient.post(`/post-sale/${id}/review`, data),
+  receive: (id, data) => apiClient.post(`/post-sale/${id}/receive`, data),
+  requestRefund: (id, data) => apiClient.post(`/post-sale/${id}/request-refund`, data),
+  recordRefund: (id, data) => apiClient.post(`/post-sale/${id}/record-refund`, data),
+}

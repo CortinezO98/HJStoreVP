@@ -14,6 +14,7 @@ import UsersPage from './pages/UsersPage'
 import ReportsPage from './pages/ReportsPage'
 import ShippingRatesPage from './pages/ShippingRatesPage'
 import NotificationsPage from './pages/NotificationsPage'
+import PostSalePage from './pages/PostSalePage'
 
 function ProtectedAdmin({ roles }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -122,6 +123,13 @@ export default function App() {
             element={<ProtectedAdmin roles={['super_admin', 'admin']} />}
           >
             <Route index element={<NotificationsPage />} />
+          </Route>
+
+          <Route
+            path="posventa"
+            element={<ProtectedAdmin roles={['super_admin', 'admin']} />}
+          >
+            <Route index element={<PostSalePage />} />
           </Route>
 
           <Route
