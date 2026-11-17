@@ -26,8 +26,11 @@ import {
   PlugZap,
   Wallet,
   Settings2,
+  Search,
+  ChevronDown,
+  Command,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuthStore } from '../../store'
 import toast from 'react-hot-toast'
 
@@ -148,6 +151,14 @@ const NAV_ITEMS = [
   },
 ]
 
+const NAV_GROUPS = [
+  { label: 'Visión general', links: ['/', '/reportes'] },
+  { label: 'Catálogo y existencias', links: ['/productos', '/categorias', '/inventario', '/puntos'] },
+  { label: 'Ventas y operaciones', links: ['/pedidos', '/caja', '/pedidos-web', '/envios', '/posventa'] },
+  { label: 'Marketing y clientes', links: ['/promociones', '/fidelizacion', '/notificaciones', '/usuarios'] },
+  { label: 'Administración', links: ['/integraciones', '/configuracion-tienda', '/comprobantes', '/configuracion-dian'] },
+]
+
 function roleLabel(role) {
   switch (role) {
     case 'super_admin':
@@ -166,6 +177,9 @@ export default function AdminLayout() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [navSearch, setNavSearch] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState(() => NAV_GROUPS.map(group => group.label))
+  const navSearchRef = useRef(null)
 
   const navItems = useMemo(
     () => NAV_ITEMS.filter((item) => item.roles.includes(user?.role)),
@@ -178,6 +192,18 @@ export default function AdminLayout() {
   useEffect(() => {
     setSidebarOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    const shortcut = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(true)
+        requestAnimationFrame(() => navSearchRef.current?.focus())
+      }
+    }
+    window.addEventListener('keydown', shortcut)
+    return () => window.removeEventListener('keydown', shortcut)
+  }, [])
 
   useEffect(() => {
     if (!sidebarOpen) return undefined
@@ -197,23 +223,50 @@ export default function AdminLayout() {
   const navLinkClass = ({ isActive }) =>
     `admin-sidebar-link ${isActive ? 'admin-sidebar-link-active' : ''}`
 
-  const Navigation = ({ mobile = false }) => (
-    <nav className="admin-sidebar-nav" aria-label="Módulos de administración">
-      <span className="admin-sidebar-group-label">GESTIÓN DEL NEGOCIO</span>
-      {navItems.map((item) => {
-        const Icon = item.icon
-        return (
-          <NavLink key={item.to} to={item.to} end={item.to === '/'}
-            onClick={mobile ? () => setSidebarOpen(false) : undefined}
-            className={navLinkClass}>
-            <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>{item.label}</span>
-            <ChevronRight size={14} className="admin-sidebar-arrow" aria-hidden="true" />
-          </NavLink>
-        )
-      })}
-    </nav>
+  const toggleGroup = (label) => setExpandedGroups(current =>
+    current.includes(label) ? current.filter(group => group !== label) : [...current, label]
   )
+
+  const Navigation = ({ mobile = false }) => {
+    const filter = navSearch.trim().toLocaleLowerCase('es')
+    return <nav className="admin-sidebar-nav" aria-label="Módulos de administración">
+      <div className="admin-sidebar-search-wrap">
+        <Search size={17} aria-hidden="true" />
+        <input ref={!mobile ? navSearchRef : undefined} type="search"
+          aria-label="Buscar módulo del panel"
+          value={navSearch} onChange={(event) => setNavSearch(event.target.value)}
+          placeholder="Buscar módulo…" className="admin-sidebar-search" />
+        {!filter && <kbd className="admin-shortcut">⌘ K</kbd>}
+      </div>
+      {NAV_GROUPS.map((group) => {
+        const links = navItems.filter(item => group.links.includes(item.to) &&
+          (!filter || item.label.toLocaleLowerCase('es').includes(filter)))
+        if (!links.length) return null
+        const open = !!filter || expandedGroups.includes(group.label)
+        return <div className="admin-sidebar-group" key={group.label}>
+          <button type="button" className="admin-sidebar-group-toggle"
+            aria-expanded={open} onClick={() => toggleGroup(group.label)}>
+            <span>{group.label}</span>
+            <ChevronDown size={15} className={open ? 'admin-group-chevron is-open' : 'admin-group-chevron'} aria-hidden="true" />
+          </button>
+          {open && <div className="admin-sidebar-group-links">
+            {links.map(item => {
+              const Icon = item.icon
+              return <NavLink key={item.to} to={item.to} end={item.to === '/'}
+                onClick={mobile ? () => setSidebarOpen(false) : undefined}
+                className={navLinkClass}>
+                <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
+                <span>{item.label}</span>
+                <ChevronRight size={14} className="admin-sidebar-arrow" aria-hidden="true" />
+              </NavLink>
+            })}
+          </div>}
+        </div>
+      })}
+      {filter && !navItems.some(item => item.label.toLocaleLowerCase('es').includes(filter)) &&
+        <p className="admin-sidebar-no-results">No encontramos módulos con ese nombre.</p>}
+    </nav>
+  }
 
   const SidebarContent = ({ mobile = false }) => (
     <>
@@ -221,7 +274,7 @@ export default function AdminLayout() {
         <div className="admin-brand-mark" aria-hidden="true">HJ</div>
         <div className="min-w-0">
           <p className="admin-brand-name">HJSTORE<span>VP</span></p>
-          <p className="admin-brand-subtitle">PANEL ADMINISTRATIVO</p>
+          <p className="admin-brand-subtitle">CENTRO DE OPERACIONES</p>
         </div>
         {mobile && (
           <button type="button" onClick={() => setSidebarOpen(false)}
@@ -279,11 +332,19 @@ export default function AdminLayout() {
               <Menu size={21} />
             </button>
             <div className="min-w-0">
-              <p className="admin-topbar-eyebrow">HJSTOREVP <ChevronRight size={13} /> OPERACIÓN</p>
+              <p className="admin-topbar-eyebrow">HJSTOREVP <ChevronRight size={13} /> ADMINISTRACIÓN</p>
               <h2 className="admin-topbar-title">{activeLabel}</h2>
             </div>
           </div>
           <div className="admin-topbar-actions">
+            <button type="button" className="admin-topbar-search-cta" onClick={() => {
+              setSidebarOpen(true)
+              requestAnimationFrame(() => navSearchRef.current?.focus())
+            }} aria-label="Buscar módulo en el menú">
+              <Search size={16} aria-hidden="true" />
+              <span>Buscar módulo</span>
+              <span className="admin-search-shortcut">Ctrl K</span>
+            </button>
             <span className="admin-topbar-role"><ShieldCheck size={15}/> {roleLabel(user?.role)}</span>
             <a href={storeUrl} target="_blank" rel="noopener noreferrer"
               className="admin-topbar-store" aria-label="Abrir tienda pública en otra pestaña">
