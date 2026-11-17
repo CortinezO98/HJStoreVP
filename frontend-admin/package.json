@@ -18,7 +18,8 @@
     "recharts": "^2.12.7",
     "react-hot-toast": "^2.4.1",
     "lucide-react": "^0.447.0",
-    "@tanstack/react-table": "^8.20.5"
+    "@tanstack/react-table": "^8.20.5",
+    "bootstrap": "5.3.9"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
