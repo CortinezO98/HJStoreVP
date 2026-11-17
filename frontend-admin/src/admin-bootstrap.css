@@ -204,3 +204,31 @@
 @media(prefers-reduced-motion:reduce){
   .admin-app-shell *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* Dashboard: next-action shortcuts using Bootstrap's responsive grid. */
+.admin-app-shell .admin-dashboard-quick-link {
+  display:flex;align-items:center;gap:12px;
+  padding:16px 15px;
+  background:#fff;
+  border:1px solid #e7ebf3;
+  border-radius:14px;
+  min-height:82px;
+  text-decoration:none;
+  color:#253249;
+  transition:border-color .18s,transform .18s,box-shadow .18s;
+}
+.admin-app-shell .admin-dashboard-quick-link strong{font-size:13px}
+.admin-app-shell .admin-dashboard-quick-link small{font-size:11px}
+.admin-app-shell .admin-dashboard-quick-link:hover,
+.admin-app-shell .admin-dashboard-quick-link:focus-visible {
+  border-color:#b8b5fb;
+  color:#473fd0;
+  transform:translateY(-2px);
+  box-shadow:0 7px 17px rgba(50,50,130,.07);
+}
+.admin-app-shell .admin-dashboard-quick-icon {
+  width:42px;height:42px;
+  display:flex;align-items:center;justify-content:center;
+  background:#f0f1ff;color:#5650db;border-radius:11px;
+  flex-shrink:0;
+}
