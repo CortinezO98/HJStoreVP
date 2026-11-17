@@ -101,49 +101,117 @@ export default function StorefrontSettingsPage() {
     }
   }
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <div className="admin-settings-page">
+      <header className="admin-page-intro">
         <div>
-          <h1 className="text-2xl font-bold">Configuración general de la tienda</h1>
-          <p className="text-sm text-slate-500 mt-1">Solo el superadministrador puede publicar cambios en la tienda.</p>
+          <p className="admin-page-kicker">Personalización del negocio</p>
+          <h1 className="admin-page-heading">Configuración de la tienda</h1>
+          <p className="admin-page-description">
+            Administra tu identidad visual, portada, redes sociales y políticas en un solo lugar.
+            Los cambios se publican cuando selecciones «Guardar y publicar».
+          </p>
         </div>
-        {dirty && <span className="text-sm font-medium text-amber-700">Cambios sin guardar</span>}
+        <a href={import.meta.env.VITE_STORE_URL || 'http://localhost:5173/'}
+          target="_blank" rel="noopener noreferrer" className="btn btn-outline-secondary btn-sm">
+          Ver tienda pública ↗
+        </a>
       </header>
-      {loading && <p role="status">Cargando configuración…</p>}
-      {!loading && !form && <button type="button" className="btn-secondary" onClick={refresh}>Reintentar</button>}
-      {form && <form onSubmit={save} className="space-y-6">
-        {GROUPS.map((group) => <section key={group.title} className="rounded-xl border bg-white p-5 space-y-4">
-          <div><h2 className="font-semibold text-lg">{group.title}</h2>
-            <p className="text-sm text-slate-500">{group.subtitle}</p></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {group.fields.map(([key, label]) => <label key={key}
-              className={`text-sm font-medium space-y-1 ${LONG_FIELDS.has(key) ? 'md:col-span-2' : ''}`}>
-              <span className="block">{label}</span>
-              {LONG_FIELDS.has(key) ? (
-                <textarea className="input w-full" rows={POLICY_FIELDS.has(key) ? 7 : 3}
-                  maxLength={POLICY_FIELDS.has(key) ? 12000 : 500}
-                  value={form[key] || ''} onChange={(e) => change(key, e.target.value)} />
-              ) : (
-                <input className="input w-full" type="text"
-                  required={key === 'store_name'}
-                  value={form[key] || ''} onChange={(e) => change(key, e.target.value)}/>
-              )}
-              {(key === 'logo_url' || key === 'hero_image_url') && <>
-                <input aria-label={`Subir ${label}`} type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-                  disabled={!!uploading} className="block w-full text-xs mt-2"
-                  onChange={(e) => upload(key, e.target.files?.[0])} />
-                {uploading === key && <p className="text-xs text-slate-500">Subiendo imagen…</p>}
-                {form[key] && <img className="mt-2 max-h-32 max-w-full rounded border object-contain" src={fileSrc(form[key])} alt={label} />}
-              </>}
-            </label>)}
+
+      {loading && <div className="d-flex align-items-center gap-3 card p-4" role="status">
+        <span className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
+        Cargando configuración…
+      </div>}
+      {!loading && !form && <div className="alert alert-warning" role="alert">
+        No pudimos cargar la configuración.
+        <button type="button" className="btn btn-outline-secondary btn-sm ms-3" onClick={refresh}>
+          Reintentar
+        </button>
+      </div>}
+      {form && <form onSubmit={save} className="row g-4 align-items-start">
+        <div className="col-12 col-lg-3">
+          <nav className="admin-settings-nav card p-3" aria-label="Secciones de configuración">
+            <p className="text-uppercase fw-bold text-secondary px-2 mb-2" style={{ fontSize: 10, letterSpacing: '.12em' }}>
+              Ir a una sección
+            </p>
+            {GROUPS.map((group, index) => <a href={`#settings-section-${index}`} key={group.title}>
+              <span className="rounded-circle bg-light border d-flex align-items-center justify-content-center"
+                style={{ width: 25, height: 25, fontSize: 11 }}>{index + 1}</span>
+              {group.title}
+            </a>)}
+          </nav>
+        </div>
+
+        <div className="col-12 col-lg-9 d-flex flex-column gap-4">
+          {GROUPS.map((group, index) => <section id={`settings-section-${index}`}
+            key={group.title} className="admin-settings-section">
+            <div className="d-flex align-items-start gap-3 mb-4">
+              <span className="d-flex align-items-center justify-content-center rounded-3 bg-light border fw-bold text-primary flex-shrink-0"
+                style={{ width: 40, height: 40 }}>{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h2 className="admin-settings-section-title">{group.title}</h2>
+                <p className="admin-settings-section-description mb-0">{group.subtitle}</p>
+              </div>
+            </div>
+
+            <div className="row g-3">
+              {group.fields.map(([key, label]) => <div key={key}
+                className={LONG_FIELDS.has(key) ? 'col-12' : 'col-12 col-md-6'}>
+                <label htmlFor={`settings-${key}`} className="form-label">
+                  {label}{key === 'store_name' && <span className="text-danger ms-1">*</span>}
+                </label>
+                {LONG_FIELDS.has(key) ?
+                  <textarea id={`settings-${key}`} className="form-control"
+                    rows={POLICY_FIELDS.has(key) ? 5 : 3}
+                    maxLength={POLICY_FIELDS.has(key) ? 12000 : 500}
+                    value={form[key] || ''} onChange={event => change(key, event.target.value)} />
+                  : <input id={`settings-${key}`} className="form-control"
+                    type={key.includes('_email') ? 'email' : 'text'}
+                    required={key === 'store_name'}
+                    value={form[key] || ''} onChange={event => change(key, event.target.value)} />
+                }
+                {POLICY_FIELDS.has(key) && <div className="form-text text-end">
+                  {(form[key] || '').length.toLocaleString('es-CO')} / 12.000 caracteres
+                </div>}
+                {(key === 'logo_url' || key === 'hero_image_url') && <>
+                  <div className="mt-3">
+                    <label className="form-label" htmlFor={`settings-upload-${key}`}>Subir una imagen</label>
+                    <input id={`settings-upload-${key}`} aria-label={`Subir ${label}`}
+                      className="form-control" type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      disabled={!!uploading} onChange={event => upload(key, event.target.files?.[0])} />
+                    <div className="form-text">PNG, JPG, WEBP o GIF. La imagen se guarda antes de publicarla.</div>
+                  </div>
+                  {uploading === key && <p role="status" className="text-primary small mt-2">
+                    <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"/>Subiendo imagen…
+                  </p>}
+                  {form[key] && <img className="admin-brand-image-preview mt-3" alt={label}
+                    src={fileSrc(form[key])} />}
+                </>}
+              </div>)}
+            </div>
+            {index === 3 && <div className="admin-settings-info mt-4">
+              Revisa estos textos con el comercio antes de publicarlos. El sistema no genera políticas legales automáticamente.
+            </div>}
+          </section>)}
+
+          <div className="admin-settings-footer">
+            <div className="d-flex align-items-center gap-2" role="status" aria-live="polite">
+              <span className={dirty ? 'badge text-bg-warning' : 'badge text-bg-light border text-secondary'}>
+                {dirty ? 'Cambios pendientes' : 'Todo guardado'}
+              </span>
+              <small className="text-secondary">Solo el superadministrador puede publicar.</small>
+            </div>
+            <div className="d-flex flex-wrap gap-2">
+              <button type="button" className="btn btn-outline-secondary"
+                disabled={!dirty || busy || !!uploading} onClick={() => setForm(saved)}>
+                Descartar cambios
+              </button>
+              <button type="submit" className="btn btn-primary"
+                disabled={!dirty || busy || !!uploading}>
+                {busy ? 'Publicando…' : 'Guardar y publicar'}
+              </button>
+            </div>
           </div>
-        </section>)}
-        <div className="sticky bottom-3 rounded-lg border bg-white/95 p-4 flex flex-wrap justify-end gap-3 shadow-sm">
-          <button type="button" className="btn-secondary" disabled={!dirty || busy}
-            onClick={() => setForm(saved)}>Descartar cambios</button>
-          <button type="submit" className="btn-primary" disabled={!dirty || busy || !!uploading}>
-            {busy ? 'Publicando…' : 'Guardar y publicar'}
-          </button>
         </div>
       </form>}
     </div>
