@@ -169,7 +169,7 @@ function AdminNavigation({ mobile = false, navItems, navSearch, setNavSearch,
           aria-label="Buscar módulo del panel"
           value={navSearch} onChange={(event) => setNavSearch(event.target.value)}
           placeholder="Buscar módulo…" className="admin-sidebar-search" />
-        {!filter && <kbd className="admin-shortcut">⌘ K</kbd>}
+        {!filter && <kbd className="admin-shortcut">Ctrl K</kbd>}
       </div>
       {NAV_GROUPS.map((group) => {
         const links = navItems.filter(item => group.links.includes(item.to) &&
