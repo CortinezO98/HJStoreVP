@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp,
@@ -254,6 +255,34 @@ export default function DashboardPage() {
           <Clock size={14} /> PERÍODO {year}
         </div>
       </div>
+
+      <section className="admin-dashboard-shortcuts" aria-label="Accesos rápidos">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div>
+            <h2 className="admin-dashboard-section-title">Accesos rápidos</h2>
+            <p className="text-secondary small mb-0">Ve directamente a las tareas más frecuentes.</p>
+          </div>
+        </div>
+        <div className="row g-3">
+          {[
+            { to: '/productos', icon: Package, title: 'Productos', subtitle: 'Catálogo y variantes' },
+            { to: '/inventario', icon: Boxes, title: 'Inventario', subtitle: 'Disponibilidad y alertas' },
+            { to: '/pedidos-web', icon: ShoppingCart, title: 'Pedidos web', subtitle: 'Ventas por gestionar' },
+            { to: '/reportes', icon: BarChart3, title: 'Reportes', subtitle: 'Análisis del negocio' },
+          ].map(({ to, icon: Icon, title, subtitle }) => (
+            <div key={to} className="col-12 col-sm-6 col-xl-3">
+              <Link to={to} className="admin-dashboard-quick-link">
+                <span className="admin-dashboard-quick-icon"><Icon size={21}/></span>
+                <span className="flex-grow-1 min-w-0">
+                  <strong className="d-block">{title}</strong>
+                  <small className="text-secondary">{subtitle}</small>
+                </span>
+                <span aria-hidden="true">↗</span>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* KPIs principales */}
       <div className="admin-dashboard-grid-five">
