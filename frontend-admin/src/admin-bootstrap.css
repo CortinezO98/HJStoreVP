@@ -1,0 +1,206 @@
+/* Bootstrap 5.3 + HJStoreVP admin design system.
+ * Scoped to the administrator only; preserves Tailwind utility contracts and business logic.
+ */
+.admin-app-shell {
+  --bs-primary: #4f46e5;
+  --bs-primary-rgb: 79, 70, 229;
+  --bs-border-color: #e5eaf2;
+  --bs-body-font-family: Inter, system-ui, -apple-system, sans-serif;
+  --bs-border-radius: .75rem;
+  --admin-bg: #f6f8fc;
+  --admin-dark: #111827;
+  --admin-border: #e7ebf3;
+  --admin-accent: #5b55e9;
+  background: var(--admin-bg);
+  font-family: var(--bs-body-font-family);
+}
+.admin-app-shell .admin-sidebar {
+  background: #111827;
+  width: 264px;
+  border-right: 1px solid #283247;
+}
+.admin-app-shell .admin-sidebar-brand {
+  min-height: 95px;
+  padding: 25px 18px 17px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  margin-bottom: 18px;
+}
+.admin-app-shell .admin-brand-mark {
+  background: linear-gradient(145deg,#8174ff,#4f46e5);
+  border-radius: 13px;
+  box-shadow: 0 8px 22px rgba(91,85,233,.3);
+}
+.admin-app-shell .admin-brand-name {font-size:18px;letter-spacing:-.035em}
+.admin-app-shell .admin-sidebar-user {
+  background: #1d293b;
+  border-color: #2d3b52;
+  margin: 0 12px 20px;
+  padding: 13px;
+}
+.admin-app-shell .admin-sidebar-nav {
+  padding: 0 10px 22px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:#47536a transparent;
+}
+.admin-app-shell .admin-sidebar-search-wrap {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:44px;
+  border:1px solid #384459;
+  border-radius:12px;
+  color:#b8c3d6;
+  padding:0 12px;
+  margin:0 3px 18px;
+  background:#202c3f;
+}
+.admin-app-shell .admin-sidebar-search-wrap:focus-within {
+  border-color:#a5b4fc;
+  box-shadow:0 0 0 3px rgba(129,140,248,.13);
+}
+.admin-app-shell .admin-sidebar-search {
+  width:100%;min-width:0;
+  background:transparent;border:0;outline:0;
+  color:#fff;font-size:13px;
+}
+.admin-app-shell .admin-sidebar-search::placeholder{color:#9ba8bc}
+.admin-app-shell .admin-shortcut {
+  flex-shrink:0;border:1px solid #48536b;border-radius:5px;
+  padding:2px 5px;font-size:10px;color:#a8b5ca;
+}
+.admin-app-shell .admin-sidebar-group {margin-bottom:11px}
+.admin-app-shell .admin-sidebar-group-toggle {
+  color:#9eacc2;
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:9px 13px 7px;
+  border:0;background:transparent;
+  font-size:10px;font-weight:800;letter-spacing:.115em;text-transform:uppercase;
+  text-align:left;border-radius:8px;
+}
+.admin-app-shell .admin-sidebar-group-toggle:hover{color:#e9ecff;background:#1d2838}
+.admin-app-shell .admin-group-chevron{transition:transform .18s}
+.admin-app-shell .admin-group-chevron.is-open{transform:rotate(180deg)}
+.admin-app-shell .admin-sidebar-link{
+  margin:2px 0;padding:10px 11px;min-height:41px;
+  font-size:12.5px;gap:12px;
+  border-radius:9px;color:#b2bfd2;
+}
+.admin-app-shell .admin-sidebar-link:hover {background:#243348;color:#fff}
+.admin-app-shell .admin-sidebar-link-active,
+.admin-app-shell .admin-sidebar-link-active:hover {
+  background:#333e69;color:#fff;
+  box-shadow:inset 3px 0 #a5b4fc;
+}
+.admin-app-shell .admin-sidebar-no-results {font-size:12px;color:#a7b3c5;padding:14px}
+.admin-app-shell .admin-sidebar-bottom{background:#141e2d;border-color:#344054}
+.admin-app-shell .admin-topbar {
+  min-height:78px;
+  padding:16px clamp(18px,2.7vw,42px);
+  box-shadow:0 2px 9px rgba(30,43,77,.025);
+  border-bottom:1px solid #e5eaf2;
+}
+.admin-app-shell .admin-topbar-title {font-size:20px;letter-spacing:-.028em}
+.admin-app-shell .admin-topbar-search-cta {
+  display:flex;align-items:center;gap:9px;
+  background:#f8f9fd;border:1px solid #e4e8f2;
+  border-radius:10px;padding:10px 12px;
+  color:#6a758d;font-size:12px;
+}
+.admin-app-shell .admin-topbar-search-cta:hover {border-color:#bac5e6;background:#f1f3fc}
+.admin-app-shell .admin-search-shortcut {
+  color:#8c95a9;margin-left:16px;font-size:10px;
+  padding:2px 4px;border:1px solid #e5e8f1;border-radius:4px
+}
+.admin-app-shell .admin-main {padding:clamp(18px,2.7vw,42px)}
+.admin-app-shell .admin-main-inner{max-width:1640px}
+.admin-app-shell .card{
+  background:white;
+  border:1px solid #e7ebf3;
+  border-radius:16px;
+  box-shadow:0 5px 20px rgba(18,31,59,.025);
+}
+.admin-app-shell .btn-primary {
+  background:#5147e5;border:1px solid #5147e5;
+  border-radius:10px;
+  min-height:42px;
+  box-shadow:none;
+}
+.admin-app-shell .btn-primary:hover {background:#4236cf;border-color:#4236cf}
+.admin-app-shell .btn-primary:focus-visible {box-shadow:0 0 0 3px rgba(81,71,229,.2)}
+.admin-app-shell .btn-secondary {
+  border-radius:10px;min-height:42px;
+  background:#fff;border-color:#dbe1eb;color:#344054;
+}
+.admin-app-shell .input,
+.admin-app-shell .form-control,
+.admin-app-shell .form-select {
+  background:#fff;min-height:42px;border:1px solid #dce2ed;border-radius:10px;
+  color:#263247;font-size:13px;box-shadow:none;
+}
+.admin-app-shell textarea.form-control{min-height:100px}
+.admin-app-shell .input:focus,
+.admin-app-shell .form-control:focus,
+.admin-app-shell .form-select:focus {
+  outline:0;border-color:#8176f2;box-shadow:0 0 0 3px rgba(100,91,237,.12);
+}
+.admin-app-shell .form-label {
+  font-size:12px;font-weight:700;color:#38465c;margin-bottom:7px;
+}
+.admin-app-shell .form-text{font-size:11px;line-height:1.5;color:#768296}
+.admin-app-shell .admin-page-intro {display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:25px}
+.admin-app-shell .admin-page-kicker {font-size:10px;font-weight:800;letter-spacing:.15em;color:#685ce2;text-transform:uppercase;margin-bottom:7px}
+.admin-app-shell .admin-page-heading {font-size:26px;letter-spacing:-.035em;font-weight:800;color:#142038;line-height:1.25}
+.admin-app-shell .admin-page-description {font-size:13px;color:#788396;max-width:680px;margin-top:6px}
+.admin-app-shell .admin-settings-nav {position:sticky;top:106px;align-self:start}
+.admin-app-shell .admin-settings-nav a {
+  display:flex;align-items:center;gap:10px;border-radius:10px;
+  color:#53627b;padding:12px;font-size:12px;font-weight:600;
+  text-decoration:none;
+}
+.admin-app-shell .admin-settings-nav a:hover,
+.admin-app-shell .admin-settings-nav a:focus-visible{
+  background:#f1f2ff;color:#4c46d4;
+}
+.admin-app-shell .admin-settings-section {scroll-margin-top:110px;padding:24px;border:1px solid #e8ecf3;border-radius:15px;background:#fff;box-shadow:0 5px 18px rgba(25,35,63,.025)}
+.admin-app-shell .admin-settings-section-title{font-size:16px;color:#19243c;font-weight:800}
+.admin-app-shell .admin-settings-section-description{font-size:12px;color:#8290a2;margin-top:5px;margin-bottom:20px}
+.admin-app-shell .admin-settings-footer {
+  position:relative!important;bottom:auto!important;
+  padding:18px 22px!important;background:#fff!important;
+  border:1px solid #e8ecf3;border-radius:15px;
+  box-shadow:0 4px 20px rgba(20,30,55,.04);
+  display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;
+}
+.admin-app-shell .admin-brand-image-preview {
+  width:100%;height:160px;object-fit:contain;
+  background:repeating-conic-gradient(#f3f5f8 0 25%,#fff 0 50%) 50%/18px 18px;
+  border:1px solid #e4e9f2;border-radius:12px;padding:10px;
+}
+.admin-app-shell .admin-settings-info {
+  background:#f2f4ff;border:1px solid #e1e5ff;border-radius:12px;
+  padding:13px 15px;color:#4b5490;font-size:12px;
+}
+.admin-app-shell .admin-main table {border-collapse:separate;border-spacing:0}
+.admin-app-shell .admin-main table th {background:#f7f9fc;color:#657187;vertical-align:middle}
+.admin-app-shell .admin-main table td {vertical-align:middle;border-color:#eef1f6}
+.admin-app-shell .admin-main .overflow-x-auto {border-radius:10px}
+@media(max-width:1199px) {
+  .admin-app-shell .admin-topbar-search-cta span{display:none}
+}
+@media(max-width:1023px) {
+  .admin-app-shell .admin-sidebar-mobile {width:min(310px,90vw)}
+  .admin-app-shell .admin-sidebar-desktop{display:none}
+  .admin-app-shell .admin-settings-nav{position:static}
+}
+@media(max-width:767px){
+  .admin-app-shell .admin-page-heading {font-size:23px}
+  .admin-app-shell .admin-settings-section{padding:18px}
+  .admin-app-shell .admin-topbar {padding:12px 16px}
+  .admin-app-shell .admin-main{padding:16px}
+  .admin-app-shell .admin-settings-footer{padding:15px!important}
+  .admin-app-shell .admin-settings-footer .btn{flex:1}
+}
+@media(prefers-reduced-motion:reduce){
+  .admin-app-shell *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
