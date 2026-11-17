@@ -159,6 +159,48 @@ const NAV_GROUPS = [
   { label: 'Administración', links: ['/integraciones', '/configuracion-tienda', '/comprobantes', '/configuracion-dian'] },
 ]
 
+function AdminNavigation({ mobile = false, navItems, navSearch, setNavSearch,
+  expandedGroups, toggleGroup, setSidebarOpen, navSearchRef, navLinkClass }) {
+    const filter = navSearch.trim().toLocaleLowerCase('es')
+    return <nav className="admin-sidebar-nav" aria-label="Módulos de administración">
+      <div className="admin-sidebar-search-wrap">
+        <Search size={17} aria-hidden="true" />
+        <input ref={mobile ? navSearchRef : undefined} type="search"
+          aria-label="Buscar módulo del panel"
+          value={navSearch} onChange={(event) => setNavSearch(event.target.value)}
+          placeholder="Buscar módulo…" className="admin-sidebar-search" />
+        {!filter && <kbd className="admin-shortcut">⌘ K</kbd>}
+      </div>
+      {NAV_GROUPS.map((group) => {
+        const links = navItems.filter(item => group.links.includes(item.to) &&
+          (!filter || item.label.toLocaleLowerCase('es').includes(filter)))
+        if (!links.length) return null
+        const open = !!filter || expandedGroups.includes(group.label)
+        return <div className="admin-sidebar-group" key={group.label}>
+          <button type="button" className="admin-sidebar-group-toggle"
+            aria-expanded={open} onClick={() => toggleGroup(group.label)}>
+            <span>{group.label}</span>
+            <ChevronDown size={15} className={open ? 'admin-group-chevron is-open' : 'admin-group-chevron'} aria-hidden="true" />
+          </button>
+          {open && <div className="admin-sidebar-group-links">
+            {links.map(item => {
+              const Icon = item.icon
+              return <NavLink key={item.to} to={item.to} end={item.to === '/'}
+                onClick={mobile ? () => setSidebarOpen(false) : undefined}
+                className={navLinkClass}>
+                <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
+                <span>{item.label}</span>
+                <ChevronRight size={14} className="admin-sidebar-arrow" aria-hidden="true" />
+              </NavLink>
+            })}
+          </div>}
+        </div>
+      })}
+      {filter && !navItems.some(item => item.label.toLocaleLowerCase('es').includes(filter)) &&
+        <p className="admin-sidebar-no-results">No encontramos módulos con ese nombre.</p>}
+    </nav>
+}
+
 function roleLabel(role) {
   switch (role) {
     case 'super_admin':
@@ -227,46 +269,6 @@ export default function AdminLayout() {
     current.includes(label) ? current.filter(group => group !== label) : [...current, label]
   )
 
-  const Navigation = ({ mobile = false }) => {
-    const filter = navSearch.trim().toLocaleLowerCase('es')
-    return <nav className="admin-sidebar-nav" aria-label="Módulos de administración">
-      <div className="admin-sidebar-search-wrap">
-        <Search size={17} aria-hidden="true" />
-        <input ref={!mobile ? navSearchRef : undefined} type="search"
-          aria-label="Buscar módulo del panel"
-          value={navSearch} onChange={(event) => setNavSearch(event.target.value)}
-          placeholder="Buscar módulo…" className="admin-sidebar-search" />
-        {!filter && <kbd className="admin-shortcut">⌘ K</kbd>}
-      </div>
-      {NAV_GROUPS.map((group) => {
-        const links = navItems.filter(item => group.links.includes(item.to) &&
-          (!filter || item.label.toLocaleLowerCase('es').includes(filter)))
-        if (!links.length) return null
-        const open = !!filter || expandedGroups.includes(group.label)
-        return <div className="admin-sidebar-group" key={group.label}>
-          <button type="button" className="admin-sidebar-group-toggle"
-            aria-expanded={open} onClick={() => toggleGroup(group.label)}>
-            <span>{group.label}</span>
-            <ChevronDown size={15} className={open ? 'admin-group-chevron is-open' : 'admin-group-chevron'} aria-hidden="true" />
-          </button>
-          {open && <div className="admin-sidebar-group-links">
-            {links.map(item => {
-              const Icon = item.icon
-              return <NavLink key={item.to} to={item.to} end={item.to === '/'}
-                onClick={mobile ? () => setSidebarOpen(false) : undefined}
-                className={navLinkClass}>
-                <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
-                <span>{item.label}</span>
-                <ChevronRight size={14} className="admin-sidebar-arrow" aria-hidden="true" />
-              </NavLink>
-            })}
-          </div>}
-        </div>
-      })}
-      {filter && !navItems.some(item => item.label.toLocaleLowerCase('es').includes(filter)) &&
-        <p className="admin-sidebar-no-results">No encontramos módulos con ese nombre.</p>}
-    </nav>
-  }
 
   const SidebarContent = ({ mobile = false }) => (
     <>
@@ -338,7 +340,8 @@ export default function AdminLayout() {
           </div>
           <div className="admin-topbar-actions">
             <button type="button" className="admin-topbar-search-cta" onClick={() => {
-              setSidebarOpen(true)
+              if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(true)
+              else document.querySelector('.admin-sidebar-desktop input[type="search"]')?.focus()
               requestAnimationFrame(() => navSearchRef.current?.focus())
             }} aria-label="Buscar módulo en el menú">
               <Search size={16} aria-hidden="true" />
