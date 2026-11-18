@@ -158,6 +158,25 @@ for (const [file, symbols] of [
   }
 }
 
+// Gestión de usuarios: acciones sensibles, sesión y eliminación lógica preservadas.
+for (const [file, required] of [
+  ['src/pages/UsersPage.jsx', [
+    'PasswordDialog', 'DeleteUserDialog', 'usersApi.resetPassword',
+    'usersApi.setStatus', 'usersApi.delete', 'usersApi.update',
+    'canManage', 'currentUserId', 'confirmation.trim() === target.email',
+    'setPasswordUser', 'setDeleteUser',
+  ]],
+  ['src/services/api.js', [
+    'resetPassword: (id, password)', 'setStatus: (id, active)',
+    'delete: (id) => apiClient.delete',
+  ]],
+]) {
+  const content = read(file)
+  for (const item of required) {
+    if (!content.includes(item)) missing.push(`${file}: falta ${item}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)
