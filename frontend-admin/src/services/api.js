@@ -179,6 +179,9 @@ export const usersApi = {
   list: () => apiClient.get('/users'),
   create: (data) => apiClient.post('/users', data),
   update: (id, data) => apiClient.put(`/users/${id}`, data),
+  setStatus: (id, active) => apiClient.patch(`/users/${id}/status`, { active }),
+  resetPassword: (id, password) => apiClient.post(`/users/${id}/reset-password`, { password }),
+  remove: (id) => apiClient.delete(`/users/${id}`),
 }
 
 // ─────────────────────────────────────────────────────────
