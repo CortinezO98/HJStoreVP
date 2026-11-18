@@ -5,7 +5,7 @@ El stock se descuenta automáticamente del punto y del global.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import text
+from sqlalchemy import text, update
 from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
