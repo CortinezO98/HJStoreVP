@@ -25,6 +25,7 @@ class UserCreateAdmin(BaseModel):
 
 
 class UserUpdateAdmin(BaseModel):
+    email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[UserRole] = None
@@ -204,6 +205,10 @@ def update_user(
     ):
         raise HTTPException(status_code=400, detail="No puedes cambiar tu propio rol o estado")
 
+    if data.email is not None and data.email != user.email:
+        if db.query(User).filter(User.email == data.email, User.id != user.id).first():
+            raise HTTPException(status_code=400, detail="El correo ya está registrado")
+        user.email = data.email
     if data.full_name is not None:
         user.full_name = data.full_name
     if data.phone is not None:
