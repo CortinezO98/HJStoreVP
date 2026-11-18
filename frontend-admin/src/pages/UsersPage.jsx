@@ -12,6 +12,9 @@ import {
     XCircle,
     Pencil,
     X,
+    ChevronLeft,
+    ChevronRight,
+    SlidersHorizontal,
 } from 'lucide-react'
 import { usersApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
@@ -113,8 +116,8 @@ function statusBadge(active) {
     })
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+        <div className="admin-users-overlay">
+        <div className="admin-users-modal" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar usuario" : "Nuevo usuario"}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
                 <h3 className="text-lg font-bold text-gray-900">
@@ -126,18 +129,19 @@ function statusBadge(active) {
             </div>
 
             <button
-                onClick={onClose}
+                type="button" onClick={onClose}
+                aria-label="Cerrar formulario de usuario"
                 className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
                 Cerrar
             </button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="admin-users-form-grid">
             <div className="md:col-span-2">
-                <label className="block text-sm text-gray-600 mb-1">Nombre completo *</label>
+                <label className="form-label">Nombre completo *</label>
                 <input
-                className="input"
+                className="form-control"
                 value={form.full_name}
                 onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))}
                 placeholder="Ej: José Jorge Cortines Osorio"
@@ -145,10 +149,10 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="block text-sm text-gray-600 mb-1">Correo *</label>
+                <label className="form-label">Correo *</label>
                 <input
                 type="email"
-                className="input"
+                className="form-control"
                 value={form.email}
                 onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                 placeholder="usuario@correo.com"
@@ -156,9 +160,9 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="block text-sm text-gray-600 mb-1">Teléfono</label>
+                <label className="form-label">Teléfono</label>
                 <input
-                className="input"
+                className="form-control"
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
                 placeholder="3001234567"
@@ -166,12 +170,12 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="block text-sm text-gray-600 mb-1">
+                <label className="form-label">
                 {isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña *'}
                 </label>
                 <input
                 type="password"
-                className="input"
+                className="form-control"
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
                 placeholder={isEdit ? 'Solo si deseas cambiarla' : 'Contraseña temporal'}
@@ -179,9 +183,9 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="block text-sm text-gray-600 mb-1">Rol *</label>
+                <label className="form-label">Rol *</label>
                 <select
-                className="input"
+                className="form-select"
                 value={form.role}
                 onChange={(e) =>
                     setForm((p) => ({
@@ -198,9 +202,9 @@ function statusBadge(active) {
 
             {form.role === 'seller' && (
                 <div className="md:col-span-2">
-                <label className="block text-sm text-gray-600 mb-1">Punto físico *</label>
+                <label className="form-label">Punto físico *</label>
                 <select
-                    className="input"
+                    className="form-select"
                     value={form.location_id}
                     onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
                 >
@@ -229,13 +233,13 @@ function statusBadge(active) {
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
-            <button onClick={onClose} className="btn-secondary">
+            <button onClick={onClose} className="btn btn-outline-secondary">
                 Cancelar
             </button>
             <button
                 onClick={() => mutation.mutate()}
                 disabled={mutation.isPending}
-                className="btn-primary flex items-center gap-2"
+                className="btn btn-primary d-inline-flex align-items-center gap-2"
             >
                 {mutation.isPending ? 'Guardando...' : <><CheckCircle size={16} /> Guardar usuario</>}
             </button>
@@ -252,6 +256,8 @@ export default function UsersPage() {
     const [statusFilter, setStatusFilter] = useState('')
     const [selectedUser, setSelectedUser] = useState(null)
     const [showCreate, setShowCreate] = useState(false)
+    const [page, setPage] = useState(1)
+    const [perPage, setPerPage] = useState(15)
 
     const isSuperAdmin = user?.role === 'super_admin'
     const isAdmin = user?.role === 'admin' || isSuperAdmin
@@ -296,6 +302,14 @@ export default function UsersPage() {
         })
     }, [users, search, roleFilter, statusFilter])
 
+    const pageCount = Math.max(1, Math.ceil(filteredUsers.length / perPage))
+    const currentPage = Math.min(page, pageCount)
+    const pageUsers = filteredUsers.slice((currentPage-1)*perPage, currentPage*perPage)
+    const clearFilters = () => {
+        setSearch(''); setRoleFilter(''); setStatusFilter(''); setPage(1)
+    }
+    const hasFilters = Boolean(search || roleFilter || statusFilter)
+
     const stats = useMemo(() => {
         return {
         total: users.length,
@@ -317,80 +331,68 @@ export default function UsersPage() {
     }
 
     return (
-        <div className="space-y-6">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div className="admin-users-page space-y-6">
+          <header className="admin-page-intro flex-wrap">
             <div>
-            <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-            <p className="text-sm text-gray-500 mt-1">
-                Administra administradores y vendedores de puntos físicos
-            </p>
+              <p className="admin-page-kicker">Administración de accesos</p>
+              <h1 className="admin-page-heading">Usuarios y permisos</h1>
+              <p className="admin-page-description">
+                Consulta los accesos, asigna vendedores a sus puntos y administra los roles disponibles.
+              </p>
             </div>
-
-            <button
-            onClick={() => setShowCreate(true)}
-            className="btn-primary flex items-center gap-2"
-            >
-            <Plus size={16} />
-            Nuevo usuario
-            </button>
-        </div>
-
-        {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="card">
-            <p className="text-sm text-gray-500">Total usuarios</p>
-            <p className="text-2xl font-black text-gray-900 mt-2">{stats.total}</p>
+            <button type="button" className="btn btn-primary d-inline-flex align-items-center gap-2"
+              onClick={() => setShowCreate(true)}><Plus size={16}/> Nuevo usuario</button>
+          </header>
+          <div className="row g-3" aria-label="Resumen de usuarios">
+            {[
+              {label:'Usuarios registrados',value:stats.total},
+              {label:'Administradores',value:stats.admins},
+              {label:'Vendedores',value:stats.sellers},
+              {label:'Activos',value:stats.active},
+            ].map(item => <div className="col-12 col-sm-6 col-xl-3" key={item.label}>
+              <div className="admin-catalog-stat"><span>{item.label}</span>
+                <strong>{item.value.toLocaleString('es-CO')}</strong>
+              </div>
+            </div>)}
+          </div>
+          <section className="admin-catalog-filter card" aria-label="Filtros de usuarios">
+            <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+              <h2 className="h6 fw-bold mb-0 d-inline-flex align-items-center gap-2">
+                <SlidersHorizontal size={17}/> Buscar y filtrar
+              </h2>
+              <button type="button" className="btn btn-sm btn-outline-secondary"
+                onClick={clearFilters} disabled={!hasFilters}>Limpiar</button>
             </div>
-            <div className="card">
-            <p className="text-sm text-gray-500">Administradores</p>
-            <p className="text-2xl font-black text-brand-700 mt-2">{stats.admins}</p>
+            <div className="row g-3">
+              <div className="col-12 col-lg-6">
+                <label htmlFor="users-search" className="form-label">Buscar usuario</label>
+                <div className="admin-catalog-search"><Search size={16} aria-hidden="true"/>
+                  <input id="users-search" type="search" className="form-control"
+                    value={search} placeholder="Nombre, correo o teléfono"
+                    onChange={event=>{setSearch(event.target.value);setPage(1)}}/>
+                </div>
+              </div>
+              <div className="col-6 col-lg-3">
+                <label htmlFor="users-role" className="form-label">Rol</label>
+                <select id="users-role" className="form-select" value={roleFilter}
+                  onChange={event=>{setRoleFilter(event.target.value);setPage(1)}}>
+                  <option value="">Todos los roles</option>
+                  <option value="admin">Administrador</option>
+                  <option value="super_admin">Super Admin</option>
+                  <option value="seller">Vendedor</option>
+                  <option value="customer">Cliente</option>
+                </select>
+              </div>
+              <div className="col-6 col-lg-3">
+                <label htmlFor="users-status" className="form-label">Estado</label>
+                <select id="users-status" className="form-select" value={statusFilter}
+                  onChange={event=>{setStatusFilter(event.target.value);setPage(1)}}>
+                  <option value="">Todos los estados</option>
+                  <option value="active">Activos</option><option value="inactive">Inactivos</option>
+                </select>
+              </div>
             </div>
-            <div className="card">
-            <p className="text-sm text-gray-500">Vendedores</p>
-            <p className="text-2xl font-black text-blue-700 mt-2">{stats.sellers}</p>
-            </div>
-            <div className="card">
-            <p className="text-sm text-gray-500">Activos</p>
-            <p className="text-2xl font-black text-green-700 mt-2">{stats.active}</p>
-            </div>
-        </div>
-
-        {/* Filtros */}
-        <div className="card">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                className="input pl-9"
-                placeholder="Buscar por nombre, correo o teléfono..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                />
-            </div>
-
-            <select
-                className="input"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-            >
-                <option value="">Todos los roles</option>
-                <option value="admin">Administrador</option>
-                <option value="super_admin">Super Admin</option>
-                <option value="seller">Vendedor</option>
-                <option value="customer">Cliente</option>
-            </select>
-
-            <select
-                className="input"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-            >
-                <option value="">Todos los estados</option>
-                <option value="active">Activos</option>
-                <option value="inactive">Inactivos</option>
-            </select>
-            </div>
-        </div>
+          </section>
 
         {/* Tabla */}
         <div className="card p-0 overflow-hidden">
@@ -401,8 +403,8 @@ export default function UsersPage() {
             </p>
             </div>
 
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm">
+            <div className="table-responsive">
+            <table className="table table-hover align-middle admin-users-table mb-0">
                 <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th className="text-left px-4 py-3 text-gray-500 font-semibold">Usuario</th>
@@ -433,7 +435,7 @@ export default function UsersPage() {
                     </td>
                     </tr>
                 ) : (
-                    filteredUsers.map((u) => (
+                    pageUsers.map((u) => (
                     <tr
                         key={u.id}
                         className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
@@ -491,7 +493,8 @@ export default function UsersPage() {
                         <td className="px-4 py-3 text-center">
                         <button
                             onClick={() => setSelectedUser(u)}
-                            className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 text-xs font-semibold"
+                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
+                            aria-label={`Editar usuario ${u.full_name}`}
                         >
                             <Pencil size={13} />
                             Editar
@@ -505,6 +508,24 @@ export default function UsersPage() {
             </div>
         </div>
 
+        <div className="admin-catalog-pagination">
+          <span className="text-secondary small">
+            {filteredUsers.length === 0 ? 'Sin resultados' : `Mostrando ${(currentPage-1)*perPage+1}–${Math.min(currentPage*perPage,filteredUsers.length)} de ${filteredUsers.length}`}
+          </span>
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <label className="small text-secondary" htmlFor="users-per-page">Por página</label>
+            <select className="form-select form-select-sm admin-catalog-per-page"
+              id="users-per-page" value={perPage}
+              onChange={event=>{setPerPage(Number(event.target.value));setPage(1)}}>
+              {[10,15,25,50].map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
+            <button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Página anterior"
+              disabled={currentPage===1} onClick={()=>setPage(n=>Math.max(1,n-1))}><ChevronLeft size={16}/></button>
+            <span className="small fw-semibold">{currentPage} / {pageCount}</span>
+            <button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Página siguiente"
+              disabled={currentPage===pageCount} onClick={()=>setPage(n=>Math.min(pageCount,n+1))}><ChevronRight size={16}/></button>
+          </div>
+        </div>
         {showCreate && (
             <UserFormModal
             locations={locations}
