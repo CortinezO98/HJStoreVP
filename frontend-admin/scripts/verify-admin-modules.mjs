@@ -74,6 +74,16 @@ for (const [path, required] of [
   }
 }
 
+// Variantes: proteger todas las acciones tras el rediseño.
+for (const name of [
+  'createVariant', 'updateVariant', 'inventoryApi.replenish',
+  'uploadImages', 'updateImage', 'setStockTarget', 'setImageTarget',
+]) {
+  if (!read('src/components/products/ProductVariantsManager.jsx').includes(name)) {
+    missing.push(`Gestor de variantes: falta ${name}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)

@@ -325,3 +325,24 @@
   .admin-app-shell .admin-catalog-overlay {padding:8px}
   .admin-app-shell .admin-catalog-modal {max-height:calc(100dvh - 16px)}
 }
+
+/* Variantes y fotos: finalizar la experiencia visual del catálogo. */
+.admin-app-shell .admin-variant-backdrop {z-index:70}
+.admin-app-shell .admin-variants-dialog {max-width:970px}
+.admin-app-shell .admin-variants-scroll {
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:24px;display:flex;flex-direction:column;gap:20px;
+}
+.admin-app-shell .admin-variants-heading {padding-bottom:17px;border-bottom:1px solid #e7ebf2}
+.admin-app-shell .admin-variant-form {
+  border-radius:14px;border:1px solid #e7ebf2;
+  background:#fafbfe;padding:20px;
+}
+.admin-app-shell .admin-variant-form .input {margin-top:5px;background:#fff}
+.admin-app-shell .admin-variant-item {
+  border:1px solid #e7ebf2;border-radius:13px;
+  padding:15px;background:#fff;
+}
+@media(max-width:767px) {
+  .admin-app-shell .admin-variants-scroll{padding:15px}
+}
