@@ -24,7 +24,7 @@ def sales_by_month(
             SUM(total_cost)     AS total_cost,
             SUM(total_amount - COALESCE(total_cost, 0)) AS gross_profit
         FROM orders
-        WHERE paid_at IS NOT NULL AND status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
+        WHERE paid_at IS NOT NULL AND LOWER(status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
           AND YEAR(paid_at) = :year
         GROUP BY MONTH(paid_at)
         ORDER BY month
@@ -54,7 +54,7 @@ def top_products(
     _=Depends(require_admin),
 ):
     """Productos más vendidos por ingresos y unidades."""
-    where_clauses = ["o.paid_at IS NOT NULL AND o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')"]
+    where_clauses = ["o.paid_at IS NOT NULL AND LOWER(o.status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')"]
     params = {"limit": limit}
 
     if date_from:
@@ -111,7 +111,7 @@ def low_rotation_products(
             COALESCE(stock.current_stock, 0) AS current_stock
         FROM products p
         LEFT JOIN order_items oi ON oi.product_id = p.id
-        LEFT JOIN orders o ON o.id = oi.order_id AND o.paid_at IS NOT NULL AND o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
+        LEFT JOIN orders o ON o.id = oi.order_id AND o.paid_at IS NOT NULL AND LOWER(o.status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
         LEFT JOIN (
             SELECT product_id, SUM(qty_available) AS current_stock
             FROM inventory GROUP BY product_id
@@ -144,7 +144,7 @@ def sales_by_location(
     _=Depends(require_admin),
 ):
     """Ventas por punto físico y canal web."""
-    where_clauses = ["o.paid_at IS NOT NULL AND o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')"]
+    where_clauses = ["o.paid_at IS NOT NULL AND LOWER(o.status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')"]
     params = {}
 
     if date_from:
@@ -197,7 +197,7 @@ def dashboard_summary(
             COALESCE(AVG(total_amount), 0)  AS avg_ticket,
             COALESCE(SUM(total_amount - COALESCE(total_cost, 0)), 0) AS profit_this_month
         FROM orders
-        WHERE paid_at IS NOT NULL AND status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
+        WHERE paid_at IS NOT NULL AND LOWER(status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
           AND YEAR(paid_at) = YEAR(UTC_TIMESTAMP())
           AND MONTH(paid_at) = MONTH(NOW())
     """)).fetchone()
@@ -251,7 +251,7 @@ def accounting_summary(
 
     conditions = [
         "o.paid_at IS NOT NULL",
-        "o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')",
+        "LOWER(o.status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')",
     ]
     params = {}
     if date_from:
@@ -290,9 +290,9 @@ def accounting_summary(
         "webOrders": 0, "physicalOrders": 0,
     }
     for channel, revenue_value, cost_value, count in db.execute(query, params):
-        if channel == "web":
+        if str(channel).lower() == "web":
             prefix = "web"
-        elif channel == "physical":
+        elif str(channel).lower() == "physical":
             prefix = "physical"
         else:
             continue
