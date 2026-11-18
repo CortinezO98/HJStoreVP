@@ -8,7 +8,7 @@ from slugify import slugify
 
 from app.core.deps import require_admin, get_optional_user, is_catalog_admin
 from app.db.session import get_db
-from app.models.models import Category, Inventory, Product, ProductImage, User
+from app.models.models import Category, Inventory, Location, Product, ProductImage, User
 from app.schemas.schemas import ProductCreate, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["Productos"])
@@ -127,6 +127,20 @@ def list_products(
         .subquery()
     )
 
+    # Catálogo público: una línea se asigna a UNA ubicación activa.
+    # Mostrar la suma de sedes permitiría añadir cantidades que checkout
+    # no puede reservar (ej. 3 + 3 no significa 6 en una sede).
+    online_stock_subq = (
+        db.query(
+            Inventory.product_id.label("product_id"),
+            func.coalesce(func.max(Inventory.qty_available), 0).label("online_stock"),
+        )
+        .join(Location, Location.id == Inventory.location_id)
+        .filter(Location.active.is_(True))
+        .group_by(Inventory.product_id)
+        .subquery()
+    )
+
     child = aliased(Product)
     variant_prices = (
         db.query(
@@ -148,6 +162,20 @@ def list_products(
         .group_by(child.parent_product_id)
         .subquery()
     )
+    # Cada variante es una referencia vendible independiente. Se suma el
+    # máximo abastecible de cada variante, NO el stock global por sedes.
+    variant_online_stock = (
+        db.query(
+            child.parent_product_id.label("parent_id"),
+            func.coalesce(func.sum(
+                case((child.active.is_(True), online_stock_subq.c.online_stock), else_=0)
+            ), 0).label("stock"),
+        )
+        .outerjoin(online_stock_subq, online_stock_subq.c.product_id == child.id)
+        .filter(child.parent_product_id.isnot(None))
+        .group_by(child.parent_product_id)
+        .subquery()
+    )
     active_filters = {
         key: value.strip()
         for key, value in (
@@ -164,10 +192,18 @@ def list_products(
             db.query(
                 variant.parent_product_id.label("parent_id"),
                 func.min(variant.sale_price).label("min_price"),
-                func.coalesce(func.sum(Inventory.qty_available), 0).label("stock"),
+                func.coalesce(func.sum(
+                    Inventory.qty_available if admin else online_stock_subq.c.online_stock
+                ), 0).label("stock"),
             )
-            .outerjoin(Inventory, Inventory.product_id == variant.id)
-            .filter(variant.active.is_(True), variant.parent_product_id.isnot(None))
+            .outerjoin(Inventory, Inventory.product_id == variant.id) if admin else
+            db.query(
+                variant.parent_product_id.label("parent_id"),
+                func.min(variant.sale_price).label("min_price"),
+                func.coalesce(func.sum(online_stock_subq.c.online_stock), 0).label("stock"),
+            ).outerjoin(online_stock_subq, online_stock_subq.c.product_id == variant.id)
+        )
+        matched = matched.filter(variant.active.is_(True), variant.parent_product_id.isnot(None))
         )
         for key, value in active_filters.items():
             matched = matched.filter(variant.variant_options[key].as_string() == value)
@@ -194,10 +230,12 @@ def list_products(
         )
     )
     effective_stock = (
-        matched_variant.c.stock if matched_variant is not None
+        matched_variant.c.stock if matched_variant is not None and admin
+        else matched_variant.c.stock if matched_variant is not None
         else case(
-            (variant_prices.c.variant_count > 0, func.coalesce(variant_stock.c.stock, 0)),
-            else_=func.coalesce(total_stock_subq.c.total_stock, 0),
+            (variant_prices.c.variant_count > 0,
+             func.coalesce(variant_stock.c.stock if admin else variant_online_stock.c.stock, 0)),
+            else_=func.coalesce(total_stock_subq.c.total_stock if admin else online_stock_subq.c.online_stock, 0),
         )
     )
     effective_image = (
@@ -227,6 +265,8 @@ def list_products(
         .outerjoin(Category, Category.id == Product.category_id)
         .outerjoin(primary_image_subq, primary_image_subq.c.product_id == Product.id)
         .outerjoin(total_stock_subq, total_stock_subq.c.product_id == Product.id)
+        .outerjoin(online_stock_subq, online_stock_subq.c.product_id == Product.id)
+        .outerjoin(variant_online_stock, variant_online_stock.c.parent_id == Product.id)
         .outerjoin(variant_prices, variant_prices.c.parent_id == Product.id)
         .outerjoin(variant_stock, variant_stock.c.parent_id == Product.id)
         .filter(Product.parent_product_id.is_(None))
@@ -309,10 +349,21 @@ def get_product(
         Product.parent_product_id == product.id
     ).scalar() if product.parent_product_id is None else 0
     variants = variant_snapshot(db, product.id, admin=is_catalog_admin(current_user)) if variant_count else []
-    total_stock = (
-        sum(int(entry["total_stock"]) for entry in variants)
-        if variant_count else sum((inv.qty_available or 0) for inv in product.inventory)
-    )
+    if variant_count:
+        total_stock = sum(int(entry["total_stock"]) for entry in variants)
+    elif is_catalog_admin(current_user):
+        total_stock = sum(int(inv.qty_available or 0) for inv in product.inventory)
+    else:
+        active_location_ids = {
+            location_id for (location_id,) in db.query(Location.id).filter(
+                Location.active.is_(True)
+            ).all()
+        }
+        total_stock = max(
+            (int(inv.qty_available or 0) for inv in product.inventory
+             if inv.location_id in active_location_ids),
+            default=0,
+        )
     sale_price = min((Decimal(str(entry["sale_price"])) for entry in variants), default=product.sale_price) if variant_count else product.sale_price
     primary_image = None
 
