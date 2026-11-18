@@ -78,6 +78,16 @@ def omnichannel_overview(
         (page - 1) * per_page
     ).limit(per_page).all()
     ids = [item.id for item in items]
+    parent_ids = {
+        parent_id for (parent_id,) in db.query(Product.parent_product_id).filter(
+            Product.parent_product_id.in_(ids)
+        ).distinct().all()
+    } if ids else set()
+    parent_active = {
+        parent_id: active for parent_id, active in db.query(Product.id, Product.active).filter(
+            Product.id.in_([p.parent_product_id for p in items if p.parent_product_id])
+        ).all()
+    }
     locations = db.query(Location).order_by(Location.name, Location.id).all()
     location_map = {location.id: location for location in locations}
     rows = db.query(Inventory).filter(
@@ -97,7 +107,14 @@ def omnichannel_overview(
              and location_map[i.location_id].active),
             default=0,
         )
+        sellable = (
+            bool(product.active)
+            and product.id not in parent_ids
+            and (not product.parent_product_id
+                 or bool(parent_active.get(product.parent_product_id, False)))
+        )
         records.append({
+            "sellable_online": sellable,
             "product_id": product.id,
             "parent_product_id": product.parent_product_id,
             "name": product.name,
@@ -105,7 +122,7 @@ def omnichannel_overview(
             "active": product.active,
             "stock_min_alert": int(product.stock_min_alert or 0),
             "global_available": global_qty,
-            "web_fulfillable": web_qty if product.active else 0,
+            "web_fulfillable": web_qty if sellable else 0,
             "reserved_counter": held_qty,
             "locations": [{
                 "location_id": inv.location_id,
