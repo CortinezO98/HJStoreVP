@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { inventoryApi, locationsApi, productsApi } from '../services/api'
 import toast from 'react-hot-toast'
+import InventoryAuditPanel from '../components/InventoryAuditPanel'
 
 function formatNumber(n) {
   return new Intl.NumberFormat('es-CO').format(Number(n || 0))
@@ -159,6 +160,7 @@ function ReplenishModal({ products, locations, onClose }) {
       qc.invalidateQueries({ queryKey: ['inventory-low-stock'] })
       qc.invalidateQueries({ queryKey: ['inventory-products'] })
       qc.invalidateQueries({ queryKey: ['inventory-omnichannel-overview'] })
+      qc.invalidateQueries({ queryKey: ['inventory-audit-panel'] })
       onClose()
     },
     onError: (error) => {
@@ -285,6 +287,7 @@ function TransferModal({ products, locations, onClose }) {
       qc.invalidateQueries({ queryKey: ['inventory-low-stock'] })
       qc.invalidateQueries({ queryKey: ['inventory-products'] })
       qc.invalidateQueries({ queryKey: ['inventory-omnichannel-overview'] })
+      qc.invalidateQueries({ queryKey: ['inventory-audit-panel'] })
       onClose()
     },
     onError: (error) => {
@@ -490,6 +493,7 @@ export default function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ['inventory-locations'] }),
       queryClient.invalidateQueries({ queryKey: ['inventory-low-stock'] }),
       queryClient.invalidateQueries({ queryKey: ['inventory-omnichannel-overview'] }),
+      queryClient.invalidateQueries({ queryKey: ['inventory-audit-panel'] }),
     ])
     toast.success('Inventario actualizado')
   }
@@ -621,6 +625,8 @@ export default function InventoryPage() {
           </>
         )}
       </section>
+
+      <InventoryAuditPanel locations={locations} />
 
       {/* Alertas */}
       <div className="card">
