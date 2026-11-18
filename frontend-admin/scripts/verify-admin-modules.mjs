@@ -55,6 +55,25 @@ for (const [file, required] of [
   }
 }
 
+// La modernización visual nunca debe retirar funciones comerciales existentes.
+for (const [file, required] of [
+  ['src/pages/ProductsPage.jsx', [
+    'ProductFormModal', 'ProductImagesManager', 'ProductVariantsManager',
+    'productsApi.create', 'productsApi.update', 'productsApi.delete',
+    'include_inactive', 'visibleProducts.map', 'setCurrentPage',
+    'filteredProducts', 'formatCOP', 'Gestionar variantes', 'Gestionar imágenes',
+  ]],
+  ['src/pages/CategoriesPage.jsx', [
+    'CategoryModal', "apiClient.post('/categories'", 'apiClient.put(',
+    'apiClient.patch(', 'visibleCategories.map', 'setStatusFilter',
+  ]],
+]) {
+  const code = read(file)
+  for (const expected of required) {
+    if (!code.includes(expected)) missing.push(`Contrato de catálogo ${file}: ${expected}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)
