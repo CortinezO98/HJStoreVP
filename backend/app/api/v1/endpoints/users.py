@@ -56,6 +56,19 @@ class UserStatusAdmin(BaseModel):
     active: bool
 
 
+def _ensure_other_super_admin(db: Session, user: User, changing_access: bool) -> None:
+    if not changing_access or user.role != UserRole.SUPER_ADMIN or not user.active:
+        return
+    others = db.query(User.id).filter(
+        User.id != user.id,
+        User.role == UserRole.SUPER_ADMIN,
+        User.active.is_(True),
+        User.deleted.is_(False),
+    ).first()
+    if not others:
+        raise HTTPException(status_code=409, detail="No puedes retirar el acceso al último Super Admin activo")
+
+
 def _allowed_target(current_user: User, user: User) -> None:
     if user.deleted:
         raise HTTPException(status_code=404, detail="Cuenta eliminada")
@@ -197,6 +210,10 @@ def update_user(
     if target_role != UserRole.SELLER:
         target_location = None
     _ensure_seller_location(db, target_role, target_location)
+    _ensure_other_super_admin(db, user, (
+        (data.role is not None and data.role != UserRole.SUPER_ADMIN)
+        or data.active is False
+    ))
 
     # No puede editarse a sí mismo el role/active
     if user.id == current_user.id and (
@@ -251,6 +268,7 @@ def change_user_status(
     _allowed_target(current_user, user)
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="No puedes suspender o reactivar tu propia cuenta")
+    _ensure_other_super_admin(db, user, not data.active)
     user.active = data.active
     db.commit()
     db.refresh(user)
@@ -284,6 +302,7 @@ def delete_user(
     _allowed_target(current_user, user)
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta")
+    _ensure_other_super_admin(db, user, True)
     user.active = False
     user.deleted = True
     # Se libera el correo para reutilización, y se revocan todos los tokens.
