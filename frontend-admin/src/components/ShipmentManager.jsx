@@ -104,7 +104,7 @@ export default function ShipmentManager({ order }) {
         <form className="admin-shipment-form"
           onSubmit={event => { event.preventDefault(); saveDispatch.mutate() }}>
           <p className="text-sm text-slate-600">Registra la guía emitida por la transportadora. Esta acción marcará el pedido como enviado.</p>
-          <div className="row g-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="form-label" htmlFor="shipping-guide">Número de guía</label>
               <input id="shipping-guide" className="form-control" required minLength={4} maxLength={120} value={guide}
                 onChange={event=>setGuide(event.target.value)} placeholder="Guía de transportadora"/></div>
@@ -143,7 +143,7 @@ export default function ShipmentManager({ order }) {
               </button>
               {showCorrection && (
                 <form onSubmit={event => {event.preventDefault();correctGuide.mutate()}}
-                  className="row g-3 mt-2">
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                   <div><label htmlFor="shipping-correct-guide" className="form-label">Nueva guía</label>
                     <input id="shipping-correct-guide" className="form-control" minLength={4} maxLength={120} required
                       value={newGuide} onChange={event => setNewGuide(event.target.value)}/></div>
@@ -158,7 +158,7 @@ export default function ShipmentManager({ order }) {
             </div>
           )}
           {canUpdate && (
-            <form className="admin-shipment-form row g-3 align-items-end"
+            <form className="admin-shipment-form grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 sm:items-end"
               onSubmit={event=>{event.preventDefault();saveEvent.mutate()}}>
               <div><label htmlFor="shipping-new-status" className="form-label">Nueva novedad</label>
                 <select className="form-select" id="shipping-new-status" required value={status}
