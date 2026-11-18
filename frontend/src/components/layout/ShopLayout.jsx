@@ -133,51 +133,54 @@ export default function ShopLayout() {
 
       <main id="store-main-content" tabIndex={-1} className="flex-1"><Outlet /></main>
 
-      <footer className="editorial-footer">
-        <div className="editorial-footer-inner">
-          <div>
-            <Link to="/" className="editorial-logo">{logoSrc ? <img src={logoSrc} alt={storeName} className="max-h-12 max-w-40 object-contain" /> : <>HJ<span>STORE</span><small>VP</small></>}</Link>
-            <p>{storeSettings.footer_description || 'Una selección con carácter. Gorras, perfumes, relojes y accesorios para todos los estilos.'}</p>
+      <footer className="editorial-footer store-footer-compact">
+        <div className="store-footer-main">
+          <div className="store-footer-brand">
+            <Link to="/" className="editorial-logo" aria-label={`${storeName}, volver al inicio`}>
+              {logoSrc
+                ? <img src={logoSrc} alt={storeName} className="max-h-12 max-w-40 object-contain" />
+                : <>HJ<span>STORE</span><small>VP</small></>}
+            </Link>
+            <p>{storeSettings.tagline || 'ESTILO PROPIO'}</p>
           </div>
-          <div>
-            <strong>EXPLORA</strong>
-            <Link to="/catalogo">Todos los productos</Link>
-            {navigationCategories.map((c) => <Link key={c.slug} to={`/catalogo?categoria=${c.slug}`}>{c.name}</Link>)}
-          </div>
-          <div>
-            <strong>TU CUENTA</strong>
+          <nav className="store-footer-primary-links" aria-label="Enlaces rápidos">
+            <Link to="/catalogo">Catálogo</Link>
             <Link to="/mi-cuenta">Mis pedidos</Link>
             <Link to="/carrito">Carrito</Link>
-            <Link to="/favoritos">Mis favoritos</Link>
-            <Link to="/login">Iniciar sesión</Link>
-            <Link to="/registro">Crear cuenta</Link>
-          </div>
-          <div>
-            <strong>CONTACTO</strong>
-            <p>Atención y envíos en Colombia.</p>
-            {storeSettings.contact_email && <a href={`mailto:${storeSettings.contact_email}`}>{storeSettings.contact_email}</a>}
-            {storeSettings.contact_phone && <p>{storeSettings.contact_phone}</p>}
-            {storeSettings.contact_whatsapp && <a href={`https://wa.me/${storeSettings.contact_whatsapp}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
-            {storeSettings.instagram_url && <a href={storeSettings.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex gap-2 items-center"><Instagram size={15}/> Instagram</a>}
-            {storeSettings.facebook_url && <a href={storeSettings.facebook_url} target="_blank" rel="noopener noreferrer">Facebook</a>}
-            {storeSettings.tiktok_url && <a href={storeSettings.tiktok_url} target="_blank" rel="noopener noreferrer">TikTok</a>}
+            <Link to="/favoritos">Favoritos</Link>
+          </nav>
+          <div className="store-footer-contact" aria-label="Contacto y redes sociales">
+            {storeSettings.contact_email && (
+              <a href={`mailto:${storeSettings.contact_email}`} aria-label="Correo de contacto">Correo</a>
+            )}
+            {storeSettings.contact_whatsapp && (
+              <a href={`https://wa.me/${String(storeSettings.contact_whatsapp).replace(/\D/g, '')}`}
+                target="_blank" rel="noopener noreferrer">WhatsApp</a>
+            )}
+            {storeSettings.instagram_url && (
+              <a href={storeSettings.instagram_url} target="_blank"
+                rel="noopener noreferrer" aria-label="Instagram de la tienda">
+                <Instagram size={17} aria-hidden="true" /> Instagram
+              </a>
+            )}
+            {!storeSettings.contact_email && !storeSettings.contact_whatsapp && !storeSettings.instagram_url && (
+              <span>Compras y atención en Colombia</span>
+            )}
           </div>
         </div>
-        <div className="editorial-footer-bottom">
-          <span>© {new Date().getFullYear()} {storeName}</span>
-          <span>{storeSettings.tagline || 'ESTILO PROPIO'} · COMPRA CON CONFIANZA</span>
-          <nav aria-label="Políticas comerciales" className="flex flex-wrap gap-3">
+        <div className="store-footer-bottom">
+          <span>© {new Date().getFullYear()} {storeName}. Todos los derechos reservados.</span>
+          <nav aria-label="Información legal y políticas de la tienda">
             {[
               ['shipping_policy', 'Envíos', 'envios'],
-              ['returns_policy', 'Cambios y devoluciones', 'devoluciones'],
+              ['returns_policy', 'Devoluciones', 'devoluciones'],
               ['privacy_policy', 'Privacidad', 'privacidad'],
               ['terms_policy', 'Términos', 'terminos'],
-            ].filter(([key]) => storeSettings[key]?.trim()).map(([, label, slug]) =>
+            ].filter(([key]) => storeSettings[key]?.trim()).map(([, label, slug]) => (
               <Link key={slug} to={`/politicas/${slug}`}>{label}</Link>
-            )}
+            ))}
           </nav>
         </div>
-      </footer>
-    </div>
+      </footer>    </div>
   )
 }
