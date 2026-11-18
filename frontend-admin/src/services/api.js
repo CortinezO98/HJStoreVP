@@ -173,6 +173,16 @@ export const analyticsApi = {
     apiClient.get('/analytics/sales-by-location', { params }),
 }
 
+
+export const financialReportsApi = {
+  overview: (params = {}) => apiClient.get('/financial-reports/overview', { params }),
+  downloadExcel: (params = {}) => apiClient.get('/financial-reports/excel', {
+    params,
+    responseType: 'blob',
+    timeout: 120000,
+  }),
+}
+
 // ─────────────────────────────────────────────────────────
 // 👤 USUARIOS
 // ─────────────────────────────────────────────────────────
