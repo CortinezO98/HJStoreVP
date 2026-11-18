@@ -12,6 +12,9 @@ import {
     Filter,
     DollarSign,
     Boxes,
+    RotateCcw,
+    BarChart3,
+    ArrowDownToLine,
 } from 'lucide-react'
 import OperationalAnalytics from '../components/OperationalAnalytics'
 import {
@@ -92,7 +95,7 @@ function KpiCard({ icon: Icon, title, value, subtitle, tone = 'brand' }) {
     }
 
     return (
-        <div className="card">
+        <div className="card admin-reports-kpi">
         <div className="flex items-start justify-between gap-4">
             <div>
             <p className="text-sm text-gray-500">{title}</p>
@@ -391,46 +394,65 @@ export default function ReportsPage() {
         loadingMonth || loadingTop || loadingLocation || loadingWeb || loadingPhysical
 
     return (
-        <div className="space-y-6">
-        <div>
-            <h1 className="text-2xl font-bold text-gray-900">Reportes contables</h1>
-            <p className="text-sm text-gray-500 mt-1">
-            Consolidado de tienda web y puntos físicos con filtros y exportación
-            </p>
-        </div>
+        <div className="admin-reports-page space-y-6">
+        <header className="admin-page-intro flex-wrap">
+          <div>
+            <p className="admin-page-kicker">Inteligencia comercial</p>
+            <h1 className="admin-page-heading">Reportes y analítica comercial</h1>
+            <p className="admin-page-description">Consulta resultados, compara canales de venta y descarga los reportes disponibles.</p>
+          </div>
+          <nav className="admin-reports-navigation" aria-label="Ir a secciones de reportes">
+            <a href="#reports-summary"><BarChart3 size={15}/> Resumen</a>
+            <a href="#reports-monthly"><Calendar size={15}/> Tendencias</a>
+            <a href="#reports-products"><Package size={15}/> Productos</a>
+            <a href="#reports-operational"><TrendingUp size={15}/> Operación</a>
+          </nav>
+        </header>
 
         {/* Filtros */}
-        <div className="card">
-            <div className="flex items-center gap-2 mb-4">
-            <Filter size={18} className="text-brand-600" />
-            <h2 className="font-bold text-gray-900">Filtros</h2>
+        <section className="card admin-reports-filters">
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <h2 className="h6 fw-bold mb-0 d-flex align-items-center gap-2">
+                <Filter size={18} className="text-primary"/> Filtros de análisis
+              </h2>
+              <button type="button" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2"
+                disabled={!filters.date_from && !filters.date_to && !filters.location_id && !filters.category_id && filters.year === currentYear}
+                onClick={() => setFilters({date_from:'',date_to:'',location_id:'',category_id:'',year:currentYear})}>
+                <RotateCcw size={14}/> Restablecer
+              </button>
             </div>
+            <p className="text-secondary small mb-3">
+              Ajusta el periodo, la sede y la categoría; el año controla el gráfico mensual.
+            </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-                <label className="block text-sm text-gray-600 mb-1">Fecha desde</label>
+            <div className="row g-3">
+            <div className="col-12 col-sm-6 col-xl">
+                <label className="form-label" htmlFor="report-date-from">Fecha desde</label>
                 <input
                 type="date"
-                className="input"
+                id="report-date-from"
+                className="form-control"
                 value={filters.date_from}
                 onChange={(e) => setFilter('date_from', e.target.value)}
                 />
             </div>
 
-            <div>
-                <label className="block text-sm text-gray-600 mb-1">Fecha hasta</label>
+            <div className="col-12 col-sm-6 col-xl">
+                <label className="form-label" htmlFor="report-date-to">Fecha hasta</label>
                 <input
                 type="date"
-                className="input"
+                id="report-date-to"
+                className="form-control"
                 value={filters.date_to}
                 onChange={(e) => setFilter('date_to', e.target.value)}
                 />
             </div>
 
-            <div>
-                <label className="block text-sm text-gray-600 mb-1">Punto físico</label>
+            <div className="col-12 col-sm-6 col-xl">
+                <label className="form-label" htmlFor="report-location">Punto físico</label>
                 <select
-                className="input"
+                id="report-location"
+                className="form-select"
                 value={filters.location_id}
                 onChange={(e) => setFilter('location_id', e.target.value)}
                 >
@@ -443,10 +465,11 @@ export default function ReportsPage() {
                 </select>
             </div>
 
-            <div>
-                <label className="block text-sm text-gray-600 mb-1">Categoría</label>
+            <div className="col-12 col-sm-6 col-xl">
+                <label className="form-label" htmlFor="report-category">Categoría</label>
                 <select
-                className="input"
+                id="report-category"
+                className="form-select"
                 value={filters.category_id}
                 onChange={(e) => setFilter('category_id', e.target.value)}
                 >
@@ -459,30 +482,32 @@ export default function ReportsPage() {
                 </select>
             </div>
 
-            <div>
-                <label className="block text-sm text-gray-600 mb-1">Año gráfico</label>
+            <div className="col-12 col-sm-6 col-xl">
+                <label className="form-label" htmlFor="report-year">Año gráfico</label>
                 <input
                 type="number"
-                className="input"
+                id="report-year"
+                min="2000" max="2100"
+                className="form-control"
                 value={filters.year}
                 onChange={(e) => setFilter('year', Number(e.target.value))}
                 />
             </div>
             </div>
-        </div>
+        </section>
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <KpiCard
             icon={Globe}
-            title="Ingresos web"
+            title="Valor pedidos web"
             value={formatCOP(accountingSummary.webRevenue)}
             subtitle={`${filteredWebOrders.length} pedidos`}
             tone="brand"
             />
             <KpiCard
             icon={MapPin}
-            title="Ingresos físicos"
+            title="Valor ventas físicas"
             value={formatCOP(accountingSummary.physicalRevenue)}
             subtitle={`${filteredPhysicalSales.length} ventas`}
             tone="blue"
@@ -504,7 +529,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Reporte contable principal */}
-        <div className="card">
+        <div id="reports-summary" className="card admin-reports-section">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
             <div>
                 <h2 className="font-bold text-gray-900">Resumen contable</h2>
@@ -515,7 +540,7 @@ export default function ReportsPage() {
 
             <button
                 onClick={exportAccounting}
-                className="btn-primary flex items-center gap-2"
+                className="btn btn-primary d-inline-flex align-items-center gap-2"
             >
                 <Download size={16} />
                 Exportar resumen
@@ -558,7 +583,7 @@ export default function ReportsPage() {
             <div className="card">
             <div className="flex items-center justify-between gap-3 mb-5">
                 <div>
-                <h2 className="font-bold text-gray-900">Ventas por mes</h2>
+                <h2 id="reports-monthly" className="font-bold text-gray-900">Ventas por mes</h2>
                 <p className="text-xs text-gray-500 mt-1">
                     Resumen anual del año seleccionado
                 </p>
@@ -647,7 +672,7 @@ export default function ReportsPage() {
             <div className="card">
             <div className="flex items-center justify-between gap-3 mb-5">
                 <div>
-                <h2 className="font-bold text-gray-900">Productos más vendidos</h2>
+                <h2 id="reports-products" className="font-bold text-gray-900">Productos más vendidos</h2>
                 <p className="text-xs text-gray-500 mt-1">
                     Ingresos y unidades por producto
                 </p>
@@ -877,7 +902,7 @@ export default function ReportsPage() {
         )}
 
         {/* Nueva sección independiente; el reporte contable original se conserva íntegro. */}
-        <div className="border-t border-slate-200 pt-8 mt-8">
+        <div id="reports-operational" className="admin-reports-section border-t border-slate-200 pt-8 mt-8">
           <OperationalAnalytics />
         </div>
         </div>

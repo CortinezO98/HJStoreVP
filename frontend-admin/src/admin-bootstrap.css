@@ -511,3 +511,60 @@
   .admin-app-shell .admin-pos-modal{max-height:calc(100dvh - 16px)}
   .admin-app-shell .admin-cash-page .admin-cash-card{padding:17px}
 }
+
+
+/* Usuarios / permisos y reportes — Bootstrap 5, aislados al panel. */
+.admin-app-shell .admin-users-table {
+  --bs-table-border-color:#edf0f5;min-width:940px;font-size:12px
+}
+.admin-app-shell .admin-users-table thead th{
+  background:#f8f9fc;padding:15px 13px;font-size:10px;
+  font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#68758c
+}
+.admin-app-shell .admin-users-table tbody td{padding:14px 13px}
+.admin-app-shell .admin-users-overlay{
+  position:fixed;inset:0;z-index:80;display:flex;
+  align-items:center;justify-content:center;
+  padding:18px;background:rgba(9,18,33,.67);backdrop-filter:blur(3px);overflow-y:auto
+}
+.admin-app-shell .admin-users-modal{
+  width:min(760px,100%);max-height:calc(100dvh - 36px);
+  overflow-y:auto;border-radius:18px;background:#fff;
+  box-shadow:0 28px 90px rgba(9,18,33,.34)
+}
+.admin-app-shell .admin-users-form-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;padding:24px
+}
+.admin-app-shell .admin-reports-navigation{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap
+}
+.admin-app-shell .admin-reports-navigation a{
+  display:inline-flex;align-items:center;gap:6px;
+  text-decoration:none;padding:9px 11px;border:1px solid #e2e7f1;
+  border-radius:10px;font-size:12px;font-weight:700;color:#57627b;
+  background:#fff
+}
+.admin-app-shell .admin-reports-navigation a:hover,
+.admin-app-shell .admin-reports-navigation a:focus-visible{
+  background:#f2f3ff;border-color:#c9c7fb;color:#5046cb
+}
+.admin-app-shell .admin-reports-filters{padding:23px}
+.admin-app-shell .admin-reports-section{scroll-margin-top:95px}
+.admin-app-shell .admin-reports-page [id^="reports-"]{scroll-margin-top:95px}
+.admin-app-shell .admin-reports-kpi{
+  min-height:145px;overflow-wrap:anywhere
+}
+.admin-app-shell .admin-reports-page .card{
+  box-shadow:0 5px 22px rgba(24,39,77,.03)
+}
+.admin-app-shell .admin-reports-page .btn{
+  font-weight:600
+}
+@media(max-width:767px){
+  .admin-app-shell .admin-users-overlay{padding:8px}
+  .admin-app-shell .admin-users-modal{max-height:calc(100dvh - 16px)}
+  .admin-app-shell .admin-users-form-grid{grid-template-columns:1fr;padding:18px}
+  .admin-app-shell .admin-users-form-grid .md\\:col-span-2{grid-column:span 1}
+  .admin-app-shell .admin-reports-filters{padding:17px}
+}
