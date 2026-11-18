@@ -153,6 +153,8 @@ async def initiate_payment(
 
     # ── Sistecréditos ─────────────────────────────────────────
     elif method == "sistecreditos":
+        if not sistecreditos_enabled():
+            raise HTTPException(status_code=503, detail="Sistecréditos no está configurado")
         redirect = settings.SISTECREDITOS_REDIRECT_URL or redirect_base
         url = build_sistecreditos_url(
             order_number=order.order_number,
@@ -172,6 +174,8 @@ async def initiate_payment(
 
     # ── Addi ──────────────────────────────────────────────────
     elif method == "addi":
+        if not addi_enabled():
+            raise HTTPException(status_code=503, detail="Addi no está configurado")
         items = [
             {
                 "name":       oi.product_name,
@@ -190,9 +194,10 @@ async def initiate_payment(
             items=items,
         )
         # Guardar el ID de la aplicación Addi en la orden para seguimiento
-        order.payment_ref = result.get("applicationId")
-        if addi_enabled():
-            order.payment_method = "addi"
+        if not result.get("applicationId") or not result.get("url"):
+            raise HTTPException(status_code=502, detail="Addi no devolvió una solicitud válida")
+        order.payment_ref = str(result["applicationId"])
+        order.payment_method = "addi"
         db.commit()
 
         return InitiatePaymentResponse(
@@ -346,6 +351,12 @@ async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db))
     order = lock_web_order(db, order.id)
 
     if sc_status in ["APPROVED", "DISBURSED", "ACTIVE"]:
+        if order.payment_method not in (None, "sistecreditos"):
+            raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
+        if not tx_id:
+            raise HTTPException(status_code=409, detail="Aprobación sin referencia de transacción")
+        if order.payment_ref and str(order.payment_ref) != str(tx_id):
+            raise HTTPException(status_code=409, detail="Referencia Sistecréditos contradictoria")
         if order.status == OrderStatus.CANCELLED:
             return {"status": "manual_review", "reason": "late_payment"}
         mark_paid(db, order, "sistecreditos", str(tx_id) if tx_id else None)
@@ -397,6 +408,12 @@ async def addi_webhook(request: Request, db: Session = Depends(get_db)):
     order = lock_web_order(db, order.id)
 
     if addi_status in ["APPROVED", "PAID", "ACTIVE"]:
+        if order.payment_method not in (None, "addi"):
+            raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
+        if not app_id:
+            raise HTTPException(status_code=409, detail="Aprobación Addi sin identificador")
+        if order.payment_ref and str(order.payment_ref) != str(app_id):
+            raise HTTPException(status_code=409, detail="Solicitud Addi contradictoria")
         if order.status == OrderStatus.CANCELLED:
             return {"status": "manual_review", "reason": "late_payment"}
         mark_paid(db, order, "addi", str(app_id) if app_id else None)
@@ -464,6 +481,8 @@ async def confirm_demo(
         raise HTTPException(status_code=409, detail="Solo se pueden confirmar pedidos pendientes")
 
     order = lock_web_order(db, order.id)
+    if order.payment_method:
+        raise HTTPException(status_code=409, detail="Pedido con pasarela iniciada: no admite confirmación demo")
     mark_paid(db, order, f"demo-{data.method}", f"DEMO-{order.order_number}")
     db.commit()
 
