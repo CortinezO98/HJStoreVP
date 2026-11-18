@@ -17,6 +17,7 @@ import {
     ArrowDownToLine,
 } from 'lucide-react'
 import OperationalAnalytics from '../components/OperationalAnalytics'
+import CommerceOperationsPanel from '../components/CommerceOperationsPanel'
 import {
     analyticsApi,
     financialReportsApi,
@@ -943,6 +944,10 @@ export default function ReportsPage() {
             Cargando reportes...
             </div>
         )}
+
+        <div className="admin-reports-section border-t border-slate-200 pt-8 mt-8">
+          <CommerceOperationsPanel />
+        </div>
 
         {/* Nueva sección independiente; el reporte contable original se conserva íntegro. */}
         <div id="reports-operational" className="admin-reports-section border-t border-slate-200 pt-8 mt-8">
