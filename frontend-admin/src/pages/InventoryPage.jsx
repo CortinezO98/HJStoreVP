@@ -714,7 +714,7 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       <div className="admin-catalog-pagination">
         <span className="text-secondary small">
