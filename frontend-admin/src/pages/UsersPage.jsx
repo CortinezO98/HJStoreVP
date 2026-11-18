@@ -15,6 +15,12 @@ import {
     ChevronLeft,
     ChevronRight,
     SlidersHorizontal,
+    KeyRound,
+    PauseCircle,
+    PlayCircle,
+    Trash2,
+    Eye,
+    EyeOff,
 } from 'lucide-react'
 import { usersApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
@@ -56,8 +62,10 @@ function statusBadge(active) {
         : 'bg-red-100 text-red-700'
     }
 
-    function UserFormModal({ userItem, locations, onClose }) {
+    function UserFormModal({ userItem, locations, onClose, isSuperAdmin, currentUserId }) {
     const isEdit = !!userItem
+    const isSelf = isEdit && Number(userItem?.id) === Number(currentUserId)
+    const lockedAdmin = isEdit && !isSuperAdmin && ['admin', 'super_admin'].includes(userItem?.role)
     const queryClient = useQueryClient()
 
     const [form, setForm] = useState({
@@ -76,8 +84,8 @@ function statusBadge(active) {
             throw new Error('Completa los campos obligatorios')
         }
 
-        if (!isEdit && !form.password) {
-            throw new Error('La contraseña es obligatoria al crear un usuario')
+        if (!isEdit && form.password.length < 12) {
+            throw new Error('La contraseña inicial debe tener al menos 12 caracteres')
         }
 
         if (form.role === 'seller' && !form.location_id) {
@@ -85,16 +93,19 @@ function statusBadge(active) {
         }
 
         const payload = {
-            full_name: form.full_name,
-            email: form.email,
-            phone: form.phone || null,
-            role: form.role,
-            location_id: form.role === 'seller' ? Number(form.location_id) : null,
-            active: Boolean(form.active),
+            full_name: form.full_name.trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim() || null,
         }
-
-        if (!isEdit || form.password) {
+        if (!isEdit) {
+            payload.role = form.role
+            payload.location_id = form.role === 'seller' ? Number(form.location_id) : null
             payload.password = form.password
+        } else if (!isSelf && !lockedAdmin) {
+            if (form.role !== userItem.role) payload.role = form.role
+            if (form.role === 'seller' && Number(form.location_id) !== Number(userItem.location_id || 0)) {
+                payload.location_id = Number(form.location_id)
+            }
         }
 
         if (isEdit) {
@@ -139,9 +150,9 @@ function statusBadge(active) {
 
             <div className="admin-users-form-grid">
             <div className="md:col-span-2">
-                <label className="form-label">Nombre completo *</label>
+                <label htmlFor="user-full-name" className="form-label">Nombre completo *</label>
                 <input
-                className="form-control"
+                id="user-full-name" className="form-control"
                 value={form.full_name}
                 onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))}
                 placeholder="Ej: José Jorge Cortines Osorio"
@@ -149,9 +160,9 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="form-label">Correo *</label>
+                <label htmlFor="user-email" className="form-label">Correo *</label>
                 <input
-                type="email"
+                type="email" id="user-email"
                 className="form-control"
                 value={form.email}
                 onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
@@ -160,32 +171,29 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="form-label">Teléfono</label>
+                <label htmlFor="user-phone" className="form-label">Teléfono</label>
                 <input
-                className="form-control"
+                id="user-phone" className="form-control"
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
                 placeholder="3001234567"
                 />
             </div>
 
-            <div>
-                <label className="form-label">
-                {isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña *'}
-                </label>
-                <input
-                type="password"
-                className="form-control"
+            {!isEdit && <div>
+                <label htmlFor="user-new-password" className="form-label">Contraseña inicial *</label>
+                <input id="user-new-password" type="password" className="form-control"
+                autoComplete="new-password" minLength={12}
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                placeholder={isEdit ? 'Solo si deseas cambiarla' : 'Contraseña temporal'}
-                />
-            </div>
+                placeholder="Mínimo 12 caracteres"/>
+            </div>}
 
             <div>
-                <label className="form-label">Rol *</label>
+                <label htmlFor="user-role" className="form-label">Rol *</label>
                 <select
-                className="form-select"
+                id="user-role" className="form-select"
+                disabled={isSelf || lockedAdmin}
                 value={form.role}
                 onChange={(e) =>
                     setForm((p) => ({
@@ -195,16 +203,16 @@ function statusBadge(active) {
                     }))
                 }
                 >
-                <option value="admin">Administrador</option>
+                {isSuperAdmin && <option value="admin">Administrador</option>}
                 <option value="seller">Vendedor</option>
                 </select>
             </div>
 
             {form.role === 'seller' && (
                 <div className="md:col-span-2">
-                <label className="form-label">Punto físico *</label>
+                <label htmlFor="user-location" className="form-label">Punto físico *</label>
                 <select
-                    className="form-select"
+                    id="user-location" className="form-select"
                     value={form.location_id}
                     onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
                 >
@@ -220,7 +228,8 @@ function statusBadge(active) {
                 </div>
             )}
 
-            <div className="md:col-span-2">
+            {!isEdit && <div className="md:col-span-2">
+                <p className="admin-users-hint">Para pausar o reactivar un usuario existente utiliza la acción de su fila. Para cambiar la contraseña utiliza «Contraseña».</p>
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                 <input
                     type="checkbox"
@@ -229,7 +238,7 @@ function statusBadge(active) {
                 />
                 Usuario activo
                 </label>
-            </div>
+            </div>}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
@@ -256,10 +265,13 @@ export default function UsersPage() {
     const [statusFilter, setStatusFilter] = useState('')
     const [selectedUser, setSelectedUser] = useState(null)
     const [showCreate, setShowCreate] = useState(false)
+    const [passwordUser, setPasswordUser] = useState(null)
+    const [deleteUser, setDeleteUser] = useState(null)
     const [page, setPage] = useState(1)
     const [perPage, setPerPage] = useState(15)
 
     const isSuperAdmin = user?.role === 'super_admin'
+    const currentUserId = user?.id ?? user?.user_id
     const isAdmin = user?.role === 'admin' || isSuperAdmin
 
     const { data: users = [], isLoading } = useQuery({
@@ -273,6 +285,24 @@ export default function UsersPage() {
         queryFn: () => locationsApi.list().then((r) => r.data),
         enabled: isAdmin,
     })
+
+    const qc = useQueryClient()
+    const statusMutation = useMutation({
+        mutationFn: ({ id, active }) => usersApi.setStatus(id, active),
+        onSuccess: (_, { active }) => {
+            toast.success(active ? 'Usuario reactivado' : 'Usuario pausado')
+            qc.invalidateQueries({ queryKey: ['admin-users'] })
+        },
+        onError: error => toast.error(error.response?.data?.detail || 'No se pudo cambiar el estado'),
+    })
+    const canManage = target => Number(target.id) !== Number(currentUserId) &&
+        (isSuperAdmin || !['super_admin', 'admin'].includes(target.role))
+    const toggleStatus = target => {
+        if (!canManage(target) || statusMutation.isPending) return
+        const verb = target.active ? 'pausar' : 'reactivar'
+        if (!window.confirm(`¿Deseas ${verb} a ${target.full_name}? ${target.active ? 'Se cerrará su acceso al panel de inmediato.' : 'Podrá volver a iniciar sesión.'}`)) return
+        statusMutation.mutate({ id: target.id, active: !target.active })
+    }
 
     const locationMap = useMemo(() => {
         const map = new Map()
@@ -491,14 +521,27 @@ export default function UsersPage() {
                         </td>
 
                         <td className="px-4 py-3 text-center">
-                        <button
-                            onClick={() => setSelectedUser(u)}
-                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
-                            aria-label={`Editar usuario ${u.full_name}`}
-                        >
-                            <Pencil size={13} />
-                            Editar
-                        </button>
+                        <div className="admin-users-actions">
+                            <button type="button" onClick={() => setSelectedUser(u)}
+                              disabled={!isSuperAdmin && ['super_admin', 'admin'].includes(u.role)}
+                              className="btn btn-sm btn-outline-primary" title="Editar datos y rol"
+                              aria-label={`Editar usuario ${u.full_name}`}><Pencil size={15}/> Editar</button>
+                            <button type="button" onClick={() => setPasswordUser(u)}
+                              disabled={!isSuperAdmin && ['super_admin', 'admin'].includes(u.role)}
+                              className="btn btn-sm btn-outline-secondary" title="Cambiar contraseña"
+                              aria-label={`Cambiar contraseña de ${u.full_name}`}><KeyRound size={15}/> Contraseña</button>
+                            <button type="button" onClick={() => toggleStatus(u)}
+                              disabled={!canManage(u) || statusMutation.isPending}
+                              className={u.active ? 'btn btn-sm btn-outline-warning' : 'btn btn-sm btn-outline-success'}
+                              aria-label={`${u.active ? 'Pausar' : 'Reactivar'} a ${u.full_name}`}>
+                              {u.active ? <PauseCircle size={15}/> : <PlayCircle size={15}/>}
+                              {u.active ? 'Pausar' : 'Reactivar'}
+                            </button>
+                            <button type="button" onClick={() => setDeleteUser(u)}
+                              disabled={!canManage(u)}
+                              className="btn btn-sm btn-outline-danger"
+                              aria-label={`Eliminar usuario ${u.full_name}`}><Trash2 size={15}/> Eliminar</button>
+                        </div>
                         </td>
                     </tr>
                     ))
@@ -528,7 +571,7 @@ export default function UsersPage() {
         </div>
         {showCreate && (
             <UserFormModal
-            locations={locations}
+            locations={locations} isSuperAdmin={isSuperAdmin} currentUserId={currentUserId}
             onClose={() => setShowCreate(false)}
             />
         )}
@@ -536,10 +579,14 @@ export default function UsersPage() {
         {selectedUser && (
             <UserFormModal
             userItem={selectedUser}
-            locations={locations}
+            locations={locations} isSuperAdmin={isSuperAdmin} currentUserId={currentUserId}
             onClose={() => setSelectedUser(null)}
             />
         )}
+        {passwordUser && <PasswordDialog key={passwordUser.id} target={passwordUser}
+            onClose={() => setPasswordUser(null)} onSuccess={() => qc.invalidateQueries({queryKey:['admin-users']})}/>}
+        {deleteUser && <DeleteUserDialog key={deleteUser.id} target={deleteUser}
+            onClose={() => setDeleteUser(null)} onSuccess={() => qc.invalidateQueries({queryKey:['admin-users']})}/>}
         </div>
     )
 }
