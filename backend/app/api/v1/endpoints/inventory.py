@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import update
+from sqlalchemy import update, or_, func
 from typing import List
+from fastapi import Query
 from app.db.session import get_db
 from app.core.deps import require_admin, require_seller
 from app.models.models import (
@@ -50,6 +51,89 @@ def _record_movement(
         created_by=created_by,
     )
     db.add(movement)
+
+
+@router.get("/overview")
+def omnichannel_overview(
+    search: str = Query("", max_length=120),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(40, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Matriz de existencias por SKU y ubicación, sin alterar stock.
+
+    Global: suma por ubicación (incluye inactivas, identificadas en el
+    desglose). Web: máximo disponible en UNA ubicación activa, acorde con
+    las reservas reales del checkout. Filas de variantes mantienen SKU propio.
+    """
+    query = db.query(Product)
+    if search.strip():
+        pattern = f"%{search.strip()}%"
+        query = query.filter(
+            or_(Product.name.ilike(pattern), Product.sku.ilike(pattern))
+        )
+    count = query.count()
+    items = query.order_by(Product.name, Product.id).offset(
+        (page - 1) * per_page
+    ).limit(per_page).all()
+    ids = [item.id for item in items]
+    locations = db.query(Location).order_by(Location.name, Location.id).all()
+    location_map = {location.id: location for location in locations}
+    rows = db.query(Inventory).filter(
+        Inventory.product_id.in_(ids)
+    ).all() if ids else []
+    by_product = {}
+    for inv in rows:
+        by_product.setdefault(inv.product_id, []).append(inv)
+    records = []
+    for product in items:
+        invs = by_product.get(product.id, [])
+        global_qty = sum(int(i.qty_available) for i in invs)
+        held_qty = sum(int(i.qty_reserved or 0) for i in invs)
+        web_qty = max(
+            (int(i.qty_available) for i in invs
+             if i.location_id in location_map
+             and location_map[i.location_id].active),
+            default=0,
+        )
+        records.append({
+            "product_id": product.id,
+            "parent_product_id": product.parent_product_id,
+            "name": product.name,
+            "sku": product.sku,
+            "active": product.active,
+            "stock_min_alert": int(product.stock_min_alert or 0),
+            "global_available": global_qty,
+            "web_fulfillable": web_qty if product.active else 0,
+            "reserved_counter": held_qty,
+            "locations": [{
+                "location_id": inv.location_id,
+                "location_name": location_map[inv.location_id].name
+                    if inv.location_id in location_map else "Ubicación eliminada",
+                "location_type": location_map[inv.location_id].type.value
+                    if inv.location_id in location_map else None,
+                "active": bool(location_map[inv.location_id].active)
+                    if inv.location_id in location_map else False,
+                "qty_available": int(inv.qty_available),
+                "qty_reserved": int(inv.qty_reserved or 0),
+            } for inv in sorted(invs, key=lambda i: i.location_id)],
+        })
+    return {
+        "page": page,
+        "per_page": per_page,
+        "total_products": count,
+        "locations": [{
+            "id": loc.id, "name": loc.name, "type": loc.type.value,
+            "active": loc.active,
+        } for loc in locations],
+        "items": records,
+        "availability_rule": (
+            "Web: máximo por una sola ubicación activa, con preferencia "
+            "por almacén web al reservar. El stock global es informativo "
+            "y puede incluir ubicaciones inactivas."
+        ),
+    }
 
 
 @router.get("/product/{product_id}", response_model=List[InventoryOut])
