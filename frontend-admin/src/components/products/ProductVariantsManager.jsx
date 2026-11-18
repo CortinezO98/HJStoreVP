@@ -115,21 +115,24 @@ export default function ProductVariantsManager({ product, onClose }) {
       presentacion: item.options?.presentacion || '',
     })
   }
-  return <div className="fixed inset-0 z-[60] bg-black/60 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Variantes del producto">
-    <div className="bg-white rounded-xl w-full max-w-4xl max-h-[94vh] overflow-y-auto p-6 space-y-5">
-      <div className="flex justify-between gap-4">
-        <div><h2 className="font-bold text-xl">Variantes de {product.name}</h2>
+  return <div className="admin-catalog-modal-backdrop admin-variant-backdrop" role="presentation">
+    <div role="dialog" aria-modal="true" aria-label={`Variantes de ${product.name}`}
+      className="admin-catalog-modal admin-variants-dialog">
+      <div className="admin-variants-scroll">
+      <div className="flex justify-between items-center gap-4 admin-variants-heading">
+        <div><p className="admin-page-kicker mb-1">Gestión de referencias</p><h2 className="font-bold text-xl">Variantes de {product.name}</h2>
           <p className="text-xs text-gray-500">Cada variante usa SKU, precio y existencias independientes.</p></div>
         <button className="btn-secondary" type="button" onClick={onClose}>Cerrar</button>
       </div>
-      <form className="border rounded-xl p-4 space-y-3" onSubmit={(e) => {
+      <form className="admin-variant-form space-y-3" onSubmit={(e) => {
         e.preventDefault()
         const payload = { label: form.label.trim(), options,
           cost_price: Number(form.cost_price), sale_price: Number(form.sale_price) }
         if (!editing) payload.sku = form.sku.trim()
         save.mutate(payload)
       }}>
-        <h3 className="font-semibold">{editing ? 'Editar referencia' : 'Nueva referencia'}</h3>
+        <h3 className="font-semibold fs-6">{editing ? 'Editar referencia' : 'Nueva referencia'}</h3>
+        <p className="text-secondary small mb-0">Define las propiedades del SKU y su precio independiente.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <label className="text-xs space-y-1">Nombre / etiqueta *
             <input className="input w-full" required maxLength={120} value={form.label}
@@ -159,9 +162,9 @@ export default function ProductVariantsManager({ product, onClose }) {
         </div>
       </form>
       <div className="space-y-3">
-        <h3 className="font-semibold">Referencias y existencias</h3>
+        <h3 className="font-semibold fs-6">Referencias y existencias</h3>
         {isLoading && <p className="text-sm text-gray-500">Cargando referencias...</p>}
-        {variants.map((item) => <div key={item.id} className="border rounded-lg p-3 space-y-2">
+        {variants.map((item) => <div key={item.id} className="admin-variant-item space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               {item.primary_image && <img src={imageUrl(item.primary_image)} alt={item.label} className="w-16 h-16 object-cover rounded-lg border" />}
@@ -217,6 +220,7 @@ export default function ProductVariantsManager({ product, onClose }) {
         {!isLoading && variants.length === 0 && <p className="text-sm text-gray-500">Este producto todavía no tiene variantes. Su inventario actual se gestiona como referencia única.</p>}
       </div>
       <p className="text-xs text-gray-500">Importante: si el producto original aún tiene inventario, primero concilia sus unidades. No se convierten existencias existentes automáticamente.</p>
+      </div>
     </div>
   </div>
 }
