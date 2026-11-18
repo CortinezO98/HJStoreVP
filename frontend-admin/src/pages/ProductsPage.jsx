@@ -14,6 +14,10 @@ import {
   Star,
   Boxes,
   X,
+  SlidersHorizontal,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { categoriesApi, productsApi, apiClient } from '../services/api'
 import toast from 'react-hot-toast'
@@ -103,8 +107,8 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden">
+    <div className="admin-catalog-overlay">
+      <div className="admin-catalog-modal admin-catalog-modal-wide" role="dialog" aria-modal="true" aria-label="Imágenes del producto">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold text-gray-900">Imágenes del producto</h3>
@@ -123,12 +127,12 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
         <div className="p-6 border-b border-gray-100">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
             <div className="flex-1">
-              <label className="block text-sm text-gray-600 mb-1">Seleccionar imágenes</label>
+              <label className="form-label">Seleccionar imágenes</label>
               <input
                 type="file"
                 multiple
                 accept="image/*"
-                className="input"
+                className="form-control"
                 onChange={(e) => setFiles(Array.from(e.target.files || []))}
               />
             </div>
@@ -286,8 +290,8 @@ function ProductFormModal({ product, categories, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
+      <div className="admin-catalog-overlay">
+        <div className="admin-catalog-modal" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar producto" : "Nuevo producto"}>
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-gray-900">
@@ -305,7 +309,7 @@ function ProductFormModal({ product, categories, onClose }) {
             </button>
           </div>
 
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="admin-catalog-form-grid">
             <div className="md:col-span-2">
               <label className="block text-sm text-gray-600 mb-1">Nombre *</label>
               <input
@@ -368,7 +372,7 @@ function ProductFormModal({ product, categories, onClose }) {
 
             <div>
               <label className="block text-sm text-gray-600 mb-1">Precio de venta calculado</label>
-              <div className="input bg-gray-50 font-bold text-brand-700">
+              <div className="admin-catalog-price-preview">
                 {formatCOP(salePricePreview)}
               </div>
             </div>
@@ -388,7 +392,7 @@ function ProductFormModal({ product, categories, onClose }) {
             <div className="md:col-span-2">
               <label className="block text-sm text-gray-600 mb-1">Descripción</label>
               <textarea
-                className="input min-h-[110px]"
+                className="form-control min-h-[110px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Describe el producto..."
@@ -437,7 +441,7 @@ function ProductFormModal({ product, categories, onClose }) {
                   </button>
 
                   <button
-                    onClick={() => deactivateMutation.mutate()}
+                    onClick={() => { if (window.confirm(`¿Desactivar el producto "${product.name}"? No aparecerá en el catálogo público.`)) deactivateMutation.mutate() }}
                     disabled={deactivateMutation.isPending}
                     className="btn-secondary flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
                   >
@@ -491,6 +495,9 @@ export default function ProductsPage() {
   const [featuredFilter, setFeaturedFilter] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(15)
+  const [sortBy, setSortBy] = useState('name')
 
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-categories-products'],
@@ -550,6 +557,26 @@ export default function ProductsPage() {
     })
   }, [products, search, categoryFilter, statusFilter, featuredFilter])
 
+  // Paginación sobre la lista completa consultada, sin cambiar el contrato API.
+  const sortedProducts = useMemo(() => [...filteredProducts].sort((a, b) => {
+    if (sortBy === 'price_asc') return Number(a.sale_price || 0) - Number(b.sale_price || 0)
+    if (sortBy === 'price_desc') return Number(b.sale_price || 0) - Number(a.sale_price || 0)
+    if (sortBy === 'sku') return String(a.sku || '').localeCompare(String(b.sku || ''), 'es')
+    return String(a.name || '').localeCompare(String(b.name || ''), 'es')
+  }), [filteredProducts, sortBy])
+  const pageCount = Math.max(1, Math.ceil(sortedProducts.length / perPage))
+  const currentPage = Math.min(page, pageCount)
+  const pageProducts = sortedProducts.slice((currentPage - 1) * perPage, currentPage * perPage)
+  const resetFilters = () => {
+    setSearch('')
+    setCategoryFilter('')
+    setStatusFilter('')
+    setFeaturedFilter('')
+    setSortBy('name')
+    setPage(1)
+  }
+  const filtersActive = Boolean(search || categoryFilter || statusFilter || featuredFilter || sortBy !== 'name')
+  
   const stats = useMemo(() => {
     const active = products.filter((p) => p.active).length
     const inactive = products.filter((p) => !p.active).length
@@ -563,103 +590,102 @@ export default function ProductsPage() {
   }, [products])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+    <div className="admin-catalog-page space-y-6">
+      <div className="admin-page-intro flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Costo, margen, precio automático, categoría e imágenes
-          </p>
+          <p className="admin-page-kicker">Gestión del catálogo</p>
+          <h1 className="admin-page-heading">Productos</h1>
+          <p className="admin-page-description">Administra precios, variantes, imágenes y visibilidad de tus referencias desde un solo lugar.</p>
         </div>
 
         <button
           onClick={() => setShowCreate(true)}
-          className="btn-primary flex items-center gap-2"
+          className="btn btn-primary d-inline-flex align-items-center gap-2"
         >
           <Plus size={16} />
           Nuevo producto
         </button>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card">
-          <p className="text-sm text-gray-500">Total productos</p>
-          <p className="text-2xl font-black text-gray-900 mt-2">{stats.total}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Activos</p>
-          <p className="text-2xl font-black text-green-700 mt-2">{stats.active}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Inactivos</p>
-          <p className="text-2xl font-black text-red-600 mt-2">{stats.inactive}</p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-500">Destacados</p>
-          <p className="text-2xl font-black text-brand-700 mt-2">{stats.featured}</p>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              className="input pl-9"
-              placeholder="Buscar por nombre, SKU o categoría..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* Estado del catálogo: tarjetas Bootstrap responsivas. */}
+      <div className="row g-3" aria-label="Resumen de productos">
+        {[
+          { label: 'Total productos', value: stats.total },
+          { label: 'Activos', value: stats.active },
+          { label: 'Inactivos', value: stats.inactive },
+          { label: 'Destacados', value: stats.featured },
+        ].map(item => <div className="col-12 col-sm-6 col-xl-3" key={item.label}>
+          <div className="admin-catalog-stat">
+            <span>{item.label}</span><strong>{item.value.toLocaleString('es-CO')}</strong>
           </div>
-
-          <select
-            className="input"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="">Todas las categorías</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="input"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-          </select>
-
-          <select
-            className="input"
-            value={featuredFilter}
-            onChange={(e) => setFeaturedFilter(e.target.value)}
-          >
-            <option value="">Todos</option>
-            <option value="featured">Destacados</option>
-            <option value="normal">No destacados</option>
-          </select>
-        </div>
+        </div>)}
       </div>
+
+      {/* Búsqueda, filtros y ordenación sin modificar las consultas existentes. */}
+      <section className="admin-catalog-filter card" aria-label="Filtros de productos">
+        <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+          <h2 className="h6 fw-bold mb-0 d-inline-flex align-items-center gap-2">
+            <SlidersHorizontal size={18}/> Buscar y filtrar
+          </h2>
+          <button type="button" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2"
+            disabled={!filtersActive} onClick={resetFilters}><RotateCcw size={14}/> Limpiar</button>
+        </div>
+        <div className="row g-3">
+          <div className="col-12 col-lg-5">
+            <label className="form-label" htmlFor="products-search">Buscar producto</label>
+            <div className="admin-catalog-search"><Search size={17} aria-hidden="true"/>
+              <input id="products-search" type="search" className="form-control"
+                placeholder="Nombre, SKU o categoría" value={search}
+                onChange={event => { setSearch(event.target.value); setPage(1) }}/>
+            </div>
+          </div>
+          <div className="col-12 col-sm-6 col-lg-3">
+            <label className="form-label" htmlFor="products-category">Categoría</label>
+            <select id="products-category" className="form-select" value={categoryFilter}
+              onChange={event => { setCategoryFilter(event.target.value); setPage(1) }}>
+              <option value="">Todas las categorías</option>
+              {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+            </select>
+          </div>
+          <div className="col-6 col-lg-2">
+            <label className="form-label" htmlFor="products-status">Estado</label>
+            <select id="products-status" className="form-select" value={statusFilter}
+              onChange={event => { setStatusFilter(event.target.value); setPage(1) }}>
+              <option value="">Todos</option><option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+          </div>
+          <div className="col-6 col-lg-2">
+            <label className="form-label" htmlFor="products-featured">Destacados</label>
+            <select id="products-featured" className="form-select" value={featuredFilter}
+              onChange={event => { setFeaturedFilter(event.target.value); setPage(1) }}>
+              <option value="">Todos</option><option value="featured">Sí</option><option value="normal">No</option>
+            </select>
+          </div>
+          <div className="col-12 col-sm-6 col-lg-4">
+            <label className="form-label" htmlFor="products-sort">Ordenar por</label>
+            <select id="products-sort" className="form-select" value={sortBy}
+              onChange={event => { setSortBy(event.target.value); setPage(1) }}>
+              <option value="name">Nombre (A–Z)</option>
+              <option value="sku">Código SKU</option>
+              <option value="price_asc">Precio: menor a mayor</option>
+              <option value="price_desc">Precio: mayor a menor</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
       {/* Tabla */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="px-5 py-4 border-b border-gray-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
           <h2 className="font-bold text-gray-900">Listado de productos</h2>
           <p className="text-xs text-gray-500 mt-1">
             {filteredProducts.length} productos encontrados
           </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-sm">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle admin-catalog-table mb-0">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">Producto</th>
@@ -693,7 +719,7 @@ export default function ProductsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => {
+                pageProducts.map((product) => {
                   const image = resolveImage(product.primary_image)
 
                   return (
@@ -768,7 +794,8 @@ export default function ProductsPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => setSelectedProduct(product)}
-                          className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 text-xs font-semibold"
+                          className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
+                          aria-label={`Editar producto ${product.name}`}
                         >
                           <Pencil size={13} />
                           Editar
@@ -780,6 +807,28 @@ export default function ProductsPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="admin-catalog-pagination">
+        <span className="text-secondary small">
+          {sortedProducts.length === 0 ? 'Sin resultados' : `Mostrando ${(currentPage - 1) * perPage + 1}–${Math.min(currentPage * perPage, sortedProducts.length)} de ${sortedProducts.length}`}
+        </span>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <label className="small text-secondary" htmlFor="products-per-page">Por página</label>
+          <select id="products-per-page" value={perPage} className="form-select form-select-sm admin-catalog-per-page"
+            onChange={event => { setPerPage(Number(event.target.value)); setPage(1) }}>
+            {[10, 15, 25, 50].map(value => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <button type="button" className="btn btn-sm btn-outline-secondary" disabled={currentPage === 1}
+            onClick={() => setPage(previous => Math.max(1, previous - 1))} aria-label="Página anterior">
+            <ChevronLeft size={17}/>
+          </button>
+          <span className="small fw-semibold">{currentPage} / {pageCount}</span>
+          <button type="button" className="btn btn-sm btn-outline-secondary" disabled={currentPage >= pageCount}
+            onClick={() => setPage(previous => Math.min(pageCount, previous + 1))} aria-label="Página siguiente">
+            <ChevronRight size={17}/>
+          </button>
         </div>
       </div>
 
