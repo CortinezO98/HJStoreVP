@@ -188,23 +188,25 @@ def list_products(
     if active_filters:
         # El filtro tiene semántica AND sobre la MISMA variante activa.
         variant = aliased(Product)
-        matched = (
-            db.query(
-                variant.parent_product_id.label("parent_id"),
-                func.min(variant.sale_price).label("min_price"),
-                func.coalesce(func.sum(
-                    Inventory.qty_available if admin else online_stock_subq.c.online_stock
-                ), 0).label("stock"),
+        if admin:
+            matched = (
+                db.query(
+                    variant.parent_product_id.label("parent_id"),
+                    func.min(variant.sale_price).label("min_price"),
+                    func.coalesce(func.sum(Inventory.qty_available), 0).label("stock"),
+                )
+                .outerjoin(Inventory, Inventory.product_id == variant.id)
             )
-            .outerjoin(Inventory, Inventory.product_id == variant.id) if admin else
-            db.query(
-                variant.parent_product_id.label("parent_id"),
-                func.min(variant.sale_price).label("min_price"),
-                func.coalesce(func.sum(online_stock_subq.c.online_stock), 0).label("stock"),
-            ).outerjoin(online_stock_subq, online_stock_subq.c.product_id == variant.id)
-        )
+        else:
+            matched = (
+                db.query(
+                    variant.parent_product_id.label("parent_id"),
+                    func.min(variant.sale_price).label("min_price"),
+                    func.coalesce(func.sum(online_stock_subq.c.online_stock), 0).label("stock"),
+                )
+                .outerjoin(online_stock_subq, online_stock_subq.c.product_id == variant.id)
+            )
         matched = matched.filter(variant.active.is_(True), variant.parent_product_id.isnot(None))
-        )
         for key, value in active_filters.items():
             matched = matched.filter(variant.variant_options[key].as_string() == value)
         matched_variant = matched.group_by(variant.parent_product_id).subquery()
