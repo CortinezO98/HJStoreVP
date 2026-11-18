@@ -152,6 +152,7 @@ export const physicalSalesApi = {
 // 📊 ANALYTICS (DASHBOARD)
 // ─────────────────────────────────────────────────────────
 export const analyticsApi = {
+  accountingSummary: (params = {}) => apiClient.get('/analytics/accounting-summary', { params }),
   dashboard: () =>
     apiClient.get('/analytics/dashboard-summary'),
 
