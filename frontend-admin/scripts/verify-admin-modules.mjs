@@ -74,6 +74,17 @@ for (const [path, required] of [
   }
 }
 
+// Conservación de operaciones del inventario y controles de navegación.
+const inventory = read('src/pages/InventoryPage.jsx')
+for (const item of [
+  'inventoryApi.replenish', 'inventoryApi.transfer', 'inventoryApi.byProduct',
+  'inventoryApi.lowStock', 'ProductStockModal', 'ReplenishModal', 'TransferModal',
+  'include_inactive: true', 'per_page: 100', 'pageProducts', 'setStockFilter',
+  'setActiveFilter', 'setPerPage', 'pageCount',
+]) {
+  if (!inventory.includes(item)) missing.push('Inventario: falta ' + item)
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)
