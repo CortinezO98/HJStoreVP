@@ -15,6 +15,12 @@ import {
     ChevronLeft,
     ChevronRight,
     SlidersHorizontal,
+    KeyRound,
+    PauseCircle,
+    PlayCircle,
+    Trash2,
+    Eye,
+    EyeOff,
 } from 'lucide-react'
 import { usersApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
@@ -56,7 +62,7 @@ function statusBadge(active) {
         : 'bg-red-100 text-red-700'
     }
 
-    function UserFormModal({ userItem, locations, onClose }) {
+    function UserFormModal({ userItem, locations, onClose, currentUser }) {
     const isEdit = !!userItem
     const queryClient = useQueryClient()
 
@@ -67,7 +73,6 @@ function statusBadge(active) {
         password: '',
         role: userItem?.role || 'seller',
         location_id: userItem?.location_id ? String(userItem.location_id) : '',
-        active: userItem?.active ?? true,
     })
 
     const mutation = useMutation({
@@ -76,8 +81,8 @@ function statusBadge(active) {
             throw new Error('Completa los campos obligatorios')
         }
 
-        if (!isEdit && !form.password) {
-            throw new Error('La contraseña es obligatoria al crear un usuario')
+        if (!isEdit && form.password.length < 12) {
+            throw new Error('La contraseña temporal debe tener al menos 12 caracteres')
         }
 
         if (form.role === 'seller' && !form.location_id) {
@@ -85,16 +90,21 @@ function statusBadge(active) {
         }
 
         const payload = {
-            full_name: form.full_name,
-            email: form.email,
-            phone: form.phone || null,
-            role: form.role,
-            location_id: form.role === 'seller' ? Number(form.location_id) : null,
-            active: Boolean(form.active),
+            full_name: form.full_name.trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim() || null,
         }
-
-        if (!isEdit || form.password) {
+        if (!isEdit) {
             payload.password = form.password
+            payload.role = form.role
+            payload.location_id = form.role === 'seller' ? Number(form.location_id) : null
+        } else {
+            // Actualizar únicamente los campos modificados. Evita enviar rol/estado
+            // de la cuenta propia y respeta permisos de administradores.
+            if (form.role !== userItem.role) payload.role = form.role
+            if ((form.role === 'seller' ? Number(form.location_id) : null) !== (userItem.location_id || null)) {
+                payload.location_id = form.role === 'seller' ? Number(form.location_id) : null
+            }
         }
 
         if (isEdit) {
@@ -169,18 +179,19 @@ function statusBadge(active) {
                 />
             </div>
 
-            <div>
-                <label className="form-label">
-                {isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña *'}
-                </label>
+            {!isEdit && <div>
+                <label className="form-label" htmlFor="new-user-password">Contraseña temporal * (mínimo 12 caracteres)</label>
                 <input
+                id="new-user-password"
                 type="password"
                 className="form-control"
+                minLength={12}
+                autoComplete="new-password"
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                placeholder={isEdit ? 'Solo si deseas cambiarla' : 'Contraseña temporal'}
+                placeholder="Contraseña temporal segura"
                 />
-            </div>
+            </div>}
 
             <div>
                 <label className="form-label">Rol *</label>
@@ -195,8 +206,10 @@ function statusBadge(active) {
                     }))
                 }
                 >
-                <option value="admin">Administrador</option>
+                {currentUser?.role === 'super_admin' && <option value="admin">Administrador</option>}
                 <option value="seller">Vendedor</option>
+                {form.role === 'super_admin' && <option value="super_admin">Superadministrador</option>}
+                {form.role === 'customer' && <option value="customer">Cliente</option>
                 </select>
             </div>
 
@@ -220,16 +233,12 @@ function statusBadge(active) {
                 </div>
             )}
 
-            <div className="md:col-span-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                <input
-                    type="checkbox"
-                    checked={form.active}
-                    onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
-                />
-                Usuario activo
-                </label>
-            </div>
+            {isEdit && <div className="md:col-span-2">
+              <div className="admin-settings-info">
+                Para suspender, reactivar o restablecer la contraseña, utiliza las acciones del listado.
+                El formulario de edición no cambia el estado de acceso.
+              </div>
+            </div>}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
@@ -249,17 +258,119 @@ function statusBadge(active) {
     )
 }
 
+function UserActionModal({ userItem, mode, onClose }) {
+  const qc = useQueryClient()
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [visible, setVisible] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
+  const isDelete = mode === 'delete'
+  const isPassword = mode === 'password'
+  const isSuspending = userItem.active
+  const actionName = isDelete ? 'Eliminar cuenta' : isPassword ? 'Restablecer contraseña' :
+    (isSuspending ? 'Suspender acceso' : 'Reactivar acceso')
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (isPassword) {
+        if (password.length < 12 || password !== confirmPassword) {
+          throw new Error('La contraseña debe tener al menos 12 caracteres y coincidir')
+        }
+        return usersApi.resetPassword(userItem.id, password)
+      }
+      if (isDelete) {
+        if (confirmation !== userItem.email) throw new Error('Confirma el correo electrónico exacto')
+        return usersApi.remove(userItem.id)
+      }
+      return usersApi.setStatus(userItem.id, !userItem.active)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      toast.success(isDelete ? 'Cuenta dada de baja y acceso revocado' :
+        isPassword ? 'Contraseña cambiada. Las sesiones anteriores ya no serán válidas.' :
+          isSuspending ? 'Acceso suspendido' : 'Acceso reactivado')
+      setPassword(''); setConfirmPassword('')
+      onClose()
+    },
+    onError: error => toast.error(error?.response?.data?.detail || error.message || 'No se pudo completar la operación'),
+  })
+  return <div className="admin-users-overlay">
+    <div className="admin-users-action-modal" role="dialog" aria-modal="true" aria-label={actionName}>
+      <div className="admin-users-action-header">
+        <div>
+          <p className="admin-page-kicker">Gestión de accesos</p>
+          <h2 className="h5 fw-bold mb-1">{actionName}</h2>
+          <p className="text-secondary small mb-0">{userItem.full_name} · {userItem.email}</p>
+        </div>
+        <button type="button" className="btn-close" aria-label="Cerrar" onClick={onClose}/>
+      </div>
+      <form onSubmit={event => { event.preventDefault(); mutation.mutate() }}>
+        <div className="p-4">
+          {isPassword ? <>
+            <p className="text-secondary small">
+              El cambio invalida las sesiones y contraseñas anteriores. Comunica la nueva clave por un canal seguro.
+            </p>
+            <label className="form-label" htmlFor="user-new-password">Nueva contraseña (mínimo 12 caracteres)</label>
+            <div className="input-group mb-3">
+              <input id="user-new-password" className="form-control" autoComplete="new-password"
+                type={visible ? 'text' : 'password'} minLength={12} maxLength={72} required
+                value={password} onChange={event => setPassword(event.target.value)}/>
+              <button type="button" className="btn btn-outline-secondary"
+                aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setVisible(!visible)}>
+                {visible ? <EyeOff size={16}/> : <Eye size={16}/>}
+              </button>
+            </div>
+            <label className="form-label" htmlFor="user-confirm-password">Confirmar nueva contraseña</label>
+            <input id="user-confirm-password" className="form-control" type="password"
+              autoComplete="new-password" minLength={12} maxLength={72} required
+              value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)}/>
+            {confirmPassword && password !== confirmPassword &&
+              <p className="text-danger small mt-2" role="alert">Las contraseñas no coinciden.</p>}
+          </> : isDelete ? <>
+            <div className="alert alert-danger">
+              Esta acción da de baja la cuenta, revoca sus sesiones, la oculta del panel y libera el correo.
+              Las relaciones históricas con ventas y caja se mantienen por integridad.
+              No equivale a borrar todos los datos personales de documentos históricos.
+            </div>
+            <label className="form-label" htmlFor="user-delete-confirm">Escribe el correo del usuario para confirmar</label>
+            <input id="user-delete-confirm" className="form-control" required
+              placeholder={userItem.email} autoComplete="off"
+              value={confirmation} onChange={event => setConfirmation(event.target.value)}/>
+          </> : <div className={isSuspending ? 'alert alert-warning' : 'alert alert-info'}>
+            {isSuspending ?
+              'El usuario perderá acceso inmediatamente. Su historial permanecerá y podrás reactivarlo después.' :
+              'El usuario podrá volver a iniciar sesión con su contraseña actual. Su historial se conserva.'}
+          </div>}
+        </div>
+        <div className="admin-users-action-footer">
+          <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cancelar</button>
+          <button type="submit" disabled={mutation.isPending ||
+            (isPassword && (password.length < 12 || password !== confirmPassword)) ||
+            (isDelete && confirmation !== userItem.email)}
+            className={isDelete ? 'btn btn-danger' : 'btn btn-primary'}>
+            {mutation.isPending ? 'Procesando…' : actionName}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
 export default function UsersPage() {
     const { user } = useAuthStore()
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [selectedUser, setSelectedUser] = useState(null)
+    const [actionUser, setActionUser] = useState(null)
+    const [actionMode, setActionMode] = useState('status')
     const [showCreate, setShowCreate] = useState(false)
     const [page, setPage] = useState(1)
     const [perPage, setPerPage] = useState(15)
 
     const isSuperAdmin = user?.role === 'super_admin'
+    const canManage = target => target.id !== user?.id &&
+      (isSuperAdmin || !['super_admin', 'admin'].includes(target.role))
     const isAdmin = user?.role === 'admin' || isSuperAdmin
 
     const { data: users = [], isLoading } = useQuery({
@@ -281,7 +392,7 @@ export default function UsersPage() {
     }, [locations])
 
     const filteredUsers = useMemo(() => {
-        return users.filter((u) => {
+        return users.filter((u) => !u.deleted).filter((u) => {
         const term = search.trim().toLowerCase()
         const matchesSearch = !term
             ? true
@@ -491,14 +602,31 @@ export default function UsersPage() {
                         </td>
 
                         <td className="px-4 py-3 text-center">
-                        <button
-                            onClick={() => setSelectedUser(u)}
-                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
-                            aria-label={`Editar usuario ${u.full_name}`}
-                        >
-                            <Pencil size={13} />
-                            Editar
-                        </button>
+                        <div className="d-flex flex-wrap justify-content-center gap-2">
+                          <button type="button" onClick={() => setSelectedUser(u)}
+                            disabled={!canManage(u) && u.id !== user?.id}
+                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                            aria-label={`Editar usuario ${u.full_name}`}>
+                            <Pencil size={13}/> Editar
+                          </button>
+                          <button type="button" disabled={!canManage(u)}
+                            className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                            onClick={() => { setActionUser(u); setActionMode('password') }}
+                            aria-label={`Cambiar contraseña de ${u.full_name}`}>
+                            <KeyRound size={13}/> Clave
+                          </button>
+                          <button type="button" disabled={!canManage(u)}
+                            className={u.active ? 'btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1' : 'btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1'}
+                            onClick={() => { setActionUser(u); setActionMode('status') }}>
+                            {u.active ? <PauseCircle size={13}/> : <PlayCircle size={13}/>}
+                            {u.active ? 'Suspender' : 'Reactivar'}
+                          </button>
+                          <button type="button" disabled={!canManage(u)}
+                            className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                            onClick={() => { setActionUser(u); setActionMode('delete') }}>
+                            <Trash2 size={13}/> Eliminar
+                          </button>
+                        </div>
                         </td>
                     </tr>
                     ))
@@ -529,6 +657,7 @@ export default function UsersPage() {
         {showCreate && (
             <UserFormModal
             locations={locations}
+            currentUser={user}
             onClose={() => setShowCreate(false)}
             />
         )}
@@ -537,9 +666,14 @@ export default function UsersPage() {
             <UserFormModal
             userItem={selectedUser}
             locations={locations}
+            currentUser={user}
             onClose={() => setSelectedUser(null)}
             />
         )}
+        {actionUser && <UserActionModal
+          userItem={actionUser} mode={actionMode}
+          onClose={() => setActionUser(null)}/>}
+
         </div>
     )
 }
