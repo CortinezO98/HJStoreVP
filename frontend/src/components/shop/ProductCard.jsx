@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Plus, ShoppingBag, Heart } from 'lucide-react'
+import { Plus, ShoppingBag, Heart, ArrowUpRight } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '../../store'
 import toast from 'react-hot-toast'
 
@@ -34,7 +34,7 @@ export default function ProductCard({ product, label }) {
       <div className="editorial-product-media">
         <Link to={`/producto/${product.slug}`} aria-label={`Ver ${product.name}`}>
           {image ? (
-            <img src={image} loading="lazy" alt={product.name} />
+            <img src={image} loading="lazy" decoding="async" alt={product.name} />
           ) : (
             <span className="editorial-product-fallback"><ShoppingBag size={45} strokeWidth={1}/></span>
           )}
@@ -51,7 +51,7 @@ export default function ProductCard({ product, label }) {
           event.stopPropagation()
           toggleFavorite(product)
         }}
-          className="absolute top-3 right-3 z-10 rounded-full bg-white/95 shadow-sm p-2 hover:bg-white"
+          className="store-favorite-action absolute top-3 right-3 z-10 rounded-full bg-white/95 shadow-sm p-2 hover:bg-white"
           aria-label={favorite ? `Quitar ${product.name} de favoritos` : `Guardar ${product.name} en favoritos`}
           aria-pressed={favorite} title={favorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}>
           <Heart size={18} fill={favorite ? 'currentColor' : 'none'} />
@@ -68,11 +68,19 @@ export default function ProductCard({ product, label }) {
           </button>
         )}
       </div>
-      <Link to={`/producto/${product.slug}`} className="editorial-product-info">
-        <span className="editorial-product-name">{product.name}</span>
-        <span className="editorial-product-price">{formatCOP(product.sale_price)}</span>
+      <div className="editorial-product-details">
         {product.category_name && <span className="editorial-product-category">{product.category_name}</span>}
-      </Link>
+        <Link to={`/producto/${product.slug}`} className="editorial-product-info">
+          <span className="editorial-product-name">{product.name}</span>
+          <span className="editorial-product-price">
+            {product.has_variants ? 'Desde ' : ''}{formatCOP(product.sale_price)}
+          </span>
+        </Link>
+        <Link to={`/producto/${product.slug}`} className="store-product-quick-link">
+          {soldOut ? 'VER PRODUCTO' : product.has_variants ? 'ELEGIR OPCIONES' : 'VER DETALLES'}
+          <ArrowUpRight size={14} aria-hidden="true"/>
+        </Link>
+      </div>
     </article>
   )
 }
