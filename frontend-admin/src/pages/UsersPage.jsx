@@ -15,6 +15,12 @@ import {
     ChevronLeft,
     ChevronRight,
     SlidersHorizontal,
+    KeyRound,
+    PauseCircle,
+    PlayCircle,
+    Trash2,
+    Eye,
+    EyeOff,
 } from 'lucide-react'
 import { usersApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
@@ -56,8 +62,10 @@ function statusBadge(active) {
         : 'bg-red-100 text-red-700'
     }
 
-    function UserFormModal({ userItem, locations, onClose }) {
+    function UserFormModal({ userItem, locations, onClose, isSuperAdmin, currentUserId }) {
     const isEdit = !!userItem
+    const isSelf = isEdit && Number(userItem?.id) === Number(currentUserId)
+    const lockedAdmin = isEdit && (!isSuperAdmin && ['admin', 'super_admin'].includes(userItem?.role) || userItem?.role === 'customer')
     const queryClient = useQueryClient()
 
     const [form, setForm] = useState({
@@ -76,8 +84,8 @@ function statusBadge(active) {
             throw new Error('Completa los campos obligatorios')
         }
 
-        if (!isEdit && !form.password) {
-            throw new Error('La contraseña es obligatoria al crear un usuario')
+        if (!isEdit && form.password.length < 12) {
+            throw new Error('La contraseña inicial debe tener al menos 12 caracteres')
         }
 
         if (form.role === 'seller' && !form.location_id) {
@@ -85,16 +93,19 @@ function statusBadge(active) {
         }
 
         const payload = {
-            full_name: form.full_name,
-            email: form.email,
-            phone: form.phone || null,
-            role: form.role,
-            location_id: form.role === 'seller' ? Number(form.location_id) : null,
-            active: Boolean(form.active),
+            full_name: form.full_name.trim(),
+            email: form.email.trim(),
+            phone: form.phone.trim() || null,
         }
-
-        if (!isEdit || form.password) {
+        if (!isEdit) {
+            payload.role = form.role
+            payload.location_id = form.role === 'seller' ? Number(form.location_id) : null
             payload.password = form.password
+        } else if (!isSelf && !lockedAdmin) {
+            if (form.role !== userItem.role) payload.role = form.role
+            if (form.role === 'seller' && Number(form.location_id) !== Number(userItem.location_id || 0)) {
+                payload.location_id = Number(form.location_id)
+            }
         }
 
         if (isEdit) {
@@ -139,9 +150,9 @@ function statusBadge(active) {
 
             <div className="admin-users-form-grid">
             <div className="md:col-span-2">
-                <label className="form-label">Nombre completo *</label>
+                <label htmlFor="user-full-name" className="form-label">Nombre completo *</label>
                 <input
-                className="form-control"
+                id="user-full-name" className="form-control"
                 value={form.full_name}
                 onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))}
                 placeholder="Ej: José Jorge Cortines Osorio"
@@ -149,9 +160,9 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="form-label">Correo *</label>
+                <label htmlFor="user-email" className="form-label">Correo *</label>
                 <input
-                type="email"
+                type="email" id="user-email"
                 className="form-control"
                 value={form.email}
                 onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
@@ -160,32 +171,29 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="form-label">Teléfono</label>
+                <label htmlFor="user-phone" className="form-label">Teléfono</label>
                 <input
-                className="form-control"
+                id="user-phone" className="form-control"
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
                 placeholder="3001234567"
                 />
             </div>
 
-            <div>
-                <label className="form-label">
-                {isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña *'}
-                </label>
-                <input
-                type="password"
-                className="form-control"
+            {!isEdit && <div>
+                <label htmlFor="user-new-password" className="form-label">Contraseña inicial *</label>
+                <input id="user-new-password" type="password" className="form-control"
+                autoComplete="new-password" minLength={12}
                 value={form.password}
                 onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                placeholder={isEdit ? 'Solo si deseas cambiarla' : 'Contraseña temporal'}
-                />
-            </div>
+                placeholder="Mínimo 12 caracteres"/>
+            </div>}
 
             <div>
-                <label className="form-label">Rol *</label>
+                <label htmlFor="user-role" className="form-label">Rol *</label>
                 <select
-                className="form-select"
+                id="user-role" className="form-select"
+                disabled={isSelf || lockedAdmin}
                 value={form.role}
                 onChange={(e) =>
                     setForm((p) => ({
@@ -195,16 +203,18 @@ function statusBadge(active) {
                     }))
                 }
                 >
-                <option value="admin">Administrador</option>
+                {isSuperAdmin && <option value="admin">Administrador</option>}
                 <option value="seller">Vendedor</option>
+                {isEdit && userItem.role === "super_admin" && <option value="super_admin">Super Administrador</option>}
+                {isEdit && userItem.role === "customer" && <option value="customer">Cliente</option>}
                 </select>
             </div>
 
             {form.role === 'seller' && (
                 <div className="md:col-span-2">
-                <label className="form-label">Punto físico *</label>
+                <label htmlFor="user-location" className="form-label">Punto físico *</label>
                 <select
-                    className="form-select"
+                    id="user-location" className="form-select"
                     value={form.location_id}
                     onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
                 >
@@ -220,16 +230,9 @@ function statusBadge(active) {
                 </div>
             )}
 
-            <div className="md:col-span-2">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                <input
-                    type="checkbox"
-                    checked={form.active}
-                    onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
-                />
-                Usuario activo
-                </label>
-            </div>
+            {!isEdit && <div className="md:col-span-2">
+                <p className="admin-users-hint">La cuenta se crea activa. Más adelante podrás pausarla, reactivarla o cambiar su contraseña desde el listado.</p>
+            </div>}
             </div>
 
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
@@ -249,6 +252,114 @@ function statusBadge(active) {
     )
 }
 
+function PasswordDialog({ target, onClose, onSuccess }) {
+    const [password, setPassword] = useState('')
+    const [confirmation, setConfirmation] = useState('')
+    const [visible, setVisible] = useState(false)
+    const mutation = useMutation({
+        mutationFn: () => usersApi.resetPassword(target.id, password),
+        onSuccess: () => {
+            toast.success('Contraseña actualizada. Se revocaron las sesiones anteriores.')
+            setPassword('')
+            setConfirmation('')
+            onSuccess()
+            onClose()
+        },
+        onError: error => toast.error(error.response?.data?.detail || 'No se pudo cambiar la contraseña'),
+    })
+    const valid = password.length >= 12 && password === confirmation
+    return <div className="admin-users-overlay">
+        <div className="admin-users-modal admin-users-modal-small" role="dialog" aria-modal="true"
+            aria-labelledby="user-password-title">
+            <div className="admin-users-dialog-header">
+                <h2 id="user-password-title" className="h5 fw-bold mb-1">Cambiar contraseña</h2>
+                <p className="text-secondary small mb-0">{target.full_name} · {target.email}</p>
+            </div>
+            <form onSubmit={event => {event.preventDefault(); if(valid) mutation.mutate()}}>
+                <div className="p-4 d-flex flex-column gap-3">
+                    <div className="alert alert-info mb-0 small" role="note">
+                        La nueva contraseña debe tener al menos 12 caracteres. Al guardarla, las sesiones anteriores dejarán de ser válidas.
+                    </div>
+                    <div>
+                        <label htmlFor="reset-user-password" className="form-label">Nueva contraseña *</label>
+                        <div className="input-group">
+                            <input id="reset-user-password" className="form-control" autoComplete="new-password"
+                                type={visible ? 'text' : 'password'} minLength={12} required
+                                value={password} onChange={event => setPassword(event.target.value)}/>
+                            <button type="button" className="btn btn-outline-secondary"
+                                aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                onClick={() => setVisible(v => !v)}>{visible ? <EyeOff size={17}/> : <Eye size={17}/>}</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="reset-user-confirm" className="form-label">Confirmar contraseña *</label>
+                        <input id="reset-user-confirm" type="password" autoComplete="new-password"
+                            className="form-control" minLength={12} required
+                            value={confirmation} onChange={event => setConfirmation(event.target.value)}/>
+                        {confirmation && password !== confirmation && <p role="alert" className="text-danger small mt-2 mb-0">
+                            Las contraseñas no coinciden.
+                        </p>}
+                    </div>
+                </div>
+                <div className="admin-users-dialog-footer">
+                    <button type="button" className="btn btn-outline-secondary" onClick={onClose}
+                        disabled={mutation.isPending}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={!valid || mutation.isPending}>
+                        {mutation.isPending ? 'Guardando…' : 'Actualizar contraseña'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+function DeleteUserDialog({ target, onClose, onSuccess }) {
+    const [confirmation, setConfirmation] = useState('')
+    const mutation = useMutation({
+        mutationFn: () => usersApi.delete(target.id),
+        onSuccess: () => {
+            toast.success('Usuario eliminado del panel; historial conservado.')
+            onSuccess()
+            onClose()
+        },
+        onError: error => toast.error(error.response?.data?.detail || 'No se pudo eliminar al usuario'),
+    })
+    return <div className="admin-users-overlay">
+        <div className="admin-users-modal admin-users-modal-small" role="dialog" aria-modal="true"
+            aria-labelledby="user-delete-title">
+            <div className="admin-users-dialog-header">
+                <h2 id="user-delete-title" className="h5 fw-bold mb-1 text-danger">Eliminar usuario</h2>
+                <p className="text-secondary small mb-0">{target.full_name} · {target.email}</p>
+            </div>
+            <form onSubmit={event => {
+                event.preventDefault()
+                if (confirmation.trim() === target.email) mutation.mutate()
+            }}>
+                <div className="p-4">
+                    <div className="alert alert-warning small">
+                        Esta acción retira la cuenta del listado y bloquea su acceso. No se borran los pedidos,
+                        movimientos de inventario ni registros históricos. No puede revertirse desde el panel.
+                    </div>
+                    <label htmlFor="delete-user-confirm" className="form-label">
+                        Escribe <strong>{target.email}</strong> para confirmar
+                    </label>
+                    <input id="delete-user-confirm" className="form-control" required autoComplete="off"
+                        value={confirmation} onChange={event => setConfirmation(event.target.value)}
+                        placeholder="Correo exacto del usuario"/>
+                </div>
+                <div className="admin-users-dialog-footer">
+                    <button type="button" className="btn btn-outline-secondary" onClick={onClose}
+                        disabled={mutation.isPending}>Cancelar</button>
+                    <button type="submit" className="btn btn-danger"
+                        disabled={confirmation.trim() !== target.email || mutation.isPending}>
+                        {mutation.isPending ? 'Eliminando…' : 'Confirmar eliminación'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 export default function UsersPage() {
     const { user } = useAuthStore()
     const [search, setSearch] = useState('')
@@ -256,10 +367,13 @@ export default function UsersPage() {
     const [statusFilter, setStatusFilter] = useState('')
     const [selectedUser, setSelectedUser] = useState(null)
     const [showCreate, setShowCreate] = useState(false)
+    const [passwordUser, setPasswordUser] = useState(null)
+    const [deleteUser, setDeleteUser] = useState(null)
     const [page, setPage] = useState(1)
     const [perPage, setPerPage] = useState(15)
 
     const isSuperAdmin = user?.role === 'super_admin'
+    const currentUserId = user?.id ?? user?.user_id
     const isAdmin = user?.role === 'admin' || isSuperAdmin
 
     const { data: users = [], isLoading } = useQuery({
@@ -273,6 +387,24 @@ export default function UsersPage() {
         queryFn: () => locationsApi.list().then((r) => r.data),
         enabled: isAdmin,
     })
+
+    const qc = useQueryClient()
+    const statusMutation = useMutation({
+        mutationFn: ({ id, active }) => usersApi.setStatus(id, active),
+        onSuccess: (_, { active }) => {
+            toast.success(active ? 'Usuario reactivado' : 'Usuario pausado')
+            qc.invalidateQueries({ queryKey: ['admin-users'] })
+        },
+        onError: error => toast.error(error.response?.data?.detail || 'No se pudo cambiar el estado'),
+    })
+    const canManage = target => Number(target.id) !== Number(currentUserId) &&
+        (isSuperAdmin || !['super_admin', 'admin'].includes(target.role))
+    const toggleStatus = target => {
+        if (!canManage(target) || statusMutation.isPending) return
+        const verb = target.active ? 'pausar' : 'reactivar'
+        if (!window.confirm(`¿Deseas ${verb} a ${target.full_name}? ${target.active ? 'Se cerrará su acceso al panel de inmediato.' : 'Podrá volver a iniciar sesión.'}`)) return
+        statusMutation.mutate({ id: target.id, active: !target.active })
+    }
 
     const locationMap = useMemo(() => {
         const map = new Map()
@@ -491,14 +623,27 @@ export default function UsersPage() {
                         </td>
 
                         <td className="px-4 py-3 text-center">
-                        <button
-                            onClick={() => setSelectedUser(u)}
-                            className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
-                            aria-label={`Editar usuario ${u.full_name}`}
-                        >
-                            <Pencil size={13} />
-                            Editar
-                        </button>
+                        <div className="admin-users-actions">
+                            <button type="button" onClick={() => setSelectedUser(u)}
+                              disabled={u.role === 'customer' || (!isSuperAdmin && ['super_admin', 'admin'].includes(u.role))}
+                              className="btn btn-sm btn-outline-primary" title="Editar datos y rol"
+                              aria-label={`Editar usuario ${u.full_name}`}><Pencil size={15}/> Editar</button>
+                            <button type="button" onClick={() => setPasswordUser(u)}
+                              disabled={!isSuperAdmin && ['super_admin', 'admin'].includes(u.role)}
+                              className="btn btn-sm btn-outline-secondary" title="Cambiar contraseña"
+                              aria-label={`Cambiar contraseña de ${u.full_name}`}><KeyRound size={15}/> Contraseña</button>
+                            <button type="button" onClick={() => toggleStatus(u)}
+                              disabled={!canManage(u) || statusMutation.isPending}
+                              className={u.active ? 'btn btn-sm btn-outline-warning' : 'btn btn-sm btn-outline-success'}
+                              aria-label={`${u.active ? 'Pausar' : 'Reactivar'} a ${u.full_name}`}>
+                              {u.active ? <PauseCircle size={15}/> : <PlayCircle size={15}/>}
+                              {u.active ? 'Pausar' : 'Reactivar'}
+                            </button>
+                            <button type="button" onClick={() => setDeleteUser(u)}
+                              disabled={!canManage(u)}
+                              className="btn btn-sm btn-outline-danger"
+                              aria-label={`Eliminar usuario ${u.full_name}`}><Trash2 size={15}/> Eliminar</button>
+                        </div>
                         </td>
                     </tr>
                     ))
@@ -528,7 +673,7 @@ export default function UsersPage() {
         </div>
         {showCreate && (
             <UserFormModal
-            locations={locations}
+            locations={locations} isSuperAdmin={isSuperAdmin} currentUserId={currentUserId}
             onClose={() => setShowCreate(false)}
             />
         )}
@@ -536,10 +681,14 @@ export default function UsersPage() {
         {selectedUser && (
             <UserFormModal
             userItem={selectedUser}
-            locations={locations}
+            locations={locations} isSuperAdmin={isSuperAdmin} currentUserId={currentUserId}
             onClose={() => setSelectedUser(null)}
             />
         )}
+        {passwordUser && <PasswordDialog key={passwordUser.id} target={passwordUser}
+            onClose={() => setPasswordUser(null)} onSuccess={() => qc.invalidateQueries({queryKey:['admin-users']})}/>}
+        {deleteUser && <DeleteUserDialog key={deleteUser.id} target={deleteUser}
+            onClose={() => setDeleteUser(null)} onSuccess={() => qc.invalidateQueries({queryKey:['admin-users']})}/>}
         </div>
     )
 }

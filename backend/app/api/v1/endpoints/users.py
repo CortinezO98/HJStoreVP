@@ -3,6 +3,7 @@ Endpoints de gestión de usuarios.
 Solo accesible para admin y super_admin.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
@@ -25,12 +26,21 @@ class UserCreateAdmin(BaseModel):
 
 
 class UserUpdateAdmin(BaseModel):
+    email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[UserRole] = None
     location_id: Optional[int] = None
     active: Optional[bool] = None
-    password: Optional[str] = None  
+    password: Optional[str] = None
+
+
+class UserPasswordAdmin(BaseModel):
+    password: str
+
+
+class UserStatusAdmin(BaseModel):
+    active: bool
 
 
 class UserAdminOut(BaseModel):
@@ -67,7 +77,7 @@ def list_users(
     _: User = Depends(require_admin),
 ):
     from app.models.models import Location
-    q = db.query(User)
+    q = db.query(User).filter(User.deleted_at.is_(None))
     if role:
         try:
             q = q.filter(User.role == UserRole(role))
@@ -116,8 +126,8 @@ def create_user(
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail=f"El correo '{data.email}' ya está registrado")
 
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
+    if len(data.password) < 12:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 12 caracteres")
 
     user = User(
         email=data.email,
@@ -153,7 +163,7 @@ def update_user(
     current_user: User = Depends(require_admin),
 ):
     user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if not user or user.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     if current_user.role != UserRole.SUPER_ADMIN:
@@ -170,13 +180,20 @@ def update_user(
     if user.id == current_user.id and (data.role is not None or data.active is not None):
         raise HTTPException(status_code=400, detail="No puedes cambiar tu propio rol o estado")
 
+    if data.email is not None and str(data.email).strip().lower() != user.email.lower():
+        email = str(data.email).strip().lower()
+        if db.query(User.id).filter(User.email == email, User.id != user.id).first():
+            raise HTTPException(status_code=409, detail="El correo ya está registrado")
+        user.email = email
     if data.full_name is not None:
         user.full_name = data.full_name
     if data.phone is not None:
         user.phone = data.phone
     if data.role is not None:
         user.role = data.role
-    if data.location_id is not None:
+        if data.role != UserRole.SELLER:
+            user.location_id = None
+    if data.location_id is not None and target_role == UserRole.SELLER:
         user.location_id = data.location_id
     if data.active is not None:
         user.active = data.active
@@ -201,19 +218,66 @@ def update_user(
     )
 
 
+def _can_manage_target(current_user: User, target: User):
+    if current_user.role != UserRole.SUPER_ADMIN and target.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="Solo Super Admin administra cuentas administrativas")
+
+
+@router.patch("/{user_id}/status", response_model=UserAdminOut)
+def change_user_status(
+    user_id: int,
+    data: UserStatusAdmin,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    target = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="No puedes suspender tu propia cuenta")
+    _can_manage_target(current_user, target)
+    target.active = data.active
+    db.commit()
+    db.refresh(target)
+    return UserAdminOut(
+        id=target.id, email=target.email, full_name=target.full_name,
+        role=target.role, phone=target.phone, active=target.active,
+        location_id=target.location_id,
+        location_name=target.location.name if target.location else None,
+    )
+
+
+@router.put("/{user_id}/password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_user_password(
+    user_id: int,
+    data: UserPasswordAdmin,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    target = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    _can_manage_target(current_user, target)
+    if len(data.password) < 12:
+        raise HTTPException(status_code=422, detail="La contraseña debe tener al menos 12 caracteres")
+    target.hashed_password = hash_password(data.password)
+    db.commit()
+    # Los tokens anteriores dejan de ser válidos por credential_version.
+
+
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def deactivate_user(
+def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    """Baja lógica irreversible desde el panel; conserva referencias y auditorías."""
+    target = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if not target:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    if user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="No puedes desactivar tu propia cuenta")
-
-    if current_user.role != UserRole.SUPER_ADMIN and user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
-        raise HTTPException(status_code=403, detail="Solo Super Admin desactiva cuentas administrativas")
-    user.active = False
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta")
+    _can_manage_target(current_user, target)
+    target.active = False
+    target.deleted_at = datetime.utcnow()
     db.commit()

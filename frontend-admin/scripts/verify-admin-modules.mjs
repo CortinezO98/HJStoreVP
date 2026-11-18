@@ -141,7 +141,7 @@ for (const [file, symbols] of [
   ['src/pages/UsersPage.jsx', [
     'usersApi.list', 'usersApi.create', 'usersApi.update', 'locationsApi.list',
     "user?.role === 'super_admin'", "user?.role === 'admin'", "form.role === 'seller'",
-    'location_id: form.role', "payload.password = form.password",
+    'payload.location_id = form.role', "payload.password = form.password",
     'UserFormModal', 'pageUsers', 'setPerPage', 'setRoleFilter',
   ]],
   ['src/pages/ReportsPage.jsx', [
@@ -155,6 +155,25 @@ for (const [file, symbols] of [
   const source = read(file)
   for (const symbol of symbols) {
     if (!source.includes(symbol)) missing.push(`${file}: falta ${symbol}`)
+  }
+}
+
+// Gestión de usuarios: acciones sensibles, sesión y eliminación lógica preservadas.
+for (const [file, required] of [
+  ['src/pages/UsersPage.jsx', [
+    'PasswordDialog', 'DeleteUserDialog', 'usersApi.resetPassword',
+    'usersApi.setStatus', 'usersApi.delete', 'usersApi.update',
+    'canManage', 'currentUserId', 'confirmation.trim() === target.email',
+    'setPasswordUser', 'setDeleteUser',
+  ]],
+  ['src/services/api.js', [
+    'resetPassword: (id, password)', 'setStatus: (id, active)',
+    'delete: (id) => apiClient.delete',
+  ]],
+]) {
+  const content = read(file)
+  for (const item of required) {
+    if (!content.includes(item)) missing.push(`${file}: falta ${item}`)
   }
 }
 

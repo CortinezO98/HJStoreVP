@@ -101,6 +101,8 @@ class User(Base, TimestampMixin):
     )
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Eliminación lógica: se conserva el historial comercial asociado.
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Solo para vendedores físicos
     location_id: Mapped[Optional[int]] = mapped_column(
