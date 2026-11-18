@@ -103,9 +103,9 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div className="admin-catalog-modal-backdrop" role="presentation">
+      <div role="dialog" aria-modal="true" aria-label={`Imágenes de ${product.name}`} className="admin-catalog-modal admin-images-dialog">
+        <div className="admin-catalog-modal-header">
           <div>
             <h3 className="text-lg font-bold text-gray-900">Imágenes del producto</h3>
             <p className="text-sm text-gray-500 mt-1">
@@ -114,21 +114,21 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
           </div>
           <button
             onClick={onClose}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            type="button" className="btn btn-outline-secondary btn-sm"
           >
             Cerrar
           </button>
         </div>
 
-        <div className="p-6 border-b border-gray-100">
+        <div className="admin-catalog-image-upload">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
             <div className="flex-1">
-              <label className="block text-sm text-gray-600 mb-1">Seleccionar imágenes</label>
+              <label htmlFor="product-images-upload" className="form-label">Seleccionar imágenes</label>
               <input
-                type="file"
+                id="product-images-upload" type="file"
                 multiple
-                accept="image/*"
-                className="input"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="form-control"
                 onChange={(e) => setFiles(Array.from(e.target.files || []))}
               />
             </div>
@@ -143,7 +143,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="admin-catalog-modal-body">
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -160,7 +160,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
               {images.map((img) => {
                 const src = resolveImage(img.url)
                 return (
-                  <div key={img.id} className="border border-gray-100 rounded-xl overflow-hidden bg-white">
+                  <div key={img.id} className="admin-catalog-photo-card">
                     <div className="aspect-square bg-gray-50 overflow-hidden">
                       {src ? (
                         <img src={src} alt={img.alt_text || product.name} className="w-full h-full object-cover" />
@@ -179,7 +179,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
                         </span>
                       ) : (
                         <button
-                          onClick={() => setPrimary(img.id)}
+                          type="button" aria-label={`Establecer foto principal ${img.id}`} onClick={() => setPrimary(img.id)}
                           className="text-xs text-brand-600 hover:text-brand-700 font-semibold"
                         >
                           Marcar como principal
