@@ -225,3 +225,89 @@ def dashboard_summary(
         "low_stock_alerts": low_stock,
         "pending_orders": pending_orders,
     }
+
+
+@router.get("/accounting-summary")
+def accounting_summary(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    location_id: Optional[int] = Query(None, ge=1),
+    category_id: Optional[int] = Query(None, ge=1),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Aggregated paid sales, without pagination limits from order listing APIs.
+
+    Values are operational gross figures, not tax/accounting certification.
+    Category grouping follows the product's CURRENT category; historic changes
+    of category are not reconstructed. Shipping is excluded from category cuts.
+    """
+    from fastapi import HTTPException
+
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="La fecha final es anterior a la inicial")
+    if date_from and date_to and (date_to - date_from).days > 730:
+        raise HTTPException(status_code=422, detail="El rango máximo es de 730 días")
+
+    conditions = [
+        "o.paid_at IS NOT NULL",
+        "o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')",
+    ]
+    params = {}
+    if date_from:
+        conditions.append("o.paid_at >= :date_from")
+        params["date_from"] = date_from
+    if date_to:
+        conditions.append("o.paid_at < :date_to_exclusive")
+        params["date_to_exclusive"] = date_to + timedelta(days=1)
+    if location_id:
+        conditions.append("o.location_id = :location_id")
+        params["location_id"] = location_id
+
+    joins = ""
+    if category_id:
+        joins = (" JOIN order_items oi ON oi.order_id = o.id"
+                 " JOIN products p ON p.id = oi.product_id")
+        conditions.append("p.category_id = :category_id")
+        params["category_id"] = category_id
+        revenue = "SUM(oi.qty * oi.unit_price)"
+        cost = "SUM(oi.qty * oi.cost_price)"
+    else:
+        revenue = "SUM(o.total_amount)"
+        cost = "SUM(COALESCE(o.total_cost, 0))"
+
+    query = text(f"""
+        SELECT o.channel, COALESCE({revenue}, 0) AS revenue,
+               COALESCE({cost}, 0) AS cost,
+               COUNT(DISTINCT o.id) AS orders_count
+        FROM orders o {joins}
+        WHERE {" AND ".join(conditions)}
+        GROUP BY o.channel
+    """)
+    data = {
+        "webRevenue": 0.0, "physicalRevenue": 0.0,
+        "webCost": 0.0, "physicalCost": 0.0,
+        "webOrders": 0, "physicalOrders": 0,
+    }
+    for channel, revenue_value, cost_value, count in db.execute(query, params):
+        if channel == "web":
+            prefix = "web"
+        elif channel == "physical":
+            prefix = "physical"
+        else:
+            continue
+        data[f"{prefix}Revenue"] = float(revenue_value or 0)
+        data[f"{prefix}Cost"] = float(cost_value or 0)
+        data[f"{prefix}Orders"] = int(count or 0)
+
+    data["totalRevenue"] = data["webRevenue"] + data["physicalRevenue"]
+    data["totalCost"] = data["webCost"] + data["physicalCost"]
+    data["grossProfit"] = data["totalRevenue"] - data["totalCost"]
+    data["basis"] = "paid_at"
+    data["category_basis"] = "current_product_category" if category_id else None
+    data["note"] = (
+        "Margen bruto indicativo; no descuenta impuestos, comisiones ni reembolsos. "
+        "Al filtrar categoría se usan importes de líneas sin envío ni descuentos "
+        "globales de pedido; no equivale a ingresos contables conciliados."
+    )
+    return data
