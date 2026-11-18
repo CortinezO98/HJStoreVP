@@ -55,6 +55,25 @@ for (const [file, required] of [
   }
 }
 
+// Comprobar que la navegación de catálogo preserve componentes y funciones clave.
+for (const [path, required] of [
+  ['src/pages/ProductsPage.jsx', [
+    'ProductImagesManager', 'ProductVariantsManager', 'ProductFormModal',
+    'productsApi.create', 'productsApi.update', 'productsApi.delete',
+    'admin-products', 'pageProducts', 'setPerPage', 'setSortBy',
+    'aria-label={`Editar producto',
+  ]],
+  ['src/pages/CategoriesPage.jsx', [
+    'CategoryModal', 'include_inactive: true', '/toggle',
+    'setSearch', 'setStatus', 'mutation.mutate(form)',
+  ]],
+]) {
+  const code = read(path)
+  for (const symbol of required) {
+    if (!code.includes(symbol)) missing.push(`${path}: falta ${symbol}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)

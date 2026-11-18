@@ -232,3 +232,96 @@
   background:#f0f1ff;color:#5650db;border-radius:11px;
   flex-shrink:0;
 }
+
+/* Catálogo: productos y categorías con Bootstrap, aislado de otras pantallas. */
+.admin-app-shell .admin-catalog-page {min-width:0}
+.admin-app-shell .admin-catalog-stat {
+  min-height:104px;padding:19px 21px;
+  border:1px solid #e5eaf3;border-radius:15px;background:#fff;
+  display:flex;flex-direction:column;gap:9px;
+  box-shadow:0 4px 18px rgba(30,40,80,.025);
+}
+.admin-app-shell .admin-catalog-stat span {font-size:12px;font-weight:600;color:#788499}
+.admin-app-shell .admin-catalog-stat strong {font-size:28px;font-weight:800;letter-spacing:-.04em;line-height:1.1;color:#24334c}
+.admin-app-shell .admin-catalog-filter {padding:22px!important}
+.admin-app-shell .admin-catalog-search {position:relative;display:flex;align-items:center}
+.admin-app-shell .admin-catalog-search>svg {
+  position:absolute;left:12px;z-index:1;pointer-events:none;color:#8a96a9
+}
+.admin-app-shell .admin-catalog-search .form-control{padding-left:39px}
+.admin-app-shell .admin-catalog-category-card {
+  display:flex;flex-direction:column;gap:17px;
+  padding:22px;border:1px solid #e7ebf3;border-radius:15px;
+  background:#fff;box-shadow:0 5px 17px rgba(18,32,59,.027);
+  transition:border-color .18s,box-shadow .18s;
+}
+.admin-app-shell .admin-catalog-category-card:hover{border-color:#c9d1e5;box-shadow:0 8px 22px rgba(25,43,82,.055)}
+.admin-app-shell .admin-catalog-category-symbol{
+  display:flex;align-items:center;justify-content:center;
+  width:52px;height:52px;font-size:25px;flex-shrink:0;
+  background:#f4f5ff;border-radius:13px;
+}
+.admin-app-shell .admin-catalog-category-description{
+  font-size:12px;line-height:1.65;color:#6b778c;min-height:40px;margin:0;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden
+}
+.admin-app-shell .admin-catalog-empty {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:65px 20px;background:#fff;border:1px dashed #d8deea;border-radius:16px;
+  text-align:center
+}
+.admin-app-shell .admin-catalog-table{
+  --bs-table-bg:#fff;--bs-table-border-color:#edf0f5;
+  min-width:1050px;font-size:12px
+}
+.admin-app-shell .admin-catalog-table thead th{
+  padding:16px 13px;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.045em;background:#f7f9fd;color:#64738b;white-space:nowrap;
+}
+.admin-app-shell .admin-catalog-table tbody td {padding:13px}
+.admin-app-shell .admin-catalog-table .btn {white-space:nowrap}
+.admin-app-shell .admin-catalog-pagination {
+  display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  padding:17px 22px;background:#fff;border:1px solid #e8edf4;border-radius:14px;
+}
+.admin-app-shell .admin-catalog-per-page{width:74px!important}
+.admin-app-shell .admin-catalog-overlay {
+  position:fixed;inset:0;z-index:70;
+  display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(13,22,40,.65);
+  backdrop-filter:blur(3px);
+  overflow-y:auto;
+}
+.admin-app-shell .admin-catalog-modal {
+  width:min(790px,100%);max-height:calc(100dvh - 36px);
+  overflow:auto;background:#fff;border-radius:18px;
+  box-shadow:0 26px 90px rgba(7,15,33,.32);
+}
+.admin-app-shell .admin-catalog-modal-sm {width:min(510px,100%)}
+.admin-app-shell .admin-catalog-modal-wide {width:min(990px,100%)}
+.admin-app-shell .admin-catalog-modal-header {
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:23px 26px;border-bottom:1px solid #ecf0f5;
+}
+.admin-app-shell .admin-catalog-modal-body {padding:25px 26px}
+.admin-app-shell .admin-catalog-modal-footer {
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;
+  padding:17px 26px;border-top:1px solid #ecf0f5;background:#fafbfe;
+}
+.admin-app-shell .admin-catalog-form-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;padding:25px 26px
+}
+.admin-app-shell .admin-catalog-price-preview{
+  min-height:43px;border:1px solid #dfe6f4;background:#f3f5ff;
+  color:#443ac7;font-weight:800;padding:11px 14px;border-radius:10px
+}
+@media(max-width:767px){
+  .admin-app-shell .admin-catalog-filter {padding:16px!important}
+  .admin-app-shell .admin-catalog-stat {min-height:90px}
+  .admin-app-shell .admin-catalog-form-grid{grid-template-columns:1fr;padding:18px}
+  .admin-app-shell .admin-catalog-form-grid .md\\:col-span-2{grid-column:span 1}
+  .admin-app-shell .admin-catalog-modal-header,.admin-app-shell .admin-catalog-modal-body{padding:18px}
+  .admin-app-shell .admin-catalog-modal-footer{padding:15px}
+  .admin-app-shell .admin-catalog-overlay {padding:8px}
+  .admin-app-shell .admin-catalog-modal {max-height:calc(100dvh - 16px)}
+}
