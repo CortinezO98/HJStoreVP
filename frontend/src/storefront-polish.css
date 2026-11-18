@@ -431,3 +431,105 @@
   .store-product-purchase-actions { gap: 9px; }
   .store-account-quick-nav > a { min-height: 48px; }
 }
+
+/* Footer compacto: marca, navegación esencial, contacto y políticas.
+   Mantiene fondo negro y el lenguaje editorial de HJStoreVP. */
+.store-footer-compact {
+  background: #101010;
+  color: #fff;
+}
+.store-footer-main {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 32px 32px 27px;
+  display: grid;
+  grid-template-columns: minmax(175px, 1fr) minmax(270px, 1.4fr) auto;
+  gap: 24px 36px;
+  align-items: center;
+}
+.store-footer-brand .editorial-logo {
+  margin-bottom: 0;
+  font-size: 25px;
+}
+.store-footer-brand > p {
+  margin: 8px 0 0;
+  color: #aaa;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: .16em;
+  line-height: 1.6;
+}
+.store-footer-primary-links,
+.store-footer-contact,
+.store-footer-bottom nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px 20px;
+}
+.store-footer-primary-links a,
+.store-footer-contact a {
+  color: #e4e4e4;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.store-footer-primary-links a:hover,
+.store-footer-contact a:hover,
+.store-footer-bottom a:hover {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.store-footer-contact { justify-content: flex-end; }
+.store-footer-contact > span { color: #a3a3a3; font-size: 12px; }
+.store-footer-bottom {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 17px 32px 22px;
+  border-top: 1px solid #323232;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  color: #a3a3a3;
+  font-size: 11px;
+}
+.store-footer-bottom a { color: #bdbdbd; text-decoration: none; }
+@media (max-width: 1023px) {
+  .store-footer-main {
+    grid-template-columns: 1fr 1fr;
+    padding: 28px 24px 24px;
+    gap: 17px 25px;
+  }
+  .store-footer-brand { grid-column: 1 / -1; }
+  .store-footer-contact { justify-content: flex-start; }
+  .store-footer-bottom { padding: 17px 24px 22px; }
+}
+@media (max-width: 639px) {
+  .store-footer-main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 27px 17px 18px;
+  }
+  .store-footer-brand .editorial-logo { font-size: 23px; }
+  .store-footer-primary-links { gap: 4px 18px; }
+  .store-footer-primary-links a,
+  .store-footer-contact a { font-size: 12px; min-height: 40px; }
+  .store-footer-contact { gap: 3px 17px; }
+  .store-footer-bottom {
+    padding: 15px 17px max(23px, env(safe-area-inset-bottom));
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .store-footer-bottom nav { gap: 9px 15px; }
+}
