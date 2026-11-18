@@ -126,8 +126,8 @@ def create_user(
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail=f"El correo '{data.email}' ya está registrado")
 
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
+    if len(data.password) < 12:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 12 caracteres")
 
     user = User(
         email=data.email,
