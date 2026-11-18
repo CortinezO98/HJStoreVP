@@ -145,7 +145,7 @@ for (const [file, symbols] of [
     'UserFormModal', 'pageUsers', 'setPerPage', 'setRoleFilter',
   ]],
   ['src/pages/ReportsPage.jsx', [
-    'analyticsApi.salesByMonth', 'analyticsApi.topProducts', 'analyticsApi.salesByLocation',
+    'analyticsApi.salesByMonth', '.topProducts({', '.salesByLocation({',
     'ordersApi.list', 'physicalSalesApi.list', 'exportAccounting',
     'exportCategories', 'exportTopProducts', 'exportLocations',
     'exportOrders', 'exportPhysicalSales', 'accountingSummary', 'OperationalAnalytics',
