@@ -190,12 +190,22 @@ def inventory_anomalies(
     if location_id is not None:
         base = base.filter(Inventory.location_id == location_id)
         held = held.filter(OrderStockReservation.location_id == location_id)
-    # Uniones pequeñas de filas anómalas para limitar resultados sin leer
-    # el inventario completo hacia la aplicación.
+    # El saldo registrado en cada movimiento debe coincidir con antes + cambio.
+    # No se compara con el saldo actual, que puede variar por reservas WEB.
+    broken = db.query(StockMovement, Product.name, Product.sku, Location.name.label("location_name")).join(
+        Product, Product.id == StockMovement.product_id
+    ).join(Location, Location.id == StockMovement.location_id).filter(
+        StockMovement.qty_after != StockMovement.qty_before + StockMovement.qty
+    )
+    if location_id is not None:
+        broken = broken.filter(StockMovement.location_id == location_id)
+
     negative_count = base.count()
     missing_count = held.count()
+    broken_count = broken.count()
     offset = (page - 1) * per_page
     findings = []
+
     if offset < negative_count:
         take = min(per_page, negative_count - offset)
         for row in base.order_by(Inventory.location_id, Inventory.product_id).offset(offset).limit(take):
@@ -215,10 +225,25 @@ def inventory_anomalies(
                 "kind": "held_without_inventory", "severity": "critical",
                 "product_id": row.product_id, "product_name": row.name, "sku": row.sku,
                 "location_id": row.location_id, "location_name": row.location_name,
-                "detail": f"{row.count} reserva(s) HELD sin fila de inventario",
+                "detail": f"{row._mapping['count']} reserva(s) HELD sin fila de inventario",
+            })
+    remaining = per_page - len(findings)
+    if remaining:
+        movement_offset = max(0, offset - negative_count - missing_count)
+        for movement, name, sku, location_name in broken.order_by(
+            StockMovement.id.desc()
+        ).offset(movement_offset).limit(remaining):
+            findings.append({
+                "kind": "movement_arithmetic", "severity": "review",
+                "product_id": movement.product_id, "product_name": name, "sku": sku,
+                "location_id": movement.location_id, "location_name": location_name,
+                "detail": (
+                    f"Movimiento #{movement.id}: {movement.qty_before} + "
+                    f"({movement.qty}) != {movement.qty_after}"
+                ),
             })
     return {
-        "total": negative_count + missing_count,
+        "total": negative_count + missing_count + broken_count,
         "page": page, "per_page": per_page,
         "items": findings,
         "note": (
