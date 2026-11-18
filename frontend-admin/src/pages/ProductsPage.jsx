@@ -209,7 +209,6 @@ function ProductFormModal({ product, categories, onClose }) {
   const queryClient = useQueryClient()
   const [showImages, setShowImages] = useState(false)
   const [showVariants, setShowVariants] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(Boolean(product))
 
   const [form, setForm] = useState({
     name: product?.name || '',
