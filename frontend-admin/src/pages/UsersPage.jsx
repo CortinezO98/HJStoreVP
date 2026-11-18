@@ -258,6 +258,114 @@ function statusBadge(active) {
     )
 }
 
+function PasswordDialog({ target, onClose, onSuccess }) {
+    const [password, setPassword] = useState('')
+    const [confirmation, setConfirmation] = useState('')
+    const [visible, setVisible] = useState(false)
+    const mutation = useMutation({
+        mutationFn: () => usersApi.resetPassword(target.id, password),
+        onSuccess: () => {
+            toast.success('Contraseña actualizada. Se revocaron las sesiones anteriores.')
+            setPassword('')
+            setConfirmation('')
+            onSuccess()
+            onClose()
+        },
+        onError: error => toast.error(error.response?.data?.detail || 'No se pudo cambiar la contraseña'),
+    })
+    const valid = password.length >= 12 && password === confirmation
+    return <div className="admin-users-overlay">
+        <div className="admin-users-modal admin-users-modal-small" role="dialog" aria-modal="true"
+            aria-labelledby="user-password-title">
+            <div className="admin-users-dialog-header">
+                <h2 id="user-password-title" className="h5 fw-bold mb-1">Cambiar contraseña</h2>
+                <p className="text-secondary small mb-0">{target.full_name} · {target.email}</p>
+            </div>
+            <form onSubmit={event => {event.preventDefault(); if(valid) mutation.mutate()}}>
+                <div className="p-4 d-flex flex-column gap-3">
+                    <div className="alert alert-info mb-0 small" role="note">
+                        La nueva contraseña debe tener al menos 12 caracteres. Al guardarla, las sesiones anteriores dejarán de ser válidas.
+                    </div>
+                    <div>
+                        <label htmlFor="reset-user-password" className="form-label">Nueva contraseña *</label>
+                        <div className="input-group">
+                            <input id="reset-user-password" className="form-control" autoComplete="new-password"
+                                type={visible ? 'text' : 'password'} minLength={12} required
+                                value={password} onChange={event => setPassword(event.target.value)}/>
+                            <button type="button" className="btn btn-outline-secondary"
+                                aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                onClick={() => setVisible(v => !v)}>{visible ? <EyeOff size={17}/> : <Eye size={17}/>}</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="reset-user-confirm" className="form-label">Confirmar contraseña *</label>
+                        <input id="reset-user-confirm" type="password" autoComplete="new-password"
+                            className="form-control" minLength={12} required
+                            value={confirmation} onChange={event => setConfirmation(event.target.value)}/>
+                        {confirmation && password !== confirmation && <p role="alert" className="text-danger small mt-2 mb-0">
+                            Las contraseñas no coinciden.
+                        </p>}
+                    </div>
+                </div>
+                <div className="admin-users-dialog-footer">
+                    <button type="button" className="btn btn-outline-secondary" onClick={onClose}
+                        disabled={mutation.isPending}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={!valid || mutation.isPending}>
+                        {mutation.isPending ? 'Guardando…' : 'Actualizar contraseña'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+function DeleteUserDialog({ target, onClose, onSuccess }) {
+    const [confirmation, setConfirmation] = useState('')
+    const mutation = useMutation({
+        mutationFn: () => usersApi.delete(target.id),
+        onSuccess: () => {
+            toast.success('Usuario eliminado del panel; historial conservado.')
+            onSuccess()
+            onClose()
+        },
+        onError: error => toast.error(error.response?.data?.detail || 'No se pudo eliminar al usuario'),
+    })
+    return <div className="admin-users-overlay">
+        <div className="admin-users-modal admin-users-modal-small" role="dialog" aria-modal="true"
+            aria-labelledby="user-delete-title">
+            <div className="admin-users-dialog-header">
+                <h2 id="user-delete-title" className="h5 fw-bold mb-1 text-danger">Eliminar usuario</h2>
+                <p className="text-secondary small mb-0">{target.full_name} · {target.email}</p>
+            </div>
+            <form onSubmit={event => {
+                event.preventDefault()
+                if (confirmation.trim() === target.email) mutation.mutate()
+            }}>
+                <div className="p-4">
+                    <div className="alert alert-warning small">
+                        Esta acción retira la cuenta del listado y bloquea su acceso. No se borran los pedidos,
+                        movimientos de inventario ni registros históricos. No puede revertirse desde el panel.
+                    </div>
+                    <label htmlFor="delete-user-confirm" className="form-label">
+                        Escribe <strong>{target.email}</strong> para confirmar
+                    </label>
+                    <input id="delete-user-confirm" className="form-control" required autoComplete="off"
+                        value={confirmation} onChange={event => setConfirmation(event.target.value)}
+                        placeholder="Correo exacto del usuario"/>
+                </div>
+                <div className="admin-users-dialog-footer">
+                    <button type="button" className="btn btn-outline-secondary" onClick={onClose}
+                        disabled={mutation.isPending}>Cancelar</button>
+                    <button type="submit" className="btn btn-danger"
+                        disabled={confirmation.trim() !== target.email || mutation.isPending}>
+                        {mutation.isPending ? 'Eliminando…' : 'Confirmar eliminación'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 export default function UsersPage() {
     const { user } = useAuthStore()
     const [search, setSearch] = useState('')
