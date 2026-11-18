@@ -91,7 +91,9 @@ class SettingsPayload(BaseModel):
 
     @field_validator("*")
     @classmethod
-    def normalize(cls, value: str, info):
+    def normalize(cls, value, info):
+        if not isinstance(value, str):
+            return value
         value = value.strip()
         if "\x00" in value:
             raise ValueError("No se aceptan caracteres de control")
