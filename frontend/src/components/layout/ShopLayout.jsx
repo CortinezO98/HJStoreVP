@@ -169,7 +169,7 @@ export default function ShopLayout() {
           </div>
         </div>
         <div className="store-footer-bottom">
-          <span>© {new Date().getFullYear()} {storeName}. Todos los derechos reservados.</span>
+          <span className="store-footer-copyright">© {new Date().getFullYear()} {storeName}. Todos los derechos reservados.</span>
           <nav aria-label="Información legal y políticas de la tienda">
             {[
               ['shipping_policy', 'Envíos', 'envios'],
