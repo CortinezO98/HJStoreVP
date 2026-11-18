@@ -1,3 +1,15 @@
+import os
+
+# Este script destruye tablas completas: nunca permitir ejecución accidental.
+# Se conserva solo para regenerar datos desechables de desarrollo.
+if os.getenv("ENVIRONMENT", "development").lower() != "development":
+    raise SystemExit("Seed destructivo bloqueado fuera de desarrollo")
+if os.getenv("HJSTORE_ALLOW_DESTRUCTIVE_SEED") != "CONFIRM_DELETE_ALL_DEMO_DATA":
+    raise SystemExit(
+        "Seed destructivo bloqueado: requiere HJSTORE_ALLOW_DESTRUCTIVE_SEED="
+        "CONFIRM_DELETE_ALL_DEMO_DATA en un entorno desechable"
+    )
+
 import sys
 sys.path.insert(0, '/app')
 from slugify import slugify
