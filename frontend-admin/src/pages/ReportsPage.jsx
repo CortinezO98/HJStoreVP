@@ -522,6 +522,12 @@ export default function ReportsPage() {
             />
         </div>
 
+        <p className="text-xs text-gray-600" role="note">
+            El resumen de ingresos y costos se calcula en el servidor sobre todas las ventas cobradas.
+            Los listados detallados y exportaciones de pedidos y categorías siguen siendo vistas parciales
+            de los registros cargados; no deben utilizarse como cierres contables definitivos.
+        </p>
+
         {/* Reporte contable principal */}
         <div id="reports-summary" className="card admin-reports-section">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
