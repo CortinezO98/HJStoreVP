@@ -582,7 +582,9 @@ export default function InventoryPage() {
                           </span>
                         </td>
                         <td className="py-3 px-2 text-right font-semibold">{formatNumber(item.global_available)}</td>
-                        <td className="py-3 px-2 text-right font-semibold">{formatNumber(item.web_fulfillable)}</td>
+                        <td className="py-3 px-2 text-right font-semibold">
+                          {item.sellable_online ? formatNumber(item.web_fulfillable) : 'No vendible'}
+                        </td>
                         {matrix.locations.map((loc) => (
                           <td key={loc.id} className="py-3 px-2 text-right">
                             {formatNumber(stockByLocation.get(loc.id)?.qty_available || 0)}
