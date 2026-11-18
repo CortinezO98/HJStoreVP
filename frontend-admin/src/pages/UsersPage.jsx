@@ -231,15 +231,7 @@ function statusBadge(active) {
             )}
 
             {!isEdit && <div className="md:col-span-2">
-                <p className="admin-users-hint">Para pausar o reactivar un usuario existente utiliza la acción de su fila. Para cambiar la contraseña utiliza «Contraseña».</p>
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                <input
-                    type="checkbox"
-                    checked={form.active}
-                    onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
-                />
-                Usuario activo
-                </label>
+                <p className="admin-users-hint">La cuenta se crea activa. Más adelante podrás pausarla, reactivarla o cambiar su contraseña desde el listado.</p>
             </div>}
             </div>
 
