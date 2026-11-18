@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { SlidersHorizontal, Search, X } from 'lucide-react'
+import { SlidersHorizontal, Search, X, ArrowRight } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { productsApi, categoriesApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
@@ -102,6 +102,12 @@ export default function CatalogPage() {
   const clearAllFilters = () => {
     setSearch('')
     setSearchParams({})
+    setFiltersOpen(false)
+  }
+
+  const applyMobileFilters = () => {
+    if (search.trim() !== currentSearch) setFilter('q', search.trim())
+    setFiltersOpen(false)
   }
 
   const activeFiltersCount = [categoria, currentSearch, sort, minPrice, maxPrice, featured, inStock,
@@ -121,7 +127,7 @@ export default function CatalogPage() {
           <h1 className="editorial-catalog-title">{pageTitle.toUpperCase()}</h1>
           {!isLoading && (
             <p className="text-gray-500 text-sm mt-1">
-              {products?.length || 0} productos encontrados
+              Mostrando {products?.length || 0} productos de esta página
               {currentSearch && <> para "<span className="font-medium text-gray-700">{currentSearch}</span>"</>}
             </p>
           )}
@@ -141,7 +147,10 @@ export default function CatalogPage() {
 
           <button
             onClick={() => setFiltersOpen(!filtersOpen)}
-            className={`lg:hidden flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+            type="button"
+            aria-controls="catalog-filters"
+            aria-expanded={filtersOpen}
+            className={`lg:hidden flex items-center gap-2 px-3 py-2 min-h-11 rounded-xl border text-sm font-medium transition-colors ${
               filtersOpen || activeFiltersCount > 0
                 ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-white text-gray-700 border-gray-200'
@@ -197,8 +206,13 @@ export default function CatalogPage() {
       <div className="flex flex-col lg:flex-row gap-10">
 
         {/* ── SIDEBAR FILTROS ─────────────────────────────────── */}
-        <aside className={`lg:w-56 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden lg:block'}`}>
+        <aside id="catalog-filters" aria-label="Filtros de catálogo" className={`lg:w-56 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden lg:block'}`}>
           <div className="editorial-catalog-filters sticky top-24 space-y-5">
+            <div className="lg:hidden flex items-center justify-between">
+              <span className="font-bold text-sm uppercase">Refinar búsqueda</span>
+              <button type="button" className="store-filter-close" aria-label="Cerrar filtros"
+                onClick={() => setFiltersOpen(false)}><X size={19}/></button>
+            </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal size={16} className="text-brand-600" />
@@ -214,25 +228,24 @@ export default function CatalogPage() {
             {/* Búsqueda */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Buscar</p>
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <form role="search" onSubmit={(event) => {
+                event.preventDefault()
+                setFilter('q', search.trim())
+                setFiltersOpen(false)
+              }} className="store-catalog-search-form">
+                <Search size={16} aria-hidden="true" className="text-neutral-500 shrink-0" />
                 <input
-                  type="text"
-                  placeholder="Buscar productos..."
+                  type="search"
+                  aria-label="Buscar productos del catálogo"
+                  placeholder="Producto, marca o referencia"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && setFilter('q', search)}
-                  className="input pl-9 text-sm"
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none"
                 />
-              </div>
-              {search && (
-                <button
-                  onClick={() => setFilter('q', search)}
-                  className="mt-1 w-full text-xs text-center text-brand-600 hover:underline"
-                >
-                  Buscar "{search}" →
+                <button type="submit" aria-label="Aplicar búsqueda" className="store-catalog-search-submit">
+                  <ArrowRight size={17}/>
                 </button>
-              )}
+              </form>
             </div>
 
             {/* Categorías */}
@@ -323,11 +336,17 @@ export default function CatalogPage() {
                 <span className="text-sm text-gray-700">Solo disponibles</span>
               </label>
             </div>
+            <button type="button" className="store-button store-button-dark w-full lg:hidden"
+              onClick={applyMobileFilters}>VER RESULTADOS <ArrowRight size={16}/></button>
           </div>
         </aside>
 
         {/* ── GRID PRODUCTOS ──────────────────────────────────── */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
+          <div className="store-catalog-results-header" aria-live="polite">
+            <span>{isLoading ? 'Actualizando productos...' : `${products?.length || 0} referencias en esta página`}</span>
+            <span>{activeFiltersCount > 0 ? `${activeFiltersCount} filtros activos` : 'Explora la colección'}</span>
+          </div>
           {isLoading ? (
             <LoadingGrid count={8} />
           ) : isError ? (
