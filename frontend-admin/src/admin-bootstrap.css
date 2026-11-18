@@ -374,3 +374,75 @@
   .admin-app-shell .admin-inventory-modal{max-height:calc(100dvh - 16px)}
   .admin-app-shell .admin-inventory-form{padding:18px}
 }
+
+/* Pedidos web y despachos — experiencia comercial con Bootstrap 5. */
+.admin-app-shell .admin-web-orders-page {min-width:0}
+.admin-app-shell .admin-web-orders-kpi-value {font-size:clamp(17px,2vw,25px);overflow-wrap:anywhere}
+.admin-app-shell .admin-web-orders-table {
+  --bs-table-border-color:#eaf0f6;min-width:1090px;
+  font-size:12px;
+}
+.admin-app-shell .admin-web-orders-table thead th{
+  background:#f7f9fc;color:#68758d;font-weight:800;font-size:10px;
+  letter-spacing:.055em;text-transform:uppercase;
+  white-space:nowrap;padding:15px 12px;
+}
+.admin-app-shell .admin-web-orders-table tbody td {padding:15px 12px}
+.admin-app-shell .admin-web-orders-number{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;font-weight:800;color:#3831a4;
+}
+.admin-app-shell .admin-web-order-status{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;
+  padding:7px 10px;border-radius:9px;white-space:nowrap;
+  background:#f2f4f7;color:#475467;
+}
+.admin-app-shell .admin-web-order-status.pending{background:#fff5dc;color:#996300}
+.admin-app-shell .admin-web-order-status.paid{background:#dcfce7;color:#176534}
+.admin-app-shell .admin-web-order-status.preparing{background:#e7f1ff;color:#145ca7}
+.admin-app-shell .admin-web-order-status.shipped{background:#ede9fe;color:#5b21b6}
+.admin-app-shell .admin-web-order-status.delivered{background:#d1fae5;color:#065f46}
+.admin-app-shell .admin-web-order-status.cancelled{background:#fee2e2;color:#991b1b}
+.admin-app-shell .admin-web-order-select{min-width:156px;max-width:220px}
+.admin-app-shell .admin-web-orders-overlay {
+  position:fixed;inset:0;z-index:70;display:flex;
+  align-items:center;justify-content:center;padding:16px;
+  background:rgba(9,18,33,.67);backdrop-filter:blur(3px);overflow-y:auto;
+}
+.admin-app-shell .admin-web-orders-modal {
+  width:min(1000px,100%);max-height:calc(100dvh - 32px);
+  overflow-y:auto;background:white;border-radius:18px;
+  box-shadow:0 28px 95px rgba(10,18,35,.35);
+}
+.admin-app-shell .admin-web-orders-modal-header {
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:22px 26px;border-bottom:1px solid #e7ecf3;
+  position:sticky;top:0;z-index:2;background:white;
+}
+.admin-app-shell .admin-web-orders-modal .form-control:focus,
+.admin-app-shell .admin-web-orders-modal .form-select:focus{
+  border-color:#8176f2;box-shadow:0 0 0 3px rgba(100,91,237,.12)
+}
+.admin-app-shell .admin-shipment-panel{padding-top:25px;margin-top:20px;border-top:1px solid #e8ecf4}
+.admin-app-shell .admin-shipment-form{
+  padding:18px;background:#f9fbfe;border:1px solid #e7ebf3;border-radius:13px;
+}
+.admin-app-shell .admin-shipment-summary{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;
+  padding:20px;background:#f1f3ff;border:1px solid #e2e7ff;border-radius:13px;
+}
+.admin-app-shell .admin-shipment-timeline{list-style:none;margin:0;padding:0 0 0 10px}
+.admin-app-shell .admin-shipment-event{
+  position:relative;padding:0 0 21px 21px;border-left:2px solid #d6d9ff
+}
+.admin-app-shell .admin-shipment-event::before{
+  content:'';position:absolute;top:4px;left:-6px;width:10px;height:10px;
+  border-radius:50%;background:#5b55e9;box-shadow:0 0 0 3px #eeedff
+}
+@media(max-width:767px){
+  .admin-app-shell .admin-web-orders-overlay{padding:8px}
+  .admin-app-shell .admin-web-orders-modal{max-height:calc(100dvh - 16px)}
+  .admin-app-shell .admin-web-orders-modal-header{padding:16px}
+  .admin-app-shell .admin-shipment-summary{grid-template-columns:1fr}
+}
