@@ -402,6 +402,16 @@ export default function InventoryPage() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showReplenish, setShowReplenish] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
+  const [matrixSearch, setMatrixSearch] = useState('')
+  const [matrixPage, setMatrixPage] = useState(1)
+  const { data: matrix, isLoading: matrixLoading, isError: matrixError } = useQuery({
+    queryKey: ['inventory-omnichannel-overview', matrixSearch, matrixPage],
+    queryFn: () => inventoryApi.overview({
+      search: matrixSearch || undefined,
+      page: matrixPage,
+      per_page: 25,
+    }).then((response) => response.data),
+  })
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['inventory-products'],
@@ -477,6 +487,7 @@ export default function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] }),
       queryClient.invalidateQueries({ queryKey: ['inventory-locations'] }),
       queryClient.invalidateQueries({ queryKey: ['inventory-low-stock'] }),
+      queryClient.invalidateQueries({ queryKey: ['inventory-omnichannel-overview'] }),
     ])
     toast.success('Inventario actualizado')
   }
@@ -511,6 +522,101 @@ export default function InventoryPage() {
           <div className="admin-catalog-stat"><span>{item.label}</span><strong className="admin-inventory-stat-value">{item.value}</strong></div>
         </div>)}
       </div>
+
+      {/* Matriz omnicanal — datos agregados directamente desde la BD. */}
+      <section className="card" aria-label="Matriz omnicanal de existencias">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-bold text-gray-900">Existencias por sede y disponibilidad web</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Stock global: suma de sedes. Venta web: máximo disponible en una ubicación activa.
+              Las variantes se muestran como referencias SKU independientes.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <label htmlFor="matrix-stock-search" className="text-xs text-gray-500">Buscar SKU o producto</label>
+            <input
+              id="matrix-stock-search" type="search" className="form-control"
+              placeholder="Buscar referencia..."
+              value={matrixSearch}
+              onChange={(event) => { setMatrixSearch(event.target.value); setMatrixPage(1) }}
+            />
+          </div>
+        </div>
+        {matrixError ? (
+          <p role="alert" className="text-red-700">No se pudo cargar la matriz de existencias.</p>
+        ) : matrixLoading ? (
+          <p className="text-sm text-gray-500">Consultando existencias por sede...</p>
+        ) : matrix && (
+          <>
+            <p className="text-xs text-gray-500 mb-3">
+              {formatNumber(matrix.total_products)} referencias ·
+              {' '}{matrix.locations.filter((loc) => loc.active).length} ubicaciones activas
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-600">
+                    <th scope="col" className="py-2 px-2">Producto / SKU</th>
+                    <th scope="col" className="py-2 px-2 text-right">Global</th>
+                    <th scope="col" className="py-2 px-2 text-right">Web</th>
+                    {matrix.locations.map((loc) => (
+                      <th scope="col" key={loc.id} className="py-2 px-2 text-right whitespace-nowrap">
+                        {loc.name}{loc.active ? '' : ' (inactiva)'}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.items.map((item) => {
+                    const stockByLocation = new Map(item.locations.map((loc) => [loc.location_id, loc]))
+                    return (
+                      <tr key={item.product_id} className="border-b border-gray-100">
+                        <td className="py-3 px-2">
+                          <span className="font-semibold text-gray-900">{item.name}</span>
+                          <span className="block text-xs text-gray-500">{item.sku}
+                            {item.parent_product_id ? ' · Variante' : ''}
+                            {!item.active ? ' · Inactivo' : ''}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-right font-semibold">{formatNumber(item.global_available)}</td>
+                        <td className="py-3 px-2 text-right font-semibold">{formatNumber(item.web_fulfillable)}</td>
+                        {matrix.locations.map((loc) => (
+                          <td key={loc.id} className="py-3 px-2 text-right">
+                            {formatNumber(stockByLocation.get(loc.id)?.qty_available || 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {matrix.items.length === 0 && (
+              <p className="text-sm text-gray-500 mt-3">No se encontraron referencias.</p>
+            )}
+            <div className="flex items-center justify-between gap-3 mt-4">
+              <button type="button" className="btn btn-outline-secondary"
+                disabled={matrixPage <= 1}
+                onClick={() => setMatrixPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              <span className="text-xs text-gray-500">
+                Página {matrixPage} de {Math.max(1, Math.ceil(matrix.total_products / 25))}
+              </span>
+              <button type="button" className="btn btn-outline-secondary"
+                disabled={matrixPage * 25 >= matrix.total_products}
+                onClick={() => setMatrixPage((p) => p + 1)}>
+                Siguiente <ChevronRight size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Las existencias cambian con ventas, reservas, ingresos y transferencias. Actualiza para consultar
+              los valores recientes. No se combinan automáticamente unidades de distintas sedes para un pedido web.
+            </p>
+          </>
+        )}
+      </section>
 
       {/* Alertas */}
       <div className="card">
