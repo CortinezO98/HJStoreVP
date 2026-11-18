@@ -111,6 +111,7 @@ export const categoriesApi = {
 export const inventoryApi = {
   byProduct: (productId) => apiClient.get(`/inventory/product/${productId}`),
   byLocation: (locId) => apiClient.get(`/inventory/location/${locId}`),
+  overview: (params = {}) => apiClient.get('/inventory/overview', { params }),
 
   replenish: (data) =>
     apiClient.post('/inventory/replenish', data),
