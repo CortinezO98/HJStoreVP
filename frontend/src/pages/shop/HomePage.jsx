@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard, Sparkles } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
 import { productsApi, categoriesApi, storefrontSettingsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
 import PersonalizedShowcase from '../../components/shop/PersonalizedShowcase'
