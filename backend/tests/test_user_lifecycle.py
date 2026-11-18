@@ -23,9 +23,9 @@ def accounts():
         location = Location(name="Sede de prueba", type=LocationType.PHYSICAL, active=True)
         db.add(location)
         db.flush()
-        admin = User(email="admin@test.local", full_name="Administrador", role=UserRole.SUPER_ADMIN,
+        admin = User(email="admin@example.com", full_name="Administrador", role=UserRole.SUPER_ADMIN,
                      active=True, hashed_password=hash_password("AdministradorClaveSegura2026"))
-        seller = User(email="seller@test.local", full_name="Vendedor", role=UserRole.SELLER,
+        seller = User(email="seller@example.com", full_name="Vendedor", role=UserRole.SELLER,
                       location_id=location.id, active=True,
                       hashed_password=hash_password("VendedorClaveSegura2026"))
         db.add_all([admin, seller])
@@ -58,8 +58,8 @@ def test_password_rotation_revokes_old_credential_version(accounts):
 
 def test_change_email_rejects_duplicate(accounts):
     db, admin, seller = accounts
-    update_user(seller.id, UserUpdateAdmin(email="nuevo@test.local"), db, admin)
-    assert seller.email == "nuevo@test.local"
+    update_user(seller.id, UserUpdateAdmin(email="nuevo@example.com"), db, admin)
+    assert seller.email == "nuevo@example.com"
     with pytest.raises(HTTPException) as error:
         update_user(seller.id, UserUpdateAdmin(email=admin.email), db, admin)
     assert error.value.status_code == 409
@@ -83,7 +83,7 @@ def test_soft_delete_keeps_row_and_hides_account(accounts):
 
 def test_normal_admin_cannot_operate_administrative_accounts(accounts):
     db, superadmin, seller = accounts
-    regular = User(email="regular@test.local", full_name="Admin", role=UserRole.ADMIN,
+    regular = User(email="regular@example.com", full_name="Admin", role=UserRole.ADMIN,
                    active=True, hashed_password=hash_password("ClaveAdminRegular2026"))
     db.add(regular)
     db.commit()
