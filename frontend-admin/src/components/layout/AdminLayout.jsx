@@ -294,7 +294,10 @@ export default function AdminLayout() {
           <p className="admin-sidebar-role"><ShieldCheck size={13} /> {roleLabel(user?.role)}</p>
         </div>
       </div>
-      <Navigation mobile={mobile} />
+      <AdminNavigation mobile={mobile} navItems={navItems} navSearch={navSearch}
+        setNavSearch={setNavSearch} expandedGroups={expandedGroups}
+        toggleGroup={toggleGroup} setSidebarOpen={setSidebarOpen}
+        navSearchRef={navSearchRef} navLinkClass={navLinkClass} />
       <div className="admin-sidebar-bottom">
         <a href={storeUrl} target="_blank" rel="noopener noreferrer" className="admin-sidebar-store-link">
           <ExternalLink size={17} /> Ver tienda pública

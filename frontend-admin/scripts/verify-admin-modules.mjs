@@ -20,6 +20,13 @@ const routes = [
 ]
 const requiredRoles = ["'super_admin'", "'admin'", "'seller'"]
 const missing = []
+if (/<Navigation\\b/.test(layout)) {
+  missing.push('Menú: referencia <Navigation> global (provoca Illegal constructor y pantalla blanca)')
+}
+if (!layout.includes('function AdminNavigation(') || !layout.includes('<AdminNavigation ')) {
+  missing.push('Menú: falta montar AdminNavigation')
+}
+
 
 for (const [label, component, route] of routes) {
   if (!app.includes(`<${component}`)) missing.push(`Componente ${component}`)
