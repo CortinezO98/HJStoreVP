@@ -15,7 +15,7 @@ from app.db.session import get_db
 from app.core.deps import get_current_user, require_seller
 from app.models.models import (
     User, UserRole, Order, OrderItem, OrderStatus, OrderChannel,
-    Product, Inventory, Location, StockMovement, StockMovementType, CashSession, CashMovement
+    Product, Inventory, Location, LocationType, StockMovement, StockMovementType, CashSession, CashMovement
 )
 from app.schemas.schemas import OrderOut
 from pydantic import BaseModel, Field, model_validator
@@ -171,9 +171,10 @@ def create_physical_sale(
     location = db.query(Location).filter(
         Location.id == location_id,
         Location.active == True,
+        Location.type == LocationType.PHYSICAL,
     ).first()
     if not location:
-        raise HTTPException(status_code=404, detail="Punto físico no encontrado o inactivo")
+        raise HTTPException(status_code=404, detail="Punto físico no encontrado, inactivo o no es sede física")
 
     if not data.items:
         raise HTTPException(status_code=400, detail="La venta debe tener al menos un producto")
