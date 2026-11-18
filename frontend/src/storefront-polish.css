@@ -550,3 +550,29 @@
     text-align: right;
   }
 }
+
+/* Copyright centrado en la franja inferior del footer. */
+.store-footer-bottom {
+  flex-wrap: wrap;
+}
+.store-footer-bottom .store-footer-copyright {
+  order: 2;
+  flex-basis: 100%;
+  margin-left: 0;
+  text-align: center;
+}
+.store-footer-bottom nav {
+  order: 1;
+  width: 100%;
+  justify-content: center;
+}
+@media (max-width: 639px) {
+  .store-footer-bottom {
+    align-items: center;
+  }
+  .store-footer-bottom .store-footer-copyright {
+    align-self: center;
+    margin-left: 0;
+    text-align: center;
+  }
+}
