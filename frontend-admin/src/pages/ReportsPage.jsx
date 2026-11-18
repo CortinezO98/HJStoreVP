@@ -148,6 +148,18 @@ export default function ReportsPage() {
         queryFn: () => analyticsApi.salesByMonth(filters.year).then((r) => r.data),
     })
 
+    const { data: previousYearSales = [] } = useQuery({
+        queryKey: ['report-sales-by-month', filters.year - 1],
+        queryFn: () => analyticsApi.salesByMonth(filters.year - 1).then((r) => r.data),
+        enabled: filters.year > 2000,
+    })
+
+    const yearlyComparison = useMemo(() => {
+        const current = salesByMonth.reduce((sum, row) => sum + Number(row.total_sales || 0), 0)
+        const previous = previousYearSales.reduce((sum, row) => sum + Number(row.total_sales || 0), 0)
+        return { current, previous, change: previous > 0 ? ((current - previous) / previous) * 100 : null }
+    }, [salesByMonth, previousYearSales])
+
     const { data: topProducts = [], isLoading: loadingTop } = useQuery({
         queryKey: ['report-top-products', filters.date_from, filters.date_to],
         queryFn: () =>
@@ -568,6 +580,11 @@ export default function ReportsPage() {
                 <h2 id="reports-monthly" className="font-bold text-gray-900">Ventas por mes</h2>
                 <p className="text-xs text-gray-500 mt-1">
                     Resumen anual del año seleccionado
+                </p>
+                <p className="text-xs text-gray-600 mt-2">
+                    Total {filters.year}: {formatCOP(yearlyComparison.current)} ·
+                    {' '}Año anterior: {formatCOP(yearlyComparison.previous)} ·
+                    {' '}Variación: {yearlyComparison.change === null ? 'Sin base comparable' : `${yearlyComparison.change.toFixed(1)}%`}
                 </p>
                 </div>
                 <Calendar size={18} className="text-brand-600" />
