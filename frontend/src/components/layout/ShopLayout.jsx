@@ -11,7 +11,6 @@ export default function ShopLayout() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const searchRef = useRef(null)
-  const menuRef = useRef(null)
   const cartCount = useCartStore((s) => s.count())
   const wishlistCount = useWishlistStore((s) => s.items.length)
   const { data: storeSettings = {} } = useQuery({
@@ -78,8 +77,8 @@ export default function ShopLayout() {
           <nav className="editorial-nav" aria-label="Navegación principal">
             <NavLink to="/" end>INICIO</NavLink>
             <NavLink to="/catalogo">CATÁLOGO</NavLink>
-            {navigationCategories.map((cat) => (
-              <Link key={cat.slug} to={`/catalogo?categoria=${cat.slug}`}>{cat.name.toUpperCase()}</Link>
+            {navigationCategories.slice(0, 4).map((cat) => (
+              <Link key={cat.slug} to={`/catalogo?categoria=${encodeURIComponent(cat.slug)}`}>{cat.name.toUpperCase()}</Link>
             ))}
             <Link to="/catalogo?sort=newest">NOVEDADES</Link>
             <Link to="/catalogo?featured=true" className="editorial-sale">DESTACADOS</Link>
@@ -112,12 +111,12 @@ export default function ShopLayout() {
           <form id="store-search-panel" className="editorial-search" role="search" onSubmit={handleSearch}>
             <Search size={19} strokeWidth={1.5} />
             <input ref={searchRef} value={searchText} onChange={(e) => setSearchText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setSearchOpen(false) }}
-              placeholder="¿Qué estás buscando?" aria-label="Buscar" />
+              placeholder="¿Qué estás buscando?" aria-label="Buscar productos" type="search" />
             <button type="submit">BUSCAR <ArrowRight size={15} /></button>
           </form>
         )}
         {menuOpen && (
-          <nav id="store-mobile-menu" ref={menuRef} className="editorial-mobile-nav" aria-label="Menú móvil">
+          <nav id="store-mobile-menu" className="editorial-mobile-nav" aria-label="Menú móvil">
             <Link to="/catalogo" onClick={() => setMenuOpen(false)}>VER TODO EL CATÁLOGO</Link>
             <Link to="/" onClick={() => setMenuOpen(false)}>INICIO</Link>
             {navigationCategories.map((cat) => (
