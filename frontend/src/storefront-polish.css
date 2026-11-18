@@ -1069,3 +1069,9 @@
   .store-product-main-image > div > img { animation: none; }
   .store-home-hero-carousel-dots button::after { transition: none; }
 }
+
+/* No superponer círculos editoriales encima de fotografías publicadas. */
+.store-home-hero-carousel.has-image::before,
+.store-home-hero-carousel.has-image::after {
+  display: none;
+}
