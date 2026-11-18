@@ -247,78 +247,6 @@
   .editorial-nav a::after { transition: none; }
 }
 
-/* Descubrimiento inmediato de categorías en portada. */
-.store-home-discovery {
-  border-bottom: 1px solid var(--store-line);
-  background: #fff;
-}
-.store-home-discovery-inner {
-  max-width: 1480px;
-  margin: 0 auto;
-  padding: 18px 32px;
-  display: flex;
-  align-items: center;
-  gap: 22px;
-}
-.store-home-discovery-inner > span {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .16em;
-  color: #6d6d6d;
-}
-.store-home-discovery-inner > div {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.store-home-discovery-inner a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 8px 13px;
-  border: 1px solid var(--store-line);
-  font-size: 11px;
-  font-weight: 750;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-}
-.store-home-discovery-inner a:hover {
-  color: #fff;
-  background: var(--store-ink);
-  border-color: var(--store-ink);
-}
-.store-home-discovery-inner .store-home-discovery-all {
-  color: #fff;
-  background: var(--store-ink);
-  border-color: var(--store-ink);
-}
-.store-home-discovery-inner .store-home-discovery-all:hover {
-  background: #3b3b3b;
-}
-@media (max-width: 767px) {
-  .store-home-discovery-inner {
-    padding: 14px 16px;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .store-home-discovery-inner > div {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    max-width: 100%;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .store-home-discovery-inner a {
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-}
-
 /* Flujo de compra · producto, carrito, checkout y cuenta */
 .store-purchase-journey {
   display: flex;
@@ -938,4 +866,38 @@
   .store-product-placeholder { gap: 8px; padding: 12px; }
   .store-product-placeholder-mark { font-size: 40px; }
   .store-product-placeholder-label { font-size: 8px; }
+}
+
+/* Portada más limpia: jerarquía visual y ritmo comercial. */
+.store-home-hero-grid {
+  min-height: min(620px, 68vh);
+}
+.store-home-hero-art {
+  background: #f5f4f2;
+}
+.store-home-hero-art-center {
+  transform: rotate(-4deg);
+}
+.store-home-hero-art-center strong {
+  font-size: clamp(68px, 8vw, 140px);
+}
+.store-home-products.editorial-products-section {
+  padding-block: 34px 56px;
+}
+.store-home-products .editorial-section-heading {
+  margin-bottom: 22px;
+}
+.store-product-placeholder {
+  background: linear-gradient(180deg, #f7f6f4 0%, #ece9e5 100%);
+}
+@media (max-width: 767px) {
+  .store-home-hero-grid {
+    min-height: 0;
+  }
+  .store-home-hero-art-center strong {
+    font-size: clamp(64px, 15vw, 115px);
+  }
+  .store-home-products.editorial-products-section {
+    padding-block: 30px 42px;
+  }
 }
