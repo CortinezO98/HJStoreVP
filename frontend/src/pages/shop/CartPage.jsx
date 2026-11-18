@@ -23,6 +23,7 @@ export default function CartPage() {
   const updateQty = useCartStore((state) => state.updateQty)
   const clearCart = useCartStore((state) => state.clearCart)
   const total = useCartStore((state) => state.total())
+  const units = items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
   const authenticated = useAuthStore((state) => state.isAuthenticated)
   const navigate = useNavigate()
   const cartIds = [...new Set(items.map((item) => item.product.id))].sort((a, b) => a - b)
@@ -50,8 +51,16 @@ export default function CartPage() {
     <div className="store-container store-section">
       <PageHeading eyebrow="TU SELECCIÓN" title="MI CARRITO"
         description="Revisa los artículos y las cantidades antes de continuar.">
-        {items.length > 0 && <span className="text-sm text-neutral-500">{items.length} referencias</span>}
+        {items.length > 0 && <span className="text-sm text-neutral-500">{items.length} referencias · {units} unidades</span>}
       </PageHeading>
+
+      {items.length > 0 && (
+        <nav className="store-checkout-progress mb-8" aria-label="Etapas de compra">
+          <span className="is-current" aria-current="step"><strong>1</strong> Tu carrito</span>
+          <span><strong>2</strong> Entrega y pago</span>
+          <span><strong>3</strong> Confirmación</span>
+        </nav>
+      )}
 
       {items.length === 0 ? (
         <EmptyState title="TU CARRITO ESTÁ VACÍO"
@@ -65,8 +74,8 @@ export default function CartPage() {
               const photo = imageUrl(product)
               return (
                 <article key={product.id} className="store-order-item">
-                  <Link to={`/producto/${product.slug}`} className="shrink-0 block">
-                    {photo ? <img loading="lazy" src={photo} alt={product.name} className="store-order-img"/> :
+                  <Link to={`/producto/${product.slug}`} className="shrink-0 block" aria-label={`Ver detalles de ${product.name}`}>
+                    {photo ? <img loading="lazy" src={photo} alt={product.name} className="store-order-img" decoding="async"/> :
                       <span className="store-order-img flex items-center justify-center text-neutral-400"><ShoppingBag size={28}/></span>}
                   </Link>
                   <div className="flex-1 min-w-0">
@@ -98,6 +107,7 @@ export default function CartPage() {
 
           <aside aria-label="Resumen de la compra" className="store-responsive-summary">
             <h2 className="text-xl font-black uppercase">RESUMEN DEL PEDIDO</h2>
+            <p className="text-xs text-neutral-500 mt-2">{units} unidades · {items.length} referencias</p>
             <div className="flex justify-between gap-3 border-b border-neutral-200 py-6 text-sm">
               <span className="text-neutral-500">Subtotal</span>
               <strong>{formatCOP(total)}</strong>
@@ -111,7 +121,7 @@ export default function CartPage() {
               <strong className="uppercase text-sm">Subtotal</strong>
               <strong className="text-2xl">{formatCOP(total)}</strong>
             </div>
-            <button type="button" onClick={goCheckout} className="store-button store-button-dark w-full">
+            <button type="button" onClick={goCheckout} className="store-button store-button-dark w-full" aria-label={authenticated ? 'Continuar a entrega y pago' : 'Iniciar sesión para continuar a entrega y pago'}>
               CONTINUAR AL PAGO <ArrowRight size={17}/>
             </button>
             <div className="flex flex-col gap-3 mt-7 text-xs text-neutral-500">
