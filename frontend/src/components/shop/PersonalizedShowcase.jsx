@@ -42,9 +42,21 @@ export default function PersonalizedShowcase() {
   const hasSuggestions = suggested.length > 0
   const showRecent = enabled && visibleHistory.length > 0
 
-  // La portada no debe reservar grandes bloques vacíos antes de que haya
-  // favoritos o historial. El consentimiento sigue disponible en cuenta.
-  if (!hasSuggestions && !showRecent) return null
+  // Sin contenido personalizado, conservar el control de consentimiento
+  // en un módulo discreto en lugar de mostrar dos secciones vacías.
+  if (!hasSuggestions && !showRecent) {
+    return <div className="store-home-history-prompt">
+      <div>
+        <strong>Una tienda que recuerda tu estilo, solo si tú quieres.</strong>
+        <p>Activa el historial para volver a encontrar productos que visitaste.</p>
+      </div>
+      <label className="store-home-history-switch">
+        <input type="checkbox" checked={enabled}
+          onChange={(event) => setEnabled(event.target.checked)} />
+        Recordar productos vistos
+      </label>
+    </div>
+  }
 
   return <div className="store-home-personalized">
     {hasSuggestions && <section className="editorial-products-section store-home-products" aria-labelledby="personalization-title">
