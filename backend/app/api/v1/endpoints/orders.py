@@ -98,51 +98,45 @@ def generate_order_number() -> str:
 
 
 def reserve_stock(db: Session, product_id: int, qty: int):
-    """Reserva stock en la ubicación web."""
-    web_loc = db.query(Location).filter(
-        Location.type == LocationType.WEB, Location.active == True
-    ).first()
+    """Reserva una cantidad completa en una sede activa.
 
-    if not web_loc:
-        # Si no hay ubicación web, buscar cualquier ubicación con stock
-        inv = db.query(Inventory).filter(
+    La tienda ofrece como máximo el stock de UNA sede. Se prioriza la
+    ubicación web y después la sede con más unidades, usando un decremento
+    condicional para resistir ventas simultáneas sin inventario negativo.
+    """
+    from sqlalchemy import case
+
+    candidates = (
+        db.query(Inventory.id, Inventory.location_id, Inventory.qty_available)
+        .join(Location, Location.id == Inventory.location_id)
+        .filter(
             Inventory.product_id == product_id,
+            Location.active.is_(True),
             Inventory.qty_available >= qty,
-        ).first()
-    else:
-        inv = db.query(Inventory).filter(
-            Inventory.product_id == product_id,
-            Inventory.location_id == web_loc.id,
-        ).first()
-
-    if not inv or inv.qty_available < qty:
-        # Buscar en cualquier ubicación
-        inv = db.query(Inventory).filter(
-            Inventory.product_id == product_id,
-        ).order_by(Inventory.qty_available.desc()).first()
-
-        if not inv or inv.qty_available < qty:
-            product = db.query(Product).filter(Product.id == product_id).first()
-            raise HTTPException(
-                status_code=400,
-                detail=f"Stock insuficiente para '{product.name if product else product_id}'. "
-                        f"Disponible: {inv.qty_available if inv else 0}"
-            )
-
-    # Descuento condicional y atómico: dos compradores simultáneos no pueden
-    # descontar el mismo stock hasta producir cantidades negativas.
-    updated = db.execute(
-        update(Inventory)
-        .where(
-            Inventory.id == inv.id,
-            Inventory.qty_available >= qty,
-            Inventory.qty_available >= 0,
         )
-        .values(qty_available=Inventory.qty_available - qty)
+        .order_by(
+            case((Location.type == LocationType.WEB, 0), else_=1),
+            Inventory.qty_available.desc(),
+            Inventory.id.asc(),
+        )
+        .all()
     )
-    if updated.rowcount != 1:
-        raise HTTPException(status_code=400, detail="Stock insuficiente; actualiza tu carrito")
-    return inv.location_id
+    for candidate in candidates:
+        updated = db.execute(
+            update(Inventory)
+            .where(
+                Inventory.id == candidate.id,
+                Inventory.qty_available >= qty,
+            )
+            .values(qty_available=Inventory.qty_available - qty)
+        )
+        if updated.rowcount == 1:
+            return candidate.location_id
+
+    raise HTTPException(
+        status_code=409,
+        detail="Stock insuficiente en una misma ubicación activa; actualiza el carrito",
+    )
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
