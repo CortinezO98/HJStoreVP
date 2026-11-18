@@ -95,6 +95,25 @@ for (const item of [
   if (!inventory.includes(item)) missing.push('Inventario: falta ' + item)
 }
 
+// Pedidos web: conservar contrato y flujo de despacho durante rediseños visuales.
+for (const [file, required] of [
+  ['src/pages/WebOrdersPage.jsx', [
+    'ordersApi.list', 'ordersApi.updateStatus', 'ShipmentManager',
+    'OrderDetailModal', 'NEXT_STATUS_OPTIONS', "status === 'shipped'",
+    'pageOrders', 'setPerPage', 'setSortBy', 'shipping_address',
+  ]],
+  ['src/components/ShipmentManager.jsx', [
+    'shipmentsApi.get', 'shipmentsApi.dispatch', 'shipmentsApi.correctGuide',
+    'shipmentsApi.addEvent', 'TRANSITIONS', 'noGuide', 'canDispatch', 'canUpdate',
+    'shipment.events',
+  ]],
+]) {
+  const source = read(file)
+  for (const symbol of required) {
+    if (!source.includes(symbol)) missing.push(`${file}: falta ${symbol}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)
