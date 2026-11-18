@@ -10,6 +10,11 @@ import {
   Warehouse,
   RefreshCw,
   CheckCircle,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  X,
 } from 'lucide-react'
 import { inventoryApi, locationsApi, productsApi } from '../services/api'
 import toast from 'react-hot-toast'
@@ -38,8 +43,8 @@ function ProductStockModal({ product, locations, onClose }) {
   const totalReal = stock.reduce((acc, row) => acc + Number(row.qty_real || 0), 0)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
+    <div className="admin-inventory-overlay">
+      <div className="admin-inventory-modal admin-inventory-modal-wide" role="dialog" aria-modal="true" aria-label="Detalle de inventario">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold text-gray-900">Detalle de inventario</h3>
@@ -161,8 +166,8 @@ function ReplenishModal({ products, locations, onClose }) {
   })
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+    <div className="admin-inventory-overlay">
+      <div className="admin-inventory-modal" role="dialog" aria-modal="true" aria-label="Movimiento de inventario">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">Ingreso de mercancía</h3>
           <p className="text-sm text-gray-500 mt-1">
@@ -170,11 +175,11 @@ function ReplenishModal({ products, locations, onClose }) {
           </p>
         </div>
 
-        <div className="p-6 grid grid-cols-1 gap-4">
+        <div className="admin-inventory-form">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Producto</label>
+            <label className="form-label">Producto</label>
             <select
-              className="input"
+              className="form-control"
               value={form.product_id}
               onChange={(e) => setForm((p) => ({ ...p, product_id: e.target.value }))}
             >
@@ -188,9 +193,9 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Ubicación</label>
+            <label className="form-label">Ubicación</label>
             <select
-              className="input"
+              className="form-control"
               value={form.location_id}
               onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
             >
@@ -204,11 +209,11 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Cantidad</label>
+            <label className="form-label">Cantidad</label>
             <input
               type="number"
               min="1"
-              className="input"
+              className="form-control"
               value={form.qty}
               onChange={(e) => setForm((p) => ({ ...p, qty: e.target.value }))}
               placeholder="Ej: 30"
@@ -216,9 +221,9 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Notas</label>
+            <label className="form-label">Notas</label>
             <input
-              className="input"
+              className="form-control"
               value={form.notes}
               onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Proveedor, lote, observación..."
@@ -227,13 +232,13 @@ function ReplenishModal({ products, locations, onClose }) {
         </div>
 
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-          <button onClick={onClose} className="btn-secondary flex-1">
+          <button onClick={onClose} className="btn btn-outline-secondary flex-1">
             Cancelar
           </button>
           <button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
-            className="btn-primary flex-1 flex items-center justify-center gap-2"
+            className="btn btn-primary flex-1 d-inline-flex align-items-center justify-content-center gap-2"
           >
             {mutation.isPending ? 'Guardando...' : <><PackagePlus size={16} /> Registrar ingreso</>}
           </button>
@@ -286,8 +291,8 @@ function TransferModal({ products, locations, onClose }) {
   })
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+    <div className="admin-inventory-overlay">
+      <div className="admin-inventory-modal" role="dialog" aria-modal="true" aria-label="Movimiento de inventario">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">Transferencia entre puntos</h3>
           <p className="text-sm text-gray-500 mt-1">
@@ -297,9 +302,9 @@ function TransferModal({ products, locations, onClose }) {
 
         <div className="p-6 grid grid-cols-1 gap-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Producto</label>
+            <label className="form-label">Producto</label>
             <select
-              className="input"
+              className="form-control"
               value={form.product_id}
               onChange={(e) => setForm((p) => ({ ...p, product_id: e.target.value }))}
             >
@@ -314,9 +319,9 @@ function TransferModal({ products, locations, onClose }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Desde</label>
+              <label className="form-label">Desde</label>
               <select
-                className="input"
+                className="form-control"
                 value={form.from_location_id}
                 onChange={(e) => setForm((p) => ({ ...p, from_location_id: e.target.value }))}
               >
@@ -330,9 +335,9 @@ function TransferModal({ products, locations, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Hacia</label>
+              <label className="form-label">Hacia</label>
               <select
-                className="input"
+                className="form-control"
                 value={form.to_location_id}
                 onChange={(e) => setForm((p) => ({ ...p, to_location_id: e.target.value }))}
               >
@@ -347,11 +352,11 @@ function TransferModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Cantidad</label>
+            <label className="form-label">Cantidad</label>
             <input
               type="number"
               min="1"
-              className="input"
+              className="form-control"
               value={form.qty}
               onChange={(e) => setForm((p) => ({ ...p, qty: e.target.value }))}
               placeholder="Ej: 10"
@@ -359,9 +364,9 @@ function TransferModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Notas</label>
+            <label className="form-label">Notas</label>
             <input
-              className="input"
+              className="form-control"
               value={form.notes}
               onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Motivo de la transferencia..."
@@ -370,13 +375,13 @@ function TransferModal({ products, locations, onClose }) {
         </div>
 
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-          <button onClick={onClose} className="btn-secondary flex-1">
+          <button onClick={onClose} className="btn btn-outline-secondary flex-1">
             Cancelar
           </button>
           <button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
-            className="btn-primary flex-1 flex items-center justify-center gap-2"
+            className="btn btn-primary flex-1 d-inline-flex align-items-center justify-content-center gap-2"
           >
             {mutation.isPending ? 'Procesando...' : <><ArrowRightLeft size={16} /> Transferir</>}
           </button>
@@ -389,16 +394,29 @@ function TransferModal({ products, locations, onClose }) {
 export default function InventoryPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [stockFilter, setStockFilter] = useState('all')
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('name')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(15)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showReplenish, setShowReplenish] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['inventory-products'],
-    queryFn: () =>
-      productsApi
-        .list({ include_inactive: true, per_page: 200 })
-        .then((r) => r.data),
+    queryFn: async () => {
+      // El backend limita las páginas a 100 elementos; recorrerlas evita listados incompletos.
+      const all = []
+      let page = 1
+      while (true) {
+        const { data } = await productsApi.list({ include_inactive: true, page, per_page: 100 })
+        all.push(...data)
+        if (data.length < 100) break
+        page += 1
+      }
+      return all
+    },
   })
 
   const { data: locations = [] } = useQuery({
@@ -421,20 +439,38 @@ export default function InventoryPage() {
     [locations]
   )
 
+  const lowStockSet = useMemo(() => new Set(lowStock.map(row => Number(row.product_id))), [lowStock])
+
   const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return products
+    const term = search.trim().toLocaleLowerCase('es')
+    return products.filter(product => {
+      const text = `${product.name} ${product.sku} ${product.category_name || ''}`.toLocaleLowerCase('es')
+      const matchesTerm = !term || text.includes(term)
+      const flagged = lowStockSet.has(Number(product.id))
+      const stock = Number(product.total_stock || 0)
+      const matchesStock = stockFilter === 'all' ||
+        (stockFilter === 'low' && flagged) ||
+        (stockFilter === 'ok' && !flagged) ||
+        (stockFilter === 'zero' && stock === 0)
+      const matchesActive = activeFilter === 'all' ||
+        (activeFilter === 'active' && Boolean(product.active)) ||
+        (activeFilter === 'inactive' && !Boolean(product.active))
+      return matchesTerm && matchesStock && matchesActive
+    }).sort((a, b) => {
+      if (sortBy === 'stock_asc') return Number(a.total_stock || 0) - Number(b.total_stock || 0)
+      if (sortBy === 'stock_desc') return Number(b.total_stock || 0) - Number(a.total_stock || 0)
+      if (sortBy === 'sku') return String(a.sku || '').localeCompare(String(b.sku || ''), 'es')
+      return String(a.name || '').localeCompare(String(b.name || ''), 'es')
+    })
+  }, [products, search, stockFilter, activeFilter, lowStockSet, sortBy])
 
-    return products.filter((p) =>
-      `${p.name} ${p.sku} ${p.category_name || ''}`.toLowerCase().includes(term)
-    )
-  }, [products, search])
-
-  const lowStockSet = useMemo(() => {
-    const set = new Set()
-    lowStock.forEach((row) => set.add(Number(row.product_id)))
-    return set
-  }, [lowStock])
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / perPage))
+  const currentPage = Math.min(page, pageCount)
+  const pageProducts = filteredProducts.slice((currentPage - 1) * perPage, currentPage * perPage)
+  const filtersActive = Boolean(search || stockFilter !== 'all' || activeFilter !== 'all' || sortBy !== 'name')
+  const clearFilters = () => {
+    setSearch(''); setStockFilter('all'); setActiveFilter('all'); setSortBy('name'); setPage(1)
+  }
 
   const refreshAll = async () => {
     await Promise.all([
@@ -446,71 +482,34 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+    <div className="admin-inventory-page space-y-6">
+      <header className="admin-page-intro flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventario</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Control centralizado de stock para tienda web y puntos físicos
-          </p>
+          <p className="admin-page-kicker">Operación omnicanal</p>
+          <h1 className="admin-page-heading">Inventario</h1>
+          <p className="admin-page-description">Consulta existencias, detecta alertas y administra entradas y transferencias sin salir del módulo.</p>
         </div>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={refreshAll}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <RefreshCw size={16} />
-            Actualizar
+        <div className="d-flex flex-wrap gap-2">
+          <button type="button" onClick={refreshAll} className="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+            <RefreshCw size={16}/> Actualizar
           </button>
-
-          <button
-            onClick={() => setShowReplenish(true)}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <PackagePlus size={16} />
-            Ingreso de mercancía
+          <button type="button" onClick={() => setShowReplenish(true)} className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
+            <PackagePlus size={16}/> Ingreso de mercancía
           </button>
-
-          <button
-            onClick={() => setShowTransfer(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <ArrowRightLeft size={16} />
-            Transferir stock
+          <button type="button" onClick={() => setShowTransfer(true)} className="btn btn-primary d-inline-flex align-items-center gap-2">
+            <ArrowRightLeft size={16}/> Transferir stock
           </button>
         </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card">
-          <p className="text-sm text-gray-500">Productos</p>
-          <p className="text-2xl font-black text-gray-900 mt-2">
-            {formatNumber(products.length)}
-          </p>
-        </div>
-
-        <div className="card">
-          <p className="text-sm text-gray-500">Puntos físicos</p>
-          <p className="text-2xl font-black text-gray-900 mt-2">
-            {formatNumber(physicalLocations.length)}
-          </p>
-        </div>
-
-        <div className="card">
-          <p className="text-sm text-gray-500">Tienda web</p>
-          <p className="text-lg font-black text-brand-700 mt-3">
-            {webLocation ? webLocation.name : 'No configurada'}
-          </p>
-        </div>
-
-        <div className="card">
-          <p className="text-sm text-gray-500">Alertas de stock</p>
-          <p className="text-2xl font-black text-amber-600 mt-2">
-            {formatNumber(lowStock.length)}
-          </p>
-        </div>
+      </header>
+      <div className="row g-3" aria-label="Indicadores de inventario">
+        {[
+          { label: 'Productos monitoreados', value: formatNumber(products.length) },
+          { label: 'Puntos físicos', value: formatNumber(physicalLocations.length) },
+          { label: 'Canal web', value: webLocation?.name || 'No configurado' },
+          { label: 'Alertas de stock', value: formatNumber(lowStock.length) },
+        ].map(item => <div key={item.label} className="col-12 col-sm-6 col-xl-3">
+          <div className="admin-catalog-stat"><span>{item.label}</span><strong className="admin-inventory-stat-value">{item.value}</strong></div>
+        </div>)}
       </div>
 
       {/* Alertas */}
@@ -561,32 +560,64 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* Buscador y tabla principal */}
-      <div className="card p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-          <div>
-            <h2 className="font-bold text-gray-900">Visión general del inventario</h2>
-            <p className="text-xs text-gray-500 mt-1">
-              Haz clic en un producto para ver el detalle por ubicación
-            </p>
+      {/* Visión general y filtros — no alteran operaciones ni existencias. */}
+      <section className="admin-catalog-filter card" aria-label="Filtros de inventario">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <h2 className="h6 fw-bold m-0 d-inline-flex align-items-center gap-2"><Filter size={18}/> Buscar inventario</h2>
+          <button className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+            type="button" disabled={!filtersActive} onClick={clearFilters}>
+            <RotateCcw size={14}/> Limpiar filtros
+          </button>
+        </div>
+        <div className="row g-3">
+          <div className="col-12 col-lg-5">
+            <label htmlFor="inventory-search" className="form-label">Producto o referencia</label>
+            <div className="admin-catalog-search"><Search size={17} aria-hidden="true"/>
+              <input id="inventory-search" className="form-control" type="search"
+                placeholder="Nombre, SKU o categoría…" value={search}
+                onChange={event => { setSearch(event.target.value); setPage(1) }}/>
+            </div>
           </div>
-
-          <div className="relative min-w-[280px]">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              className="input pl-9"
-              placeholder="Buscar por nombre, SKU o categoría..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="col-6 col-lg-2">
+            <label className="form-label" htmlFor="inventory-stock-filter">Existencias</label>
+            <select id="inventory-stock-filter" className="form-select" value={stockFilter}
+              onChange={event => { setStockFilter(event.target.value); setPage(1) }}>
+              <option value="all">Todas</option>
+              <option value="low">Bajo stock</option>
+              <option value="zero">Sin stock</option>
+              <option value="ok">Sin alerta</option>
+            </select>
+          </div>
+          <div className="col-6 col-lg-2">
+            <label className="form-label" htmlFor="inventory-active-filter">Visibilidad</label>
+            <select id="inventory-active-filter" className="form-select" value={activeFilter}
+              onChange={event => { setActiveFilter(event.target.value); setPage(1) }}>
+              <option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option>
+            </select>
+          </div>
+          <div className="col-12 col-lg-3">
+            <label className="form-label" htmlFor="inventory-sort">Ordenar</label>
+            <select id="inventory-sort" className="form-select" value={sortBy}
+              onChange={event => { setSortBy(event.target.value); setPage(1) }}>
+              <option value="name">Nombre (A–Z)</option>
+              <option value="sku">SKU</option>
+              <option value="stock_asc">Menos existencias</option>
+              <option value="stock_desc">Más existencias</option>
+            </select>
           </div>
         </div>
+      </section>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+      <section className="card p-0 overflow-hidden" aria-label="Inventario de productos">
+        <div className="px-5 py-4 border-b border-gray-100 d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div>
+            <h2 className="h6 fw-bold mb-1">Visión general del inventario</h2>
+            <p className="text-secondary small mb-0">Consulta el stock desglosado por ubicación desde el detalle de cada producto.</p>
+          </div>
+          <span className="badge text-bg-light border text-secondary">{filteredProducts.length} resultados</span>
+        </div>
+        <div className="table-responsive">
+          <table className="table table-hover align-middle admin-inventory-table mb-0">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">Producto</th>
@@ -618,7 +649,7 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => {
+                pageProducts.map((product) => {
                   const totalStock = Number(product.total_stock || 0)
                   const hasLowStock = lowStockSet.has(Number(product.id))
                   const webText = webLocation ? 'Disponible en detalle' : '—'
@@ -670,7 +701,8 @@ export default function InventoryPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => setSelectedProduct(product)}
-                          className="text-brand-600 hover:text-brand-700 text-xs font-semibold"
+                          className="btn btn-sm btn-outline-primary"
+                          aria-label={`Ver existencias por ubicación de ${product.name}`}
                         >
                           Ver detalle
                         </button>
@@ -681,6 +713,24 @@ export default function InventoryPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="admin-catalog-pagination">
+        <span className="text-secondary small">
+          {filteredProducts.length === 0 ? 'Sin resultados' : `Mostrando ${(currentPage - 1) * perPage + 1}–${Math.min(currentPage * perPage, filteredProducts.length)} de ${filteredProducts.length}`}
+        </span>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <label htmlFor="inventory-per-page" className="text-secondary small">Por página</label>
+          <select id="inventory-per-page" className="form-select form-select-sm admin-catalog-per-page"
+            value={perPage} onChange={event => { setPerPage(Number(event.target.value)); setPage(1) }}>
+            {[10, 15, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <button className="btn btn-sm btn-outline-secondary" type="button" aria-label="Página anterior"
+            disabled={currentPage === 1} onClick={() => setPage(old => Math.max(1, old - 1))}><ChevronLeft size={16}/></button>
+          <span className="small fw-semibold">{currentPage} / {pageCount}</span>
+          <button className="btn btn-sm btn-outline-secondary" type="button" aria-label="Página siguiente"
+            disabled={currentPage === pageCount} onClick={() => setPage(old => Math.min(pageCount, old + 1))}><ChevronRight size={16}/></button>
         </div>
       </div>
 
