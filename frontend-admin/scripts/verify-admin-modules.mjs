@@ -136,6 +136,28 @@ for (const [file, required] of [
   }
 }
 
+// Usuarios y reportes: preservar controles de privilegios, formularios y datos.
+for (const [file, symbols] of [
+  ['src/pages/UsersPage.jsx', [
+    'usersApi.list', 'usersApi.create', 'usersApi.update', 'locationsApi.list',
+    "user?.role === 'super_admin'", "user?.role === 'admin'", "form.role === 'seller'",
+    'location_id: form.role', "payload.password = form.password",
+    'UserFormModal', 'pageUsers', 'setPerPage', 'setRoleFilter',
+  ]],
+  ['src/pages/ReportsPage.jsx', [
+    'analyticsApi.salesByMonth', 'analyticsApi.topProducts', 'analyticsApi.salesByLocation',
+    'ordersApi.list', 'physicalSalesApi.list', 'exportAccounting',
+    'exportCategories', 'exportTopProducts', 'exportLocations',
+    'exportOrders', 'exportPhysicalSales', 'accountingSummary', 'OperationalAnalytics',
+    'reports-operational', 'reports-summary',
+  ]],
+]) {
+  const source = read(file)
+  for (const symbol of symbols) {
+    if (!source.includes(symbol)) missing.push(`${file}: falta ${symbol}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)
