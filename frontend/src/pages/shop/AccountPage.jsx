@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ShoppingBag, Package, Clock, CheckCircle2, Truck, XCircle, LogOut, UserRound } from 'lucide-react'
+import { ShoppingBag, Package, Clock, CheckCircle2, Truck, XCircle, LogOut, UserRound, ArrowRight } from 'lucide-react'
 import { apiClient } from '../../services/api'
 import { useAuthStore } from '../../store'
 import { PageHeading, EmptyState, ErrorState } from '../../components/shop/StoreUI'
@@ -37,6 +37,9 @@ export default function AccountPage() {
     queryFn: () => apiClient.get('/orders/my-orders').then((response) => response.data),
   })
 
+  const recentOrders = [...orders].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+  const activeOrders = orders.filter((order) => ['pending', 'paid', 'preparing', 'shipped'].includes(order.status)).length
+
   const signOut = () => {
     logout()
     navigate('/', { replace: true })
@@ -57,15 +60,24 @@ export default function AccountPage() {
             <span className="text-neutral-500">Pedidos registrados</span>
             <strong>{orders.length}</strong>
           </div>
+          <div className="pt-3 flex justify-between text-sm">
+            <span className="text-neutral-500">Pendientes o en proceso</span>
+            <strong>{activeOrders}</strong>
+          </div>
+          <nav className="store-account-quick-nav" aria-label="Accesos de tu cuenta">
+            <a href="#mis-pedidos"><Package size={16}/> Ver mis pedidos <ArrowRight size={15}/></a>
+            <Link to="/favoritos"><ShoppingBag size={16}/> Mis favoritos <ArrowRight size={15}/></Link>
+            <Link to="/catalogo"><ShoppingBag size={16}/> Seguir comprando <ArrowRight size={15}/></Link>
+          </nav>
           <button type="button" className="store-button store-button-outline w-full mt-7"
             onClick={signOut}><LogOut size={16}/> CERRAR SESIÓN</button>
         </aside>
 
-        <section className="min-w-0" aria-label="Historial de pedidos">
+        <section id="mis-pedidos" className="min-w-0 scroll-mt-28" aria-label="Historial de pedidos">
           <div className="mb-8"><CustomerEngagement /></div>
           <div className="flex items-center justify-between gap-4 mb-6">
             <h2 className="uppercase font-black text-xl">MIS PEDIDOS</h2>
-            {!isLoading && !isError && <span className="text-neutral-500 text-xs">{orders.length} registros</span>}
+            {!isLoading && !isError && <span className="text-neutral-500 text-xs">{orders.length} registros · más recientes primero</span>}
           </div>
           {isLoading ? (
             <div role="status" aria-label="Cargando pedidos" className="space-y-4">
@@ -78,7 +90,7 @@ export default function AccountPage() {
             <EmptyState title="AÚN NO TIENES PEDIDOS" description="Tu próxima compra comienza explorando el catálogo." />
           ) : (
             <div className="space-y-5">
-              {orders.map((order) => {
+              {recentOrders.map((order) => {
                 const state = STATES[order.status] || STATES.pending
                 const StateIcon = state.icon
                 return (
