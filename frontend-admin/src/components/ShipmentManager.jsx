@@ -83,10 +83,10 @@ export default function ShipmentManager({ order }) {
   })
 
   return (
-    <section className="border-t border-slate-200 pt-6 mt-6" aria-label="Despacho y seguimiento">
-      <div className="flex gap-2 items-center mb-4">
+    <section className="admin-shipment-panel" aria-label="Despacho y seguimiento">
+      <div className="d-flex align-items-center gap-2 mb-4">
         <Truck size={20} className="text-indigo-700" aria-hidden="true"/>
-        <h4 className="font-black text-lg text-slate-900">Despacho y seguimiento</h4>
+        <h4 className="h5 fw-bold mb-0">Despacho y seguimiento</h4>
       </div>
       {isLoading && <p role="status" className="text-sm text-slate-500">Consultando guía…</p>}
       {isError && !noGuide && (
@@ -101,31 +101,31 @@ export default function ShipmentManager({ order }) {
         </p>
       )}
       {canDispatch && (
-        <form className="space-y-3 bg-slate-50 border border-slate-200 p-4"
+        <form className="admin-shipment-form"
           onSubmit={event => { event.preventDefault(); saveDispatch.mutate() }}>
           <p className="text-sm text-slate-600">Registra la guía emitida por la transportadora. Esta acción marcará el pedido como enviado.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><label className="block text-xs font-bold mb-1" htmlFor="shipping-guide">Número de guía</label>
-              <input id="shipping-guide" className="input" required minLength={4} maxLength={120} value={guide}
+          <div className="row g-3">
+            <div><label className="form-label" htmlFor="shipping-guide">Número de guía</label>
+              <input id="shipping-guide" className="form-control" required minLength={4} maxLength={120} value={guide}
                 onChange={event=>setGuide(event.target.value)} placeholder="Guía de transportadora"/></div>
-            <div><label className="block text-xs font-bold mb-1" htmlFor="shipping-carrier">Transportadora</label>
-              <input id="shipping-carrier" className="input" required minLength={2} maxLength={120} value={carrier}
+            <div><label className="form-label" htmlFor="shipping-carrier">Transportadora</label>
+              <input id="shipping-carrier" className="form-control" required minLength={2} maxLength={120} value={carrier}
                 onChange={event=>setCarrier(event.target.value)} /></div>
-            <div><label className="block text-xs font-bold mb-1" htmlFor="shipping-service">Servicio</label>
-              <input id="shipping-service" className="input" required minLength={2} maxLength={120} value={service}
+            <div><label className="form-label" htmlFor="shipping-service">Servicio</label>
+              <input id="shipping-service" className="form-control" required minLength={2} maxLength={120} value={service}
                 onChange={event=>setService(event.target.value)} /></div>
-            <div><label className="block text-xs font-bold mb-1" htmlFor="shipping-dispatch-note">Observación pública (opcional)</label>
-              <input id="shipping-dispatch-note" className="input" maxLength={500} value={dispatchNote}
+            <div><label className="form-label" htmlFor="shipping-dispatch-note">Observación pública (opcional)</label>
+              <input id="shipping-dispatch-note" className="form-control" maxLength={500} value={dispatchNote}
                 onChange={event=>setDispatchNote(event.target.value)} placeholder="Visible para el cliente"/></div>
           </div>
-          <button type="submit" disabled={saveDispatch.isPending} className="btn-primary inline-flex items-center gap-2">
+          <button type="submit" disabled={saveDispatch.isPending} className="btn btn-primary inline-flex items-center gap-2">
             <Truck size={17}/>{saveDispatch.isPending ? 'Registrando…' : 'Confirmar despacho'}
           </button>
         </form>
       )}
       {shipment && (
-        <div className="space-y-5">
-          <div className="bg-indigo-50 border border-indigo-100 p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="d-flex flex-column gap-4">
+          <div className="admin-shipment-summary">
             <div><p className="text-[11px] uppercase font-bold text-slate-500">Transportadora / servicio</p>
               <p className="font-semibold mt-1">{shipment.carrier} · {shipment.service}</p></div>
             <div><p className="text-[11px] uppercase font-bold text-slate-500">Número de guía</p>
@@ -136,21 +136,21 @@ export default function ShipmentManager({ order }) {
               <p className="text-sm mt-1">{dateText(shipment.dispatched_at)}</p></div>
           </div>
           {canUpdate && (
-            <div className="border border-slate-200 p-4">
+            <div className="admin-shipment-form">
               <button type="button" className="text-sm font-semibold text-indigo-700 underline underline-offset-4"
                 aria-expanded={showCorrection} onClick={() => setShowCorrection(value => !value)}>
                 {showCorrection ? 'Ocultar corrección de guía' : 'Corregir número de guía'}
               </button>
               {showCorrection && (
                 <form onSubmit={event => {event.preventDefault();correctGuide.mutate()}}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                  <div><label htmlFor="shipping-correct-guide" className="block text-xs font-bold mb-1">Nueva guía</label>
-                    <input id="shipping-correct-guide" className="input" minLength={4} maxLength={120} required
+                  className="row g-3 mt-2">
+                  <div><label htmlFor="shipping-correct-guide" className="form-label">Nueva guía</label>
+                    <input id="shipping-correct-guide" className="form-control" minLength={4} maxLength={120} required
                       value={newGuide} onChange={event => setNewGuide(event.target.value)}/></div>
-                  <div><label htmlFor="shipping-correct-reason" className="block text-xs font-bold mb-1">Motivo de corrección</label>
-                    <input id="shipping-correct-reason" className="input" minLength={5} maxLength={250} required
+                  <div><label htmlFor="shipping-correct-reason" className="form-label">Motivo de corrección</label>
+                    <input id="shipping-correct-reason" className="form-control" minLength={5} maxLength={250} required
                       value={correctionReason} onChange={event => setCorrectionReason(event.target.value)}/></div>
-                  <button type="submit" className="btn-primary sm:col-span-2" disabled={correctGuide.isPending}>
+                  <button type="submit" className="btn btn-primary sm:col-span-2" disabled={correctGuide.isPending}>
                     {correctGuide.isPending ? 'Corrigiendo…' : 'Guardar corrección en el historial'}
                   </button>
                 </form>
@@ -158,19 +158,19 @@ export default function ShipmentManager({ order }) {
             </div>
           )}
           {canUpdate && (
-            <form className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 sm:items-end"
+            <form className="admin-shipment-form row g-3 align-items-end"
               onSubmit={event=>{event.preventDefault();saveEvent.mutate()}}>
-              <div><label htmlFor="shipping-new-status" className="block text-xs font-bold mb-1">Nueva novedad</label>
-                <select className="input" id="shipping-new-status" required value={status}
+              <div><label htmlFor="shipping-new-status" className="form-label">Nueva novedad</label>
+                <select className="form-select" id="shipping-new-status" required value={status}
                   onChange={event=>setStatus(event.target.value)}>
                   <option value="">Seleccionar estado</option>
                   {EVENTS.filter(([key]) => TRANSITIONS[shipment.status]?.includes(key)).map(([key,label])=>
                     <option value={key} key={key}>{label}</option>)}
                 </select></div>
-              <div><label htmlFor="shipping-status-note" className="block text-xs font-bold mb-1">Nota pública (opcional)</label>
-                <input className="input" id="shipping-status-note" value={note} maxLength={500}
+              <div><label htmlFor="shipping-status-note" className="form-label">Nota pública (opcional)</label>
+                <input className="form-control" id="shipping-status-note" value={note} maxLength={500}
                   onChange={event=>setNote(event.target.value)} placeholder="Detalle de seguimiento"/></div>
-              <button type="submit" className="btn-primary" disabled={!status || saveEvent.isPending}>
+              <button type="submit" className="btn btn-primary" disabled={!status || saveEvent.isPending}>
                 {saveEvent.isPending ? 'Guardando…' : 'Actualizar'}
               </button>
             </form>
@@ -179,9 +179,9 @@ export default function ShipmentManager({ order }) {
           {shipment.status === 'exception' && <p className="flex items-center gap-2 text-sm text-amber-800 bg-amber-50 p-3"><AlertCircle size={17}/> Hay una incidencia de entrega pendiente de resolución.</p>}
           <div>
             <h5 className="font-bold text-sm flex items-center gap-2 mb-3"><ClipboardList size={17}/> Historial de movimientos</h5>
-            <ol className="space-y-3">
+            <ol className="admin-shipment-timeline">
               {shipment.events.map(item => (
-                <li key={item.id} className="border-l-2 border-indigo-200 pl-4">
+                <li key={item.id} className="admin-shipment-event">
                   <p className="text-sm font-bold">{LABELS[item.status] || item.status}</p>
                   <p className="text-xs text-slate-500">{dateText(item.created_at)}</p>
                   {item.note && <p className="text-sm text-slate-700 mt-1 whitespace-pre-wrap break-words">{item.note}</p>}
