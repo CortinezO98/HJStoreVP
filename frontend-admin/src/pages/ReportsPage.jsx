@@ -426,7 +426,7 @@ export default function ReportsPage() {
             </p>
 
             <div className="row g-3">
-            <div>
+            <div className="col-12 col-sm-6 col-xl">
                 <label className="form-label" htmlFor="report-date-from">Fecha desde</label>
                 <input
                 type="date"
@@ -437,7 +437,7 @@ export default function ReportsPage() {
                 />
             </div>
 
-            <div>
+            <div className="col-12 col-sm-6 col-xl">
                 <label className="form-label" htmlFor="report-date-to">Fecha hasta</label>
                 <input
                 type="date"
@@ -448,7 +448,7 @@ export default function ReportsPage() {
                 />
             </div>
 
-            <div>
+            <div className="col-12 col-sm-6 col-xl">
                 <label className="form-label" htmlFor="report-location">Punto físico</label>
                 <select
                 id="report-location"
@@ -465,7 +465,7 @@ export default function ReportsPage() {
                 </select>
             </div>
 
-            <div>
+            <div className="col-12 col-sm-6 col-xl">
                 <label className="form-label" htmlFor="report-category">Categoría</label>
                 <select
                 id="report-category"
@@ -482,7 +482,7 @@ export default function ReportsPage() {
                 </select>
             </div>
 
-            <div>
+            <div className="col-12 col-sm-6 col-xl">
                 <label className="form-label" htmlFor="report-year">Año gráfico</label>
                 <input
                 type="number"
