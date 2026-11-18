@@ -199,29 +199,6 @@ export default function ReportsPage() {
         return { current, previous, change: previous > 0 ? ((current - previous) / previous) * 100 : null }
     }, [salesByMonth, previousYearSales])
 
-    const { data: topProducts = [], isLoading: loadingTop } = useQuery({
-        queryKey: ['report-top-products', filters.date_from, filters.date_to],
-        queryFn: () =>
-        analyticsApi
-            .topProducts({
-            limit: 20,
-            date_from: filters.date_from || undefined,
-            date_to: filters.date_to || undefined,
-            })
-            .then((r) => r.data),
-    })
-
-    const { data: salesByLocation = [], isLoading: loadingLocation } = useQuery({
-        queryKey: ['report-sales-by-location', filters.date_from, filters.date_to],
-        queryFn: () =>
-        analyticsApi
-            .salesByLocation({
-            date_from: filters.date_from || undefined,
-            date_to: filters.date_to || undefined,
-            })
-            .then((r) => r.data),
-    })
-
     const { data: webOrders = [], isLoading: loadingWeb } = useQuery({
         queryKey: ['report-web-orders'],
         queryFn: () => ordersApi.list({}).then((r) => r.data),
@@ -307,26 +284,20 @@ export default function ReportsPage() {
     // Todas las categorías se agregan desde MariaDB, no desde las páginas de pedidos.
     const categorySummary = financialData?.categories || []
 
-    const topProductsFiltered = useMemo(() => {
-        if (!filters.category_id) return topProducts
-
-        const categoryId = Number(filters.category_id)
-        return topProducts.filter((item) => {
-        const p = productMap.get(item.product_id)
-        return Number(p?.category_id || 0) === categoryId
-        })
-    }, [topProducts, filters.category_id, productMap])
-
-    const salesByLocationFiltered = useMemo(() => {
-        if (!filters.location_id) return salesByLocation
-        return salesByLocation.filter(
-        (item) =>
-            String(item.location_name || '').toLowerCase() ===
-            String(
-            locations.find((l) => Number(l.id) === Number(filters.location_id))?.name || ''
-            ).toLowerCase()
-        )
-    }, [salesByLocation, filters.location_id, locations])
+    const topProductsFiltered = (financialData?.products || []).map((item) => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        sku: item.sku,
+        units_sold: item.units,
+        total_revenue: item.revenue,
+        gross_profit: item.profit,
+    }))
+    const salesByLocationFiltered = (financialData?.locations || []).map((item) => ({
+        location_name: item.location_name,
+        channel: item.channel,
+        total_sales: item.revenue,
+        gross_profit: item.profit,
+    }))
 
     const exportAccounting = () => {
         exportToCSV(
@@ -379,7 +350,7 @@ export default function ReportsPage() {
         )
 
     const isLoading =
-        loadingFinancial || loadingMonth || loadingTop || loadingLocation || loadingWeb || loadingPhysical || loadingAccounting
+        loadingFinancial || loadingMonth || loadingWeb || loadingPhysical || loadingAccounting
 
     return (
         <div className="admin-reports-page space-y-6">
@@ -703,7 +674,7 @@ export default function ReportsPage() {
                 Exportar puntos
             </button>
 
-            {loadingLocation ? (
+            {loadingFinancial ? (
                 <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="h-12 bg-gray-50 rounded-xl animate-pulse" />
@@ -739,7 +710,7 @@ export default function ReportsPage() {
             </div>
         </div>
 
-        {/* Top productos y categoría */}
+        {/* Top productos y categoría: consolidados históricos desde servidor */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="card">
             <div className="flex items-center justify-between gap-3 mb-5">
@@ -760,7 +731,7 @@ export default function ReportsPage() {
                 Exportar top productos
             </button>
 
-            {loadingTop ? (
+            {loadingFinancial ? (
                 <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="h-14 bg-gray-50 rounded-xl animate-pulse" />
