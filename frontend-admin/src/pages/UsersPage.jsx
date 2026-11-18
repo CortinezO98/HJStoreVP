@@ -65,7 +65,7 @@ function statusBadge(active) {
     function UserFormModal({ userItem, locations, onClose, isSuperAdmin, currentUserId }) {
     const isEdit = !!userItem
     const isSelf = isEdit && Number(userItem?.id) === Number(currentUserId)
-    const lockedAdmin = isEdit && !isSuperAdmin && ['admin', 'super_admin'].includes(userItem?.role)
+    const lockedAdmin = isEdit && (!isSuperAdmin && ['admin', 'super_admin'].includes(userItem?.role) || userItem?.role === 'customer')
     const queryClient = useQueryClient()
 
     const [form, setForm] = useState({
@@ -205,6 +205,8 @@ function statusBadge(active) {
                 >
                 {isSuperAdmin && <option value="admin">Administrador</option>}
                 <option value="seller">Vendedor</option>
+                {isEdit && userItem.role === "super_admin" && <option value="super_admin">Super Administrador</option>}
+                {isEdit && userItem.role === "customer" && <option value="customer">Cliente</option>}
                 </select>
             </div>
 
@@ -631,7 +633,7 @@ export default function UsersPage() {
                         <td className="px-4 py-3 text-center">
                         <div className="admin-users-actions">
                             <button type="button" onClick={() => setSelectedUser(u)}
-                              disabled={!isSuperAdmin && ['super_admin', 'admin'].includes(u.role)}
+                              disabled={u.role === 'customer' || (!isSuperAdmin && ['super_admin', 'admin'].includes(u.role))}
                               className="btn btn-sm btn-outline-primary" title="Editar datos y rol"
                               aria-label={`Editar usuario ${u.full_name}`}><Pencil size={15}/> Editar</button>
                             <button type="button" onClick={() => setPasswordUser(u)}
