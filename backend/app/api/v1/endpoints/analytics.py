@@ -119,7 +119,7 @@ def low_rotation_products(
         WHERE p.active = 1
         GROUP BY p.id, p.name, p.sku, p.sale_price, stock.current_stock
         HAVING last_sale_date IS NULL
-           OR last_sale_date < DATE_SUB(NOW(), INTERVAL :days DAY)
+           OR last_sale_date < DATE_SUB(UTC_TIMESTAMP(), INTERVAL :days DAY)
         ORDER BY last_sale_date ASC
     """), {"days": days_without_sales}).fetchall()
 
@@ -199,7 +199,7 @@ def dashboard_summary(
         FROM orders
         WHERE paid_at IS NOT NULL AND LOWER(status) IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
           AND YEAR(paid_at) = YEAR(UTC_TIMESTAMP())
-          AND MONTH(paid_at) = MONTH(NOW())
+          AND MONTH(paid_at) = MONTH(UTC_TIMESTAMP())
     """)).fetchone()
 
     low_stock = db.execute(text("""
@@ -214,7 +214,7 @@ def dashboard_summary(
     """)).scalar()
 
     pending_orders = db.execute(text(
-        "SELECT COUNT(*) FROM orders WHERE status = 'pending'"
+        "SELECT COUNT(*) FROM orders WHERE LOWER(status) = 'pending'"
     )).scalar()
 
     return {
