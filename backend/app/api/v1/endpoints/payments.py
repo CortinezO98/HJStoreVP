@@ -350,6 +350,8 @@ async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db))
         return {"status": "order_not_found"}
     order = lock_web_order(db, order.id)
 
+    if order.payment_method not in (None, "sistecreditos"):
+        raise HTTPException(status_code=409, detail="Evento de otro proveedor; requiere conciliación")
     if sc_status in ["APPROVED", "DISBURSED", "ACTIVE"]:
         if order.payment_method not in (None, "sistecreditos"):
             raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
@@ -407,6 +409,10 @@ async def addi_webhook(request: Request, db: Session = Depends(get_db)):
         return {"status": "order_not_found"}
     order = lock_web_order(db, order.id)
 
+    if order.payment_method not in (None, "addi"):
+        raise HTTPException(status_code=409, detail="Evento de otro proveedor; requiere conciliación")
+    if app_id and order.payment_ref and str(order.payment_ref) != str(app_id):
+        raise HTTPException(status_code=409, detail="Solicitud Addi incompatible")
     if addi_status in ["APPROVED", "PAID", "ACTIVE"]:
         if order.payment_method not in (None, "addi"):
             raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
