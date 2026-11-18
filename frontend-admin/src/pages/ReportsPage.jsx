@@ -237,50 +237,21 @@ export default function ReportsPage() {
         })
     }, [physicalSales, filters.date_from, filters.date_to, filters.location_id, filters.category_id, productMap])
 
-    const accountingSummary = useMemo(() => {
-        const webRevenue = filteredWebOrders.reduce(
-        (acc, order) => acc + Number(order.total_amount || 0),
-        0
-        )
-
-        const webCost = filteredWebOrders.reduce((acc, order) => {
-        const cost = (order.items || []).reduce((sum, item) => {
-            const itemCost =
-            item.cost_price !== undefined
-                ? Number(item.cost_price || 0) * Number(item.qty || 0)
-                : 0
-            return sum + itemCost
-        }, 0)
-        return acc + cost
-        }, 0)
-
-        const physicalRevenue = filteredPhysicalSales.reduce(
-        (acc, sale) => acc + Number(sale.total_amount || 0),
-        0
-        )
-
-        const physicalCost = filteredPhysicalSales.reduce((acc, sale) => {
-        const cost = (sale.items || []).reduce(
-            (sum, item) => sum + Number(item.cost_price || 0) * Number(item.qty || 0),
-            0
-        )
-        return acc + cost
-        }, 0)
-
-        const totalRevenue = webRevenue + physicalRevenue
-        const totalCost = webCost + physicalCost
-        const grossProfit = totalRevenue - totalCost
-
-        return {
-        webRevenue,
-        physicalRevenue,
-        totalRevenue,
-        webCost,
-        physicalCost,
-        totalCost,
-        grossProfit,
-        }
-    }, [filteredWebOrders, filteredPhysicalSales])
+    // Los totales no deben depender de los primeros 100/200 pedidos descargados.
+    // El servidor calcula ingresos cobrados, costos históricos y márgenes.
+    const { data: accountingSummary = {
+        webRevenue: 0, physicalRevenue: 0, totalRevenue: 0,
+        webCost: 0, physicalCost: 0, totalCost: 0, grossProfit: 0,
+        webOrders: 0, physicalOrders: 0,
+    }, isLoading: loadingAccounting, isError: accountingError } = useQuery({
+        queryKey: ['accounting-summary', filters.date_from, filters.date_to, filters.location_id, filters.category_id],
+        queryFn: () => analyticsApi.accountingSummary({
+            date_from: filters.date_from || undefined,
+            date_to: filters.date_to || undefined,
+            location_id: filters.location_id || undefined,
+            category_id: filters.category_id || undefined,
+        }).then((r) => r.data),
+    })
 
     const categorySummary = useMemo(() => {
         const grouped = new Map()
@@ -391,7 +362,7 @@ export default function ReportsPage() {
         )
 
     const isLoading =
-        loadingMonth || loadingTop || loadingLocation || loadingWeb || loadingPhysical
+        loadingMonth || loadingTop || loadingLocation || loadingWeb || loadingPhysical || loadingAccounting
 
     return (
         <div className="admin-reports-page space-y-6">
@@ -496,20 +467,31 @@ export default function ReportsPage() {
             </div>
         </section>
 
+        {accountingError && (
+            <p role="alert" className="text-red-700 font-semibold">
+                No se pudo consultar la contabilidad consolidada. Los importes mostrados no están disponibles.
+            </p>
+        )}
+        {filters.category_id && !accountingError && (
+            <p className="text-xs text-amber-800">
+                Al filtrar por categoría se muestran líneas de productos según su categoría actual;
+                el cálculo no distribuye descuentos globales ni gastos de envío.
+            </p>
+        )}
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <KpiCard
             icon={Globe}
             title="Valor pedidos web"
             value={formatCOP(accountingSummary.webRevenue)}
-            subtitle={`${filteredWebOrders.length} pedidos`}
+            subtitle={`${accountingSummary.webOrders || 0} pedidos cobrados`}
             tone="brand"
             />
             <KpiCard
             icon={MapPin}
             title="Valor ventas físicas"
             value={formatCOP(accountingSummary.physicalRevenue)}
-            subtitle={`${filteredPhysicalSales.length} ventas`}
+            subtitle={`${accountingSummary.physicalOrders || 0} ventas cobradas`}
             tone="blue"
             />
             <KpiCard
