@@ -366,3 +366,37 @@
   .admin-app-shell .admin-category-filterbar .form-select{width:100%}
   .admin-app-shell .admin-catalog-pagination{padding:13px}
 }
+
+.admin-app-shell .admin-images-dialog {max-width:900px}
+.admin-app-shell .admin-catalog-image-upload {
+  padding:18px 25px;border-bottom:1px solid #e7ebf2;background:#fafbff;
+}
+.admin-app-shell .admin-catalog-photo-card {
+  border:1px solid #e7ebf2;background:white;border-radius:13px;
+  overflow:hidden;
+}
+.admin-app-shell .admin-catalog-photo-card .text-xs{font-size:12px}
+.admin-app-shell .admin-variant-backdrop{z-index:70}
+.admin-app-shell .admin-variants-dialog {max-width:970px}
+.admin-app-shell .admin-variants-scroll{
+  overflow:auto;overscroll-behavior:contain;
+  padding:24px;display:flex;flex-direction:column;gap:20px;
+}
+.admin-app-shell .admin-variants-heading{
+  padding-bottom:17px;border-bottom:1px solid #e7ebf2;
+}
+.admin-app-shell .admin-variant-form {
+  padding:20px;border:1px solid #e7ebf2;border-radius:14px;
+  background:#fafbfe;
+}
+.admin-app-shell .admin-variant-form .input {
+  margin-top:5px;background:#fff
+}
+.admin-app-shell .admin-variant-item {
+  border:1px solid #e7ebf2;border-radius:13px;
+  padding:15px;background:#fff;
+}
+@media(max-width:767px){
+ .admin-app-shell .admin-variants-scroll{padding:15px}
+ .admin-app-shell .admin-catalog-image-upload{padding:14px}
+}
