@@ -568,3 +568,28 @@
   .admin-app-shell .admin-users-form-grid .md\\:col-span-2{grid-column:span 1}
   .admin-app-shell .admin-reports-filters{padding:17px}
 }
+
+
+/* Ciclo de vida de usuarios: acciones separadas, confirmación de baja y contraseñas. */
+.admin-app-shell .admin-users-table .btn{
+  font-weight:650;white-space:nowrap
+}
+.admin-app-shell .admin-users-action-modal{
+  width:min(540px,100%);max-height:calc(100dvh - 36px);overflow-y:auto;
+  background:#fff;border-radius:18px;box-shadow:0 28px 85px rgba(15,25,45,.35)
+}
+.admin-app-shell .admin-users-action-header{
+  display:flex;align-items:start;justify-content:space-between;gap:14px;
+  padding:22px 24px;border-bottom:1px solid #e7ebf2
+}
+.admin-app-shell .admin-users-action-footer{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  padding:16px 24px;border-top:1px solid #e7ebf2;background:#fafbfe;
+}
+.admin-app-shell .admin-users-action-modal .input-group .form-control{min-width:0}
+.admin-app-shell .admin-users-action-modal .input-group .btn{border-color:#dce2ed}
+@media(max-width:767px){
+  .admin-app-shell .admin-users-action-modal{max-height:calc(100dvh - 16px)}
+  .admin-app-shell .admin-users-action-header,
+  .admin-app-shell .admin-users-action-footer{padding:16px}
+}

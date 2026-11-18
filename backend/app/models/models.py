@@ -101,6 +101,7 @@ class User(Base, TimestampMixin):
     )
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # Baja lógica: conserva FKs y auditoría
 
     # Solo para vendedores físicos
     location_id: Mapped[Optional[int]] = mapped_column(
