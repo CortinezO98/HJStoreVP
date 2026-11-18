@@ -19,6 +19,7 @@ import {
 import OperationalAnalytics from '../components/OperationalAnalytics'
 import {
     analyticsApi,
+    financialReportsApi,
     ordersApi,
     physicalSalesApi,
     locationsApi,
@@ -123,6 +124,44 @@ export default function ReportsPage() {
 
     const setFilter = (key, value) => {
         setFilters((prev) => ({ ...prev, [key]: value }))
+    }
+
+    const reportParams = useMemo(() => ({
+        date_from: filters.date_from || undefined,
+        date_to: filters.date_to || undefined,
+        location_id: filters.location_id || undefined,
+        category_id: filters.category_id || undefined,
+    }), [filters.date_from, filters.date_to, filters.location_id, filters.category_id])
+
+    const { data: financialData, isLoading: loadingFinancial, isError: financialError } = useQuery({
+        queryKey: ['financial-overview', reportParams],
+        queryFn: () => financialReportsApi.overview(reportParams).then((r) => r.data),
+    })
+    const [downloadingExcel, setDownloadingExcel] = useState(false)
+    const [downloadError, setDownloadError] = useState('')
+
+    const downloadFullExcel = async () => {
+        if (downloadingExcel) return
+        setDownloadingExcel(true)
+        setDownloadError('')
+        try {
+            const response = await financialReportsApi.downloadExcel(reportParams)
+            const file = new Blob([response.data], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            })
+            const url = URL.createObjectURL(file)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `hjstorevp_reporte_${new Date().toISOString().slice(0, 10)}.xlsx`
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            URL.revokeObjectURL(url)
+        } catch {
+            setDownloadError('No fue posible generar el Excel. Revisa los filtros y el servicio de reportes.')
+        } finally {
+            setDownloadingExcel(false)
+        }
     }
 
     const { data: locations = [] } = useQuery({
@@ -265,42 +304,8 @@ export default function ReportsPage() {
         }).then((r) => r.data),
     })
 
-    const categorySummary = useMemo(() => {
-        const grouped = new Map()
-
-        const accumulate = (items = []) => {
-        items.forEach((item) => {
-            const product = productMap.get(item.product_id)
-            const categoryId = Number(product?.category_id || 0)
-            const categoryName = categoryMap.get(categoryId)?.name || 'Sin categoría'
-
-            const revenue = Number(item.line_total || Number(item.unit_price || 0) * Number(item.qty || 0))
-            const cost = Number(item.cost_price || 0) * Number(item.qty || 0)
-            const profit = revenue - cost
-
-            if (!grouped.has(categoryName)) {
-            grouped.set(categoryName, {
-                category: categoryName,
-                revenue: 0,
-                cost: 0,
-                profit: 0,
-                units: 0,
-            })
-            }
-
-            const current = grouped.get(categoryName)
-            current.revenue += revenue
-            current.cost += cost
-            current.profit += profit
-            current.units += Number(item.qty || 0)
-        })
-        }
-
-        filteredWebOrders.forEach((order) => accumulate(order.items))
-        filteredPhysicalSales.forEach((sale) => accumulate(sale.items))
-
-        return [...grouped.values()].sort((a, b) => b.revenue - a.revenue)
-    }, [filteredWebOrders, filteredPhysicalSales, productMap, categoryMap])
+    // Todas las categorías se agregan desde MariaDB, no desde las páginas de pedidos.
+    const categorySummary = financialData?.categories || []
 
     const topProductsFiltered = useMemo(() => {
         if (!filters.category_id) return topProducts
@@ -374,7 +379,7 @@ export default function ReportsPage() {
         )
 
     const isLoading =
-        loadingMonth || loadingTop || loadingLocation || loadingWeb || loadingPhysical || loadingAccounting
+        loadingFinancial || loadingMonth || loadingTop || loadingLocation || loadingWeb || loadingPhysical || loadingAccounting
 
     return (
         <div className="admin-reports-page space-y-6">
@@ -490,6 +495,68 @@ export default function ReportsPage() {
                 el cálculo no distribuye descuentos globales ni gastos de envío.
             </p>
         )}
+        <section className="card admin-reports-section" aria-label="Reporte financiero histórico">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div>
+                    <h2 className="text-lg font-bold text-gray-900">Reporte histórico consolidado</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                        Datos completos desde MariaDB: productos, categorías, sedes, canales y comparación mensual.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={downloadFullExcel}
+                    disabled={downloadingExcel || loadingFinancial || financialError}
+                    className="btn btn-primary inline-flex items-center gap-2"
+                >
+                    <Download size={16} />
+                    {downloadingExcel ? 'Generando Excel...' : 'Descargar Excel completo (.xlsx)'}
+                </button>
+            </div>
+            {downloadError && <p role="alert" className="text-red-700">{downloadError}</p>}
+            {financialError ? (
+                <p role="alert" className="text-red-700">
+                    No se pudo cargar el reporte histórico; revisa el backend y sus dependencias.
+                </p>
+            ) : loadingFinancial ? (
+                <p className="text-sm text-gray-500">Calculando indicadores históricos...</p>
+            ) : financialData && (
+                <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                        <div><p className="text-sm text-gray-500">Ventas cobradas</p>
+                            <p className="font-bold">{formatCOP(financialData.summary.revenue)}</p></div>
+                        <div><p className="text-sm text-gray-500">Costo histórico</p>
+                            <p className="font-bold">{formatCOP(financialData.summary.cost)}</p></div>
+                        <div><p className="text-sm text-gray-500">Margen bruto</p>
+                            <p className="font-bold">{formatCOP(financialData.summary.profit)}</p></div>
+                        <div><p className="text-sm text-gray-500">Pedidos cobrados</p>
+                            <p className="font-bold">{financialData.summary.orders}</p></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div className="rounded-xl border p-3">
+                            <p className="text-sm text-gray-500">Mes actual frente al anterior</p>
+                            <p className="font-semibold">
+                                {financialData.comparison.vs_previous_month_pct === null
+                                    ? 'Sin base comparable'
+                                    : `${financialData.comparison.vs_previous_month_pct.toFixed(1)}%`}
+                            </p>
+                        </div>
+                        <div className="rounded-xl border p-3">
+                            <p className="text-sm text-gray-500">Mes actual frente al mismo mes del año anterior</p>
+                            <p className="font-semibold">
+                                {financialData.comparison.vs_same_month_previous_year_pct === null
+                                    ? 'Sin base comparable'
+                                    : `${financialData.comparison.vs_same_month_previous_year_pct.toFixed(1)}%`}
+                            </p>
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                        Comparaciones de mes calendario: el mes actual puede estar incompleto.
+                        {financialData.note}
+                    </p>
+                </>
+            )}
+        </section>
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <KpiCard
@@ -524,8 +591,8 @@ export default function ReportsPage() {
 
         <p className="text-xs text-gray-600" role="note">
             El resumen de ingresos y costos se calcula en el servidor sobre todas las ventas cobradas.
-            Los listados detallados y exportaciones de pedidos y categorías siguen siendo vistas parciales
-            de los registros cargados; no deben utilizarse como cierres contables definitivos.
+            El Excel completo contiene datos históricos cobrados desde el servidor; las tarjetas de pedidos
+            de esta página son vistas rápidas limitadas. Los indicadores no equivalen a estados financieros.
         </p>
 
         {/* Reporte contable principal */}
@@ -539,11 +606,11 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={exportAccounting}
+                onClick={downloadFullExcel}
                 className="btn btn-primary d-inline-flex align-items-center gap-2"
             >
                 <Download size={16} />
-                Exportar resumen
+                Exportar Excel completo
             </button>
             </div>
 
@@ -629,7 +696,7 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={exportLocations}
+                onClick={downloadFullExcel}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
@@ -686,7 +753,7 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={exportTopProducts}
+                onClick={downloadFullExcel}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
@@ -742,7 +809,7 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={exportCategories}
+                onClick={downloadFullExcel}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
@@ -793,7 +860,7 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={exportOrders}
+                onClick={downloadFullExcel}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
@@ -852,7 +919,7 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={exportPhysicalSales}
+                onClick={downloadFullExcel}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
