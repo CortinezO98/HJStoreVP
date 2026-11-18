@@ -209,7 +209,7 @@ function statusBadge(active) {
                 {currentUser?.role === 'super_admin' && <option value="admin">Administrador</option>}
                 <option value="seller">Vendedor</option>
                 {form.role === 'super_admin' && <option value="super_admin">Superadministrador</option>}
-                {form.role === 'customer' && <option value="customer">Cliente</option>
+                {form.role === 'customer' && <option value="customer">Cliente</option>}
                 </select>
             </div>
 
