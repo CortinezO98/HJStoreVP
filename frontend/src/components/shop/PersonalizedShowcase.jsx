@@ -39,8 +39,15 @@ export default function PersonalizedShowcase() {
     enabled: interestIds.length > 0,
   })
 
-  return <div className="space-y-10">
-    <section className="editorial-products-section" aria-labelledby="personalization-title">
+  const hasSuggestions = suggested.length > 0
+  const showRecent = enabled && visibleHistory.length > 0
+
+  // La portada no debe reservar grandes bloques vacíos antes de que haya
+  // favoritos o historial. El consentimiento sigue disponible en cuenta.
+  if (!hasSuggestions && !showRecent) return null
+
+  return <div className="store-home-personalized">
+    {hasSuggestions && <section className="editorial-products-section store-home-products" aria-labelledby="personalization-title">
       <div className="editorial-section-heading">
         <div>
           <span className="editorial-eyebrow">SEGÚN TUS INTERESES</span>
@@ -59,9 +66,9 @@ export default function PersonalizedShowcase() {
           ? 'Aún no tenemos recomendaciones disponibles para estos intereses.'
           : 'Guarda tus favoritos para descubrir recomendaciones relacionadas.'}
       </p>}
-    </section>
+    </section>}
 
-    <section className="editorial-products-section" aria-labelledby="recently-viewed-title">
+    {showRecent && <section className="editorial-products-section store-home-products" aria-labelledby="recently-viewed-title">
       <div className="editorial-section-heading">
         <div>
           <span className="editorial-eyebrow">HISTORIAL DE ESTE NAVEGADOR</span>
@@ -96,6 +103,6 @@ export default function PersonalizedShowcase() {
           Todavía no has visitado productos desde que activaste esta opción.
         </p>
       )}
-    </section>
+    </section>}
   </div>
 }
