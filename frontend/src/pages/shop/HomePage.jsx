@@ -70,6 +70,23 @@ export default function HomePage() {
         <span className="editorial-hero-number">01 / 03</span>
       </section>
 
+      <nav className="store-home-discovery" aria-label="Explorar colecciones">
+        <div className="store-home-discovery-inner">
+          <span>ENCUENTRA TU ESTILO</span>
+          <div>
+            {featuredCategories.slice(0, 5).map((category) => (
+              <Link key={category.slug}
+                to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}>
+                {category.name}
+              </Link>
+            ))}
+            <Link to="/catalogo" className="store-home-discovery-all">
+              VER TODA LA TIENDA <ArrowRight size={14} aria-hidden="true"/>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
       <section className="editorial-products-section">
         <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
         {loadingNewest ? (
@@ -115,7 +132,7 @@ export default function HomePage() {
         </div>
         <div className="editorial-category-grid">
           {featuredCategories.map((category, index) => (
-            <Link key={category.slug} to={`/catalogo?categoria=${category.slug}`} className="editorial-category-tile">
+            <Link key={category.slug} to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`} className="editorial-category-tile">
               <span className="editorial-category-number">{String(index + 1).padStart(2, '0')} / {String(featuredCategories.length).padStart(2, '0')}</span>
               <div><h3>{category.name.toUpperCase()}</h3><p>{category.description || 'Encuentra tus favoritos en esta categoría'}</p></div>
               <ArrowUpRight size={25} strokeWidth={1.4} />
@@ -136,11 +153,16 @@ export default function HomePage() {
         <div className="editorial-faq-items">
           {FAQ.map((item, i) => (
             <div key={item.q} className="editorial-faq-item">
-              <button type="button" onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
+              <button type="button" id={`store-faq-question-${i}`}
+                aria-controls={`store-faq-answer-${i}`}
+                onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
                 aria-expanded={openFaq === i}>
                 <span>{item.q}</span><ChevronDown size={18} className={openFaq === i ? 'rotate-180' : ''}/>
               </button>
-              {openFaq === i && <p>{item.a}</p>}
+              {openFaq === i && (
+                <p id={`store-faq-answer-${i}`} role="region"
+                  aria-labelledby={`store-faq-question-${i}`}>{item.a}</p>
+              )}
             </div>
           ))}
         </div>
