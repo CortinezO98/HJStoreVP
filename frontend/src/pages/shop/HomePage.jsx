@@ -46,7 +46,6 @@ export default function HomePage() {
     queryFn: () => productsApi.list({ featured: true, per_page: 8 }).then((r) => r.data),
   })
   const showcase = newest.slice(0, 8)
-  const categoryHighlights = featuredCategories.slice(0, 5)
   const featuredShowcase = featured.slice(0, 4)
 
   return (
@@ -81,23 +80,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      <nav className="store-home-discovery" aria-label="Explorar colecciones">
-        <div className="store-home-discovery-inner">
-          <span>ENCUENTRA TU ESTILO</span>
-          <div>
-            {categoryHighlights.map((category) => (
-              <Link key={category.slug}
-                to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}>
-                {category.name}
-              </Link>
-            ))}
-            <Link to="/catalogo" className="store-home-discovery-all">
-              VER TODA LA TIENDA <ArrowRight size={14} aria-hidden="true"/>
-            </Link>
-          </div>
-        </div>
-      </nav>
 
       <section className="editorial-products-section store-home-products">
         <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
