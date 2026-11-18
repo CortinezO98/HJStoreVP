@@ -1,5 +1,6 @@
 """Configuración pública del comercio; identidad, contenido y políticas."""
 from typing import Optional
+from urllib.parse import urlsplit
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
@@ -27,6 +28,7 @@ DEFAULTS = {
     "hero_description": "Una selección de gorras, perfumes, relojes y accesorios para marcar tu propio ritmo.",
     "hero_button": "EXPLORAR COLECCIÓN",
     "hero_image_url": "",
+    "hero_images": [],
     "logo_url": "",
     "contact_email": "",
     "contact_phone": "",
@@ -50,6 +52,7 @@ class SettingsPayload(BaseModel):
     hero_description: str = Field(max_length=500)
     hero_button: str = Field(max_length=60)
     hero_image_url: str = Field(max_length=500)
+    hero_images: list[str] = Field(default_factory=list, max_length=8)
     logo_url: str = Field(max_length=500)
     contact_email: str = Field(max_length=254)
     contact_phone: str = Field(max_length=50)
@@ -62,6 +65,29 @@ class SettingsPayload(BaseModel):
     returns_policy: str = Field(max_length=12000)
     privacy_policy: str = Field(max_length=12000)
     terms_policy: str = Field(max_length=12000)
+
+    @field_validator("hero_images")
+    @classmethod
+    def validate_hero_images(cls, images: list[str]) -> list[str]:
+        unique: list[str] = []
+        for raw in images:
+            if not isinstance(raw, str):
+                raise ValueError("Cada imagen debe ser una URL")
+            value = raw.strip()
+            if not value or len(value) > 500 or "\\x00" in value:
+                raise ValueError("URL de banner no válida")
+            if value.startswith("/uploads/branding/"):
+                if ".." in value or "\\\\" in value or "?" in value or "#" in value:
+                    raise ValueError("Ruta de banner no válida")
+                if len(value.removeprefix("/uploads/branding/")) < 5:
+                    raise ValueError("Imagen de banner no válida")
+            else:
+                parts = urlsplit(value)
+                if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
+                    raise ValueError("Las imágenes deben usar HTTPS o ser subidas a la tienda")
+            if value not in unique:
+                unique.append(value)
+        return unique
 
     @field_validator("*")
     @classmethod
