@@ -10,11 +10,14 @@ import {
   BadgeCheck,
   Heart,
   Share2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { productsApi, recommendationsApi } from '../../services/api'
 import { useCartStore, useWishlistStore, useBrowsingStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
+import useAutoCarousel from '../../hooks/useAutoCarousel'
 import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
 import { updateMeta, updateCanonical, updateStructuredData } from '../../components/shop/StoreMetadata'
 
@@ -45,7 +48,6 @@ export default function ProductPage() {
   const recordView = useBrowsingStore((s) => s.recordView)
 
   const [qty, setQty] = useState(1)
-  const [selectedImage, setSelectedImage] = useState(null)
   const [selectedVariantId, setSelectedVariantId] = useState('')
 
   const { data: product, isLoading, isError, refetch } = useQuery({
@@ -144,9 +146,10 @@ export default function ProductPage() {
     return variantImages.length ? variantImages : productImages.length ? productImages : fallbackPrimary
   }, [product, selectedVariant])
 
-  const mainImage = images.some((img) => img.url === selectedImage)
-    ? selectedImage
-    : images[0]?.url || null
+  const productCarousel = useAutoCarousel(
+    images.length, 5000, `${slug}:${selectedVariantId}`
+  )
+  const mainImage = images[productCarousel.index]?.url || null
 
   const hasVariants = Boolean(product?.has_variants)
   const sellableProduct = hasVariants
@@ -283,45 +286,56 @@ export default function ProductPage() {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start store-product-layout">
-        <div>
+        <div className="store-product-gallery"
+          onMouseEnter={() => productCarousel.setPaused(true)}
+          onMouseLeave={() => productCarousel.setPaused(false)}
+          onFocusCapture={() => productCarousel.setPaused(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) productCarousel.setPaused(false)
+          }}>
           <div className="bg-neutral-50 overflow-hidden store-product-main-image">
             <div className="aspect-square bg-neutral-50 flex items-center justify-center overflow-hidden">
               {mainImage ? (
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className="w-full h-full object-contain"
-                  decoding="async"
-                />
+                <img key={mainImage} src={mainImage} alt={images[productCarousel.index]?.alt || product.name}
+                  className="w-full h-full object-contain" decoding="async" />
               ) : (
-                <div className="text-gray-300">Sin imagen</div>
+                <div className="store-product-gallery-empty" role="img" aria-label="Producto sin fotografía">
+                  <span>HJ<span>VP</span></span>
+                  <small>FOTOGRAFÍA NO DISPONIBLE</small>
+                </div>
               )}
             </div>
+            {images.length > 1 && (
+              <>
+                <button type="button" className="store-product-gallery-prev"
+                  aria-label="Fotografía anterior" onClick={() => productCarousel.goTo(productCarousel.index - 1)}>
+                  <ChevronLeft size={22} />
+                </button>
+                <button type="button" className="store-product-gallery-next"
+                  aria-label="Fotografía siguiente" onClick={() => productCarousel.goTo(productCarousel.index + 1)}>
+                  <ChevronRight size={22} />
+                </button>
+                <span className="store-product-gallery-count" aria-live="off">
+                  {productCarousel.index + 1} / {images.length}
+                </span>
+              </>
+            )}
           </div>
-
           {images.length > 1 && (
-            <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 sm:gap-3 mt-4">
-              {images.map((img) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  aria-label={`Ver imagen de ${product.name}`}
-                  aria-pressed={mainImage === img.url}
-                  onClick={() => setSelectedImage(img.url)}
-                  className={`aspect-square overflow-hidden border-2 transition ${
-                    mainImage === img.url
-                      ? 'border-black'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <img
-                    src={img.url}
-                    alt={img.alt}
-                    className="w-full h-full object-contain"
-                  />
+            <div className="store-product-gallery-thumbnails" role="group" aria-label="Elegir fotografía del producto">
+              {images.map((img, index) => (
+                <button key={img.id ?? `${img.url}-${index}`} type="button"
+                  aria-label={`Ver fotografía ${index + 1} de ${product.name}`}
+                  aria-pressed={productCarousel.index === index}
+                  onClick={() => productCarousel.goTo(index)}
+                  className={`store-product-gallery-thumb ${productCarousel.index === index ? 'is-active' : ''}`}>
+                  <img src={img.url} alt="" loading="lazy" decoding="async"/>
                 </button>
               ))}
             </div>
+          )}
+          {images.length > 1 && (
+            <p className="store-product-gallery-hint">Las fotografías avanzan automáticamente cada 5 segundos. También puedes elegir una imagen.</p>
           )}
         </div>
 
@@ -363,7 +377,7 @@ export default function ProductPage() {
               <select id="variant-choice" className="input w-full" required
                 aria-describedby="variant-choice-help"
                 value={selectedVariantId}
-                onChange={(e) => { setSelectedVariantId(e.target.value); setSelectedImage(null); setQty(1) }}>
+                onChange={(e) => { setSelectedVariantId(e.target.value); setQty(1) }}>
                 <option value="">Selecciona una opción</option>
                 {(product.variants || []).map((variant) => (
                   <option key={variant.id} value={variant.id} disabled={!variant.total_stock}>
