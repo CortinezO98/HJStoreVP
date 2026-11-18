@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import require_admin, get_optional_user, is_catalog_admin
 from app.db.session import get_db
-from app.models.models import Inventory, Product, ProductImage, User
+from app.models.models import Inventory, Location, Product, ProductImage, User
 
 router = APIRouter(prefix="/products", tags=["Variantes"])
 
@@ -66,9 +66,15 @@ def variant_snapshot(db: Session, parent_id: int, admin: bool = False) -> list[d
     for item in children:
         if not admin and not item.active:
             continue
-        stock = db.query(func.coalesce(func.sum(Inventory.qty_available), 0)).filter(
-            Inventory.product_id == item.id
-        ).scalar()
+        stock_query = db.query(
+            (func.sum(Inventory.qty_available) if admin
+             else func.max(Inventory.qty_available))
+        ).filter(Inventory.product_id == item.id)
+        if not admin:
+            stock_query = stock_query.join(
+                Location, Location.id == Inventory.location_id
+            ).filter(Location.active.is_(True))
+        stock = stock_query.scalar()
         entry = {
             "id": item.id, "sku": item.sku, "label": item.name,
             "options": item.variant_options or {},
