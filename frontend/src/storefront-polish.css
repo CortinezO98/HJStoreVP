@@ -889,3 +889,53 @@
   .store-home-products .editorial-section-heading { align-items: flex-start; }
   .store-home-faq.editorial-faq-section { padding-block: 40px; }
 }
+
+/* Presentación de marca cuando falta una fotografía real del producto. */
+.store-product-placeholder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 22px;
+  overflow: hidden;
+  background: radial-gradient(circle at 70% 22%, #fff 0%, #f4f3f1 52%, #eceae7 100%);
+  color: #282828;
+}
+.store-product-placeholder::before {
+  content: '';
+  position: absolute;
+  width: 82%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid #e1dfdb;
+}
+.store-product-placeholder-mark {
+  position: relative;
+  z-index: 1;
+  color: #333;
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: clamp(38px, 5vw, 72px);
+  line-height: 1;
+  letter-spacing: -.08em;
+}
+.store-product-placeholder-mark > span { color: #999; font-size: .62em; }
+.store-product-placeholder-label {
+  position: relative;
+  z-index: 1;
+  color: #6c6c6c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-align: center;
+  text-transform: uppercase;
+}
+@media (max-width: 639px) {
+  .store-product-placeholder { gap: 8px; padding: 12px; }
+  .store-product-placeholder-mark { font-size: 40px; }
+  .store-product-placeholder-label { font-size: 8px; }
+}
