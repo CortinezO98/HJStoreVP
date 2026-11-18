@@ -209,6 +209,7 @@ function ProductFormModal({ product, categories, onClose }) {
   const queryClient = useQueryClient()
   const [showImages, setShowImages] = useState(false)
   const [showVariants, setShowVariants] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(product))
 
   const [form, setForm] = useState({
     name: product?.name || '',
@@ -286,10 +287,11 @@ function ProductFormModal({ product, categories, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="admin-catalog-modal-backdrop" role="presentation">
+        <div role="dialog" aria-modal="true" aria-label={isEdit ? "Editar producto" : "Nuevo producto"} className="admin-catalog-modal admin-product-dialog">
+          <div className="admin-catalog-modal-header">
             <div>
+              <p className="admin-page-kicker mb-1">Catálogo comercial</p>
               <h3 className="text-lg font-bold text-gray-900">
                 {isEdit ? 'Editar producto' : 'Nuevo producto'}
               </h3>
@@ -299,17 +301,22 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
             <button
               onClick={onClose}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="btn btn-outline-secondary btn-sm"
+              type="button"
+              aria-label="Cerrar editor de producto"
             >
               Cerrar
             </button>
           </div>
 
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="admin-catalog-modal-body">
+          <section className="admin-catalog-form-section">
+            <div className="admin-catalog-section-heading"><span className="admin-catalog-step">01</span><div><h4>Información del producto</h4><p>Identificación y clasificación en la tienda.</p></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-600 mb-1">Nombre *</label>
+              <label htmlFor="product-name" className="form-label">Nombre del producto *</label>
               <input
-                className="input"
+                id="product-name" required maxLength={300} className="form-control"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder="Ej: Perfume HJ Gold 100ml"
@@ -317,9 +324,9 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">SKU *</label>
+              <label htmlFor="product-sku" className="form-label">SKU *</label>
               <input
-                className="input"
+                id="product-sku" required maxLength={100} className="form-control"
                 value={form.sku}
                 onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))}
                 placeholder="Ej: PER-001"
@@ -327,9 +334,9 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Categoría</label>
+              <label htmlFor="product-category" className="form-label">Categoría</label>
               <select
-                className="input"
+                id="product-category" className="form-select"
                 value={form.category_id}
                 onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}
               >
@@ -342,12 +349,16 @@ function ProductFormModal({ product, categories, onClose }) {
               </select>
             </div>
 
+            </div>
+          </section>
+          <section className="admin-catalog-form-section">
+            <div className="admin-catalog-section-heading"><span className="admin-catalog-step">02</span><div><h4>Precios y disponibilidad</h4><p>El precio se calcula con el costo y el margen indicados.</p></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Costo del producto *</label>
+              <label htmlFor="product-cost" className="form-label">Costo del producto *</label>
               <input
-                type="number"
-                min="0"
-                className="input"
+                id="product-cost" type="number" step="0.01"
+                min="0" required className="form-control"
                 value={form.cost_price}
                 onChange={(e) => setForm((p) => ({ ...p, cost_price: e.target.value }))}
                 placeholder="Ej: 50000"
@@ -355,11 +366,10 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">% de ganancia *</label>
+              <label htmlFor="product-margin" className="form-label">Porcentaje de ganancia *</label>
               <input
-                type="number"
-                min="0"
-                className="input"
+                id="product-margin" type="number" step="0.01"
+                min="0" required className="form-control"
                 value={form.margin_pct}
                 onChange={(e) => setForm((p) => ({ ...p, margin_pct: e.target.value }))}
                 placeholder="Ej: 50"
@@ -367,57 +377,63 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Precio de venta calculado</label>
-              <div className="input bg-gray-50 font-bold text-brand-700">
+              <label className="form-label">Precio de venta estimado</label>
+              <div className="admin-catalog-price-preview" aria-live="polite">
                 {formatCOP(salePricePreview)}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Alerta mínima de stock</label>
+              <label htmlFor="product-stock-alert" className="form-label">Alerta mínima de stock</label>
               <input
-                type="number"
-                min="0"
-                className="input"
+                id="product-stock-alert" type="number" step="1"
+                min="0" className="form-control"
                 value={form.stock_min_alert}
                 onChange={(e) => setForm((p) => ({ ...p, stock_min_alert: e.target.value }))}
                 placeholder="Ej: 5"
               />
             </div>
 
+            </div>
+          </section>
+          <section className="admin-catalog-form-section">
+            <div className="admin-catalog-section-heading"><span className="admin-catalog-step">03</span><div><h4>Presentación y visibilidad</h4><p>Descripción y publicación de la referencia.</p></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-600 mb-1">Descripción</label>
+              <label htmlFor="product-description" className="form-label">Descripción</label>
               <textarea
-                className="input min-h-[110px]"
+                id="product-description" className="form-control min-h-[110px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Describe el producto..."
               />
             </div>
 
-            <div className="flex items-center gap-6 md:col-span-2">
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <div className="flex flex-wrap gap-4 md:col-span-2">
+              <label className="form-check form-switch d-flex align-items-center gap-2">
                 <input
-                  type="checkbox"
+                  className="form-check-input m-0" type="checkbox"
                   checked={form.featured}
                   onChange={(e) => setForm((p) => ({ ...p, featured: e.target.checked }))}
                 />
                 Destacado
               </label>
 
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <label className="form-check form-switch d-flex align-items-center gap-2">
                 <input
-                  type="checkbox"
+                  className="form-check-input m-0" type="checkbox"
                   checked={form.active}
                   onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))}
                 />
                 Activo
               </label>
             </div>
+            </div>
+          </section>
           </div>
 
-          <div className="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-            <div className="flex gap-3">
+          <div className="admin-catalog-modal-footer">
+            <div className="flex flex-wrap gap-2">
               {isEdit && (
                 <>
                   <button
@@ -448,11 +464,11 @@ function ProductFormModal({ product, categories, onClose }) {
               )}
             </div>
 
-            <div className="flex gap-3">
-              <button onClick={onClose} className="btn-secondary">
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={onClose} className="btn-secondary">
                 Cancelar
               </button>
-              <button
+              <button type="button"
                 onClick={() => mutation.mutate()}
                 disabled={mutation.isPending}
                 className="btn-primary flex items-center gap-2"
@@ -489,6 +505,9 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [featuredFilter, setFeaturedFilter] = useState('')
+  const [sortBy, setSortBy] = useState('name')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 20
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
 
@@ -550,6 +569,25 @@ export default function ProductsPage() {
     })
   }, [products, search, categoryFilter, statusFilter, featuredFilter])
 
+  const sortedProducts = useMemo(() => [...filteredProducts].sort((a, b) => {
+    if (sortBy === 'price_high') return Number(b.sale_price || 0) - Number(a.sale_price || 0)
+    if (sortBy === 'price_low') return Number(a.sale_price || 0) - Number(b.sale_price || 0)
+    if (sortBy === 'sku') return String(a.sku || '').localeCompare(String(b.sku || ''), 'es')
+    return String(a.name || '').localeCompare(String(b.name || ''), 'es')
+  }), [filteredProducts, sortBy])
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const visibleProducts = sortedProducts.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const resetFilters = () => {
+    setSearch('')
+    setCategoryFilter('')
+    setStatusFilter('')
+    setFeaturedFilter('')
+    setSortBy('name')
+    setCurrentPage(1)
+  }
+  const anyFilter = Boolean(search || categoryFilter || statusFilter || featuredFilter)
+
   const stats = useMemo(() => {
     const active = products.filter((p) => p.active).length
     const inactive = products.filter((p) => !p.active).length
@@ -563,12 +601,13 @@ export default function ProductsPage() {
   }, [products])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+    <div className="space-y-6 admin-catalog-page">
+      <div className="admin-page-intro">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Costo, margen, precio automático, categoría e imágenes
+          <p className="admin-page-kicker">Gestión de catálogo</p>
+          <h1 className="admin-page-heading">Productos</h1>
+          <p className="admin-page-description">
+            Administra precios, categorías, referencias, imágenes y disponibilidad desde un solo lugar.
           </p>
         </div>
 
@@ -602,22 +641,26 @@ export default function ProductsPage() {
       </div>
 
       {/* Filtros */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="card admin-catalog-filters">
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div><h2 className="fw-bold fs-6 mb-1">Buscar y filtrar</h2><p className="text-secondary small mb-0">Encuentra rápidamente la referencia que necesitas.</p></div>
+          {anyFilter && <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetFilters}>Limpiar filtros</button>}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              className="input pl-9"
-              placeholder="Buscar por nombre, SKU o categoría..."
+              className="form-control pl-9" aria-label="Buscar producto"
+              placeholder="Nombre, SKU o categoría..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
             />
           </div>
 
           <select
-            className="input"
+            className="form-select" aria-label="Filtrar por categoría"
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1) }}
           >
             <option value="">Todas las categorías</option>
             {categories.map((cat) => (
@@ -628,9 +671,9 @@ export default function ProductsPage() {
           </select>
 
           <select
-            className="input"
+            className="form-select" aria-label="Filtrar por estado"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
           >
             <option value="">Todos los estados</option>
             <option value="active">Activos</option>
@@ -638,13 +681,20 @@ export default function ProductsPage() {
           </select>
 
           <select
-            className="input"
+            className="form-select" aria-label="Filtrar por destacados"
             value={featuredFilter}
-            onChange={(e) => setFeaturedFilter(e.target.value)}
+            onChange={(e) => { setFeaturedFilter(e.target.value); setCurrentPage(1) }}
           >
             <option value="">Todos</option>
             <option value="featured">Destacados</option>
             <option value="normal">No destacados</option>
+          </select>
+          <select className="form-select" aria-label="Ordenar productos" value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1) }}>
+            <option value="name">Ordenar por nombre</option>
+            <option value="sku">Ordenar por SKU</option>
+            <option value="price_low">Precio: menor a mayor</option>
+            <option value="price_high">Precio: mayor a menor</option>
           </select>
         </div>
       </div>
@@ -658,8 +708,8 @@ export default function ProductsPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-sm">
+        <div className="table-responsive admin-catalog-table-wrap">
+          <table className="table table-hover align-middle w-full min-w-[1100px] text-sm mb-0">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">Producto</th>
@@ -693,7 +743,7 @@ export default function ProductsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product) => {
+                visibleProducts.map((product) => {
                   const image = resolveImage(product.primary_image)
 
                   return (
@@ -766,7 +816,7 @@ export default function ProductsPage() {
                       </td>
 
                       <td className="px-4 py-3 text-center">
-                        <button
+                        <button type="button" aria-label={`Editar ${product.name}`}
                           onClick={() => setSelectedProduct(product)}
                           className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 text-xs font-semibold"
                         >
@@ -781,6 +831,18 @@ export default function ProductsPage() {
             </tbody>
           </table>
         </div>
+        {!isLoading && sortedProducts.length > 0 && <div className="admin-catalog-pagination">
+          <span className="text-secondary small">
+            Mostrando {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, sortedProducts.length)} de {sortedProducts.length}
+          </span>
+          <div className="d-flex align-items-center gap-2">
+            <button type="button" className="btn btn-outline-secondary btn-sm" disabled={safePage <= 1}
+              onClick={() => setCurrentPage(safePage - 1)}>Anterior</button>
+            <span className="small fw-semibold" aria-live="polite">Página {safePage} de {totalPages}</span>
+            <button type="button" className="btn btn-outline-secondary btn-sm" disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage(safePage + 1)}>Siguiente</button>
+          </div>
+        </div>}
       </div>
 
       {showCreate && (
