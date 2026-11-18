@@ -426,6 +426,11 @@ export default function CheckoutPage() {
 
   return (
     <div className="store-container store-section">
+      <nav className="store-checkout-progress mb-8" aria-label="Etapas de compra">
+        <Link to="/carrito"><strong>1</strong> Tu carrito</Link>
+        <span className="is-current" aria-current="step"><strong>2</strong> Entrega y pago</span>
+        <span><strong>3</strong> Confirmación</span>
+      </nav>
       <Link
         to="/carrito"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors mb-6"
@@ -437,13 +442,15 @@ export default function CheckoutPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_350px] xl:grid-cols-[minmax(0,1fr)_420px] gap-8 xl:gap-12 items-start">
         <form onSubmit={handleSubmit} className="store-card min-w-0">
           <div className="store-checkout-step mb-4"><strong>01</strong> ENTREGA Y PAGO</div>
-          <h1 className="text-4xl font-black text-neutral-950 uppercase tracking-tight mb-8">FINALIZAR COMPRA</h1>
+          <h1 className="text-4xl font-black text-neutral-950 uppercase tracking-tight mb-3">FINALIZAR COMPRA</h1>
+          <p className="text-sm text-neutral-600 mb-8">Completa tu dirección, elige una tarifa disponible y revisa el total antes de continuar con el proveedor de pago.</p>
 
           {createdOrder && <p className="bg-amber-50 text-amber-900 text-sm p-4 mb-5" role="status">
             El pedido {createdOrder.order_number} ya tiene dirección, tarifa y total fijados.
             Para cambiarlos debes cancelar el pedido pendiente desde tu cuenta.
           </p>}
           <fieldset disabled={Boolean(createdOrder)} className="disabled:opacity-70">
+          <p className="store-checkout-section-label">01 · Datos de entrega</p>
           <div className="store-field-grid">
             <div className="md:col-span-2">
               <label className="store-label" htmlFor="checkout-full-name">Nombre completo</label>
@@ -530,7 +537,7 @@ export default function CheckoutPage() {
           </fieldset>
 
           <div className="mt-8">
-            <h2 className="font-bold text-lg uppercase mb-3">Selecciona el envío</h2>
+            <h2 className="font-bold text-lg uppercase mb-2">02 · Selecciona el envío</h2>
             {shippingLoading && <p className="text-sm text-neutral-500" role="status">Cotizando transportadoras…</p>}
             {shippingError && <p className="text-sm text-red-700" role="alert">No se pudieron consultar las tarifas. Revisa la conexión.</p>}
             {!shippingLoading && !shippingError && quoteCity.length >= 2 && shippingQuotes.length === 0 &&
@@ -558,7 +565,7 @@ export default function CheckoutPage() {
           </div>
 
           <div className="mt-8 border border-neutral-200 p-4 rounded-xl">
-            <h2 className="font-bold text-lg uppercase mb-3">Cupón de descuento</h2>
+            <h2 className="font-bold text-lg uppercase mb-3">¿Tienes un cupón de descuento?</h2>
             <div className="flex flex-col sm:flex-row gap-2">
               <input type="text" aria-label="Código promocional" className="store-input flex-1"
                 value={couponInput} maxLength={32} disabled={Boolean(createdOrder)}
@@ -585,7 +592,7 @@ export default function CheckoutPage() {
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-3">
               <CreditCard size={18} className="text-neutral-950" />
-              <h2 className="text-lg font-bold text-gray-900">Método de pago</h2>
+              <h2 className="text-lg font-bold text-gray-900">03 · Método de pago</h2>
             </div>
 
             {methodsError && <p role="alert" className="bg-red-50 text-red-800 text-sm p-4 mb-4">No pudimos consultar los métodos de pago. Comprueba tu conexión antes de continuar.</p>}
@@ -675,7 +682,7 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={loading || methodsError || shippingError || shippingLoading || !selectedShipping}
+            disabled={loading || methodsError || shippingError || shippingLoading || !selectedShipping || (!selectedMethodStatus.enabled && import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true')}
             aria-busy={loading}
             className="store-button store-button-dark w-full mt-8"
           >
@@ -695,7 +702,8 @@ export default function CheckoutPage() {
 
         <div className="min-w-0">
           <div className="store-responsive-summary">
-            <h2 className="font-black text-neutral-950 uppercase text-xl mb-5">RESUMEN DEL PEDIDO</h2>
+            <h2 className="font-black text-neutral-950 uppercase text-xl mb-2">RESUMEN DEL PEDIDO</h2>
+            <p className="text-xs text-neutral-500 mb-5">Confirma artículos y valores antes de continuar. El servidor validará de nuevo la disponibilidad.</p>
 
             <div className="space-y-3 pb-4 border-b border-gray-100">
               {items.map(({ product, qty }) => {
@@ -708,6 +716,7 @@ export default function CheckoutPage() {
                         <img
                           src={imgUrl}
                           alt={product.name}
+                          loading="lazy" decoding="async"
                           className="w-full h-full object-contain"
                         />
                       ) : (
