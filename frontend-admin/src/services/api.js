@@ -178,6 +178,10 @@ export const analyticsApi = {
 }
 
 
+export const commerceOperationsApi = {
+  overview: (params = {}) => apiClient.get('/commerce-operations/overview', { params }),
+}
+
 export const financialReportsApi = {
   overview: (params = {}) => apiClient.get('/financial-reports/overview', { params }),
   downloadExcel: (params = {}) => apiClient.get('/financial-reports/excel', {
