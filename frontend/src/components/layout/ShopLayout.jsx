@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram, Heart } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -11,6 +11,7 @@ export default function ShopLayout() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const searchRef = useRef(null)
+  const menuRef = useRef(null)
   const cartCount = useCartStore((s) => s.count())
   const wishlistCount = useWishlistStore((s) => s.items.length)
   const { data: storeSettings = {} } = useQuery({
@@ -39,6 +40,18 @@ export default function ShopLayout() {
     setSearchOpen(false)
   }, [location.pathname, location.search])
 
+  useEffect(() => {
+    if (!menuOpen && !searchOpen) return undefined
+    const onEscape = (event) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener('keydown', onEscape)
+    return () => document.removeEventListener('keydown', onEscape)
+  }, [menuOpen, searchOpen])
+
   const handleSearch = (event) => {
     event.preventDefault()
     const query = searchText.trim()
@@ -63,7 +76,8 @@ export default function ShopLayout() {
               <>HJ<span>STORE</span><small>VP</small></>}
           </Link>
           <nav className="editorial-nav" aria-label="Navegación principal">
-            <Link to="/">INICIO</Link>
+            <NavLink to="/" end>INICIO</NavLink>
+            <NavLink to="/catalogo">CATÁLOGO</NavLink>
             {navigationCategories.map((cat) => (
               <Link key={cat.slug} to={`/catalogo?categoria=${cat.slug}`}>{cat.name.toUpperCase()}</Link>
             ))}
@@ -71,8 +85,8 @@ export default function ShopLayout() {
             <Link to="/catalogo?featured=true" className="editorial-sale">DESTACADOS</Link>
           </nav>
           <div className="editorial-actions">
-            <button type="button" onClick={() => setSearchOpen((v) => !v)}
-              aria-label="Buscar productos" aria-expanded={searchOpen}>
+            <button type="button" onClick={() => { setSearchOpen((v) => !v); setMenuOpen(false) }}
+              aria-label="Buscar productos" aria-controls="store-search-panel" aria-expanded={searchOpen}>
               <Search size={19} strokeWidth={1.5} />
             </button>
             <Link to={isAuthenticated ? '/mi-cuenta' : '/login'}
@@ -88,13 +102,14 @@ export default function ShopLayout() {
               {cartCount > 0 && <span>{cartCount > 99 ? '99+' : cartCount}</span>}
             </Link>
             <button type="button" className="editorial-menu-toggle lg:hidden"
-              onClick={() => setMenuOpen((v) => !v)} aria-label="Abrir menú" aria-expanded={menuOpen}>
+              onClick={() => { setMenuOpen((v) => !v); setSearchOpen(false) }}
+              aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-controls="store-mobile-menu" aria-expanded={menuOpen}>
               {menuOpen ? <X size={21} /> : <Menu size={21} />}
             </button>
           </div>
         </div>
         {searchOpen && (
-          <form className="editorial-search" role="search" onSubmit={handleSearch}>
+          <form id="store-search-panel" className="editorial-search" role="search" onSubmit={handleSearch}>
             <Search size={19} strokeWidth={1.5} />
             <input ref={searchRef} value={searchText} onChange={(e) => setSearchText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setSearchOpen(false) }}
               placeholder="¿Qué estás buscando?" aria-label="Buscar" />
@@ -102,7 +117,8 @@ export default function ShopLayout() {
           </form>
         )}
         {menuOpen && (
-          <nav className="editorial-mobile-nav" aria-label="Menú móvil">
+          <nav id="store-mobile-menu" ref={menuRef} className="editorial-mobile-nav" aria-label="Menú móvil">
+            <Link to="/catalogo" onClick={() => setMenuOpen(false)}>VER TODO EL CATÁLOGO</Link>
             <Link to="/" onClick={() => setMenuOpen(false)}>INICIO</Link>
             {navigationCategories.map((cat) => (
               <Link key={cat.slug} to={`/catalogo?categoria=${cat.slug}`}
