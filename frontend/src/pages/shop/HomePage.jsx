@@ -76,7 +76,7 @@ export default function HomePage() {
             </div>
             <span className="store-home-hero-footnote">SELECCIÓN DE ACCESORIOS · COLOMBIA</span>
           </div>
-          <div className="store-home-hero-art store-home-hero-carousel"
+          <div className={`store-home-hero-art store-home-hero-carousel ${activeHeroImage ? 'has-image' : ''}`}
             onMouseEnter={() => carousel.setPaused(true)}
             onMouseLeave={() => carousel.setPaused(false)}
             onFocusCapture={() => carousel.setPaused(true)}
