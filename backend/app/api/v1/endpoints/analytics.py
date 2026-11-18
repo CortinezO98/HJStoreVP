@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import text, func
-from datetime import datetime, date
+from sqlalchemy import text
+from datetime import datetime, date, timedelta
 from typing import Optional
 from app.db.session import get_db
 from app.core.deps import require_admin
@@ -11,22 +11,22 @@ router = APIRouter(prefix="/analytics", tags=["Analytics & BI"])
 
 @router.get("/sales-by-month")
 def sales_by_month(
-    year: int = Query(default=datetime.now().year),
+    year: int = Query(default=datetime.utcnow().year, ge=2000, le=2100),
     db: Session = Depends(get_db),
     _=Depends(require_admin),
 ):
     """Ventas totales agrupadas por mes para el año indicado."""
     results = db.execute(text("""
         SELECT
-            MONTH(created_at)   AS month,
+            MONTH(paid_at)   AS month,
             COUNT(*)            AS orders_count,
             SUM(total_amount)   AS total_sales,
             SUM(total_cost)     AS total_cost,
-            SUM(total_amount - total_cost) AS gross_profit
+            SUM(total_amount - COALESCE(total_cost, 0)) AS gross_profit
         FROM orders
-        WHERE status = 'paid'
-          AND YEAR(created_at) = :year
-        GROUP BY MONTH(created_at)
+        WHERE paid_at IS NOT NULL AND status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
+          AND YEAR(paid_at) = :year
+        GROUP BY MONTH(paid_at)
         ORDER BY month
     """), {"year": year}).fetchall()
 
@@ -54,15 +54,15 @@ def top_products(
     _=Depends(require_admin),
 ):
     """Productos más vendidos por ingresos y unidades."""
-    where_clauses = ["o.status = 'paid'"]
+    where_clauses = ["o.paid_at IS NOT NULL AND o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')"]
     params = {"limit": limit}
 
     if date_from:
-        where_clauses.append("o.created_at >= :date_from")
+        where_clauses.append("o.paid_at >= :date_from")
         params["date_from"] = date_from
     if date_to:
-        where_clauses.append("o.created_at <= :date_to")
-        params["date_to"] = date_to
+        where_clauses.append("o.paid_at < :date_to_exclusive")
+        params["date_to_exclusive"] = date_to + timedelta(days=1)
 
     where = " AND ".join(where_clauses)
 
@@ -99,7 +99,7 @@ def top_products(
 
 @router.get("/low-rotation-products")
 def low_rotation_products(
-    days_without_sales: int = Query(30),
+    days_without_sales: int = Query(30, ge=1, le=3650),
     db: Session = Depends(get_db),
     _=Depends(require_admin),
 ):
@@ -107,14 +107,17 @@ def low_rotation_products(
     results = db.execute(text("""
         SELECT
             p.id, p.name, p.sku, p.sale_price,
-            MAX(o.created_at) AS last_sale_date,
-            COALESCE(SUM(i.qty_available), 0) AS current_stock
+            MAX(o.paid_at) AS last_sale_date,
+            COALESCE(stock.current_stock, 0) AS current_stock
         FROM products p
         LEFT JOIN order_items oi ON oi.product_id = p.id
-        LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'paid'
-        LEFT JOIN inventory i ON i.product_id = p.id
+        LEFT JOIN orders o ON o.id = oi.order_id AND o.paid_at IS NOT NULL AND o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
+        LEFT JOIN (
+            SELECT product_id, SUM(qty_available) AS current_stock
+            FROM inventory GROUP BY product_id
+        ) stock ON stock.product_id = p.id
         WHERE p.active = 1
-        GROUP BY p.id, p.name, p.sku, p.sale_price
+        GROUP BY p.id, p.name, p.sku, p.sale_price, stock.current_stock
         HAVING last_sale_date IS NULL
            OR last_sale_date < DATE_SUB(NOW(), INTERVAL :days DAY)
         ORDER BY last_sale_date ASC
@@ -141,15 +144,15 @@ def sales_by_location(
     _=Depends(require_admin),
 ):
     """Ventas por punto físico y canal web."""
-    where_clauses = ["o.status = 'paid'"]
+    where_clauses = ["o.paid_at IS NOT NULL AND o.status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')"]
     params = {}
 
     if date_from:
-        where_clauses.append("o.created_at >= :date_from")
+        where_clauses.append("o.paid_at >= :date_from")
         params["date_from"] = date_from
     if date_to:
-        where_clauses.append("o.created_at <= :date_to")
-        params["date_to"] = date_to
+        where_clauses.append("o.paid_at < :date_to_exclusive")
+        params["date_to_exclusive"] = date_to + timedelta(days=1)
 
     where = " AND ".join(where_clauses)
 
@@ -160,7 +163,7 @@ def sales_by_location(
             COUNT(o.id)              AS orders_count,
             SUM(o.total_amount)      AS total_sales,
             SUM(o.total_cost)        AS total_cost,
-            SUM(o.total_amount - o.total_cost) AS gross_profit
+            SUM(o.total_amount - COALESCE(o.total_cost, 0)) AS gross_profit
         FROM orders o
         LEFT JOIN locations l ON l.id = o.location_id
         WHERE {where}
@@ -192,11 +195,11 @@ def dashboard_summary(
             COUNT(*)                        AS orders_this_month,
             COALESCE(SUM(total_amount), 0)  AS revenue_this_month,
             COALESCE(AVG(total_amount), 0)  AS avg_ticket,
-            COALESCE(SUM(total_amount - total_cost), 0) AS profit_this_month
+            COALESCE(SUM(total_amount - COALESCE(total_cost, 0)), 0) AS profit_this_month
         FROM orders
-        WHERE status = 'paid'
-          AND YEAR(created_at) = YEAR(NOW())
-          AND MONTH(created_at) = MONTH(NOW())
+        WHERE paid_at IS NOT NULL AND status IN ('paid', 'preparing', 'shipped', 'delivered', 'refunded')
+          AND YEAR(paid_at) = YEAR(UTC_TIMESTAMP())
+          AND MONTH(paid_at) = MONTH(NOW())
     """)).fetchone()
 
     low_stock = db.execute(text("""
