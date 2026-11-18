@@ -158,6 +158,7 @@ function ReplenishModal({ products, locations, onClose }) {
       toast.success('Reposición registrada correctamente')
       qc.invalidateQueries({ queryKey: ['inventory-low-stock'] })
       qc.invalidateQueries({ queryKey: ['inventory-products'] })
+      qc.invalidateQueries({ queryKey: ['inventory-omnichannel-overview'] })
       onClose()
     },
     onError: (error) => {
@@ -283,6 +284,7 @@ function TransferModal({ products, locations, onClose }) {
       toast.success('Transferencia realizada correctamente')
       qc.invalidateQueries({ queryKey: ['inventory-low-stock'] })
       qc.invalidateQueries({ queryKey: ['inventory-products'] })
+      qc.invalidateQueries({ queryKey: ['inventory-omnichannel-overview'] })
       onClose()
     },
     onError: (error) => {
