@@ -191,7 +191,9 @@ def update_user(
         user.phone = data.phone
     if data.role is not None:
         user.role = data.role
-    if data.location_id is not None:
+        if data.role != UserRole.SELLER:
+            user.location_id = None
+    if data.location_id is not None and target_role == UserRole.SELLER:
         user.location_id = data.location_id
     if data.active is not None:
         user.active = data.active
