@@ -11,6 +11,10 @@ import {
     Store,
     BadgeDollarSign,
     Boxes,
+    ChevronLeft,
+    ChevronRight,
+    RotateCcw,
+    SlidersHorizontal,
 } from 'lucide-react'
 import { physicalSalesApi, inventoryApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
@@ -54,8 +58,8 @@ function SaleDetailModal({ sale, onClose }) {
     if (!sale) return null
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
+        <div className="admin-pos-overlay">
+        <div className="admin-pos-modal" role="dialog" aria-modal="true" aria-label="Detalle de venta">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
                 <h3 className="text-lg font-bold text-gray-900">Detalle de venta</h3>
@@ -277,8 +281,8 @@ function NewSaleModal({ onClose }) {
         : user?.locationName || 'Mi punto'
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden">
+        <div className="admin-pos-overlay">
+        <div className="admin-pos-modal admin-pos-modal-wide" role="dialog" aria-modal="true" aria-label="Nueva venta física">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
             <div>
                 <h2 className="text-xl font-bold text-gray-900">Nueva venta física</h2>
@@ -299,11 +303,11 @@ function NewSaleModal({ onClose }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                 {isAdmin && (
                     <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="form-label">
                         Punto físico
                     </label>
                     <select
-                        className="input"
+                        className="form-control"
                         value={locationId}
                         onChange={(e) => setLocationId(e.target.value)}
                     >
@@ -327,7 +331,7 @@ function NewSaleModal({ onClose }) {
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                     />
                     <input
-                        className="input pl-9"
+                        className="form-control pl-9"
                         placeholder="Buscar por nombre o SKU..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -345,7 +349,7 @@ function NewSaleModal({ onClose }) {
                     </p>
                 </div>
 
-                <div className="max-h-[420px] overflow-y-auto divide-y divide-gray-50">
+                <div className="admin-pos-product-list max-h-[420px] overflow-y-auto divide-y divide-gray-50">
                     {(isAdmin && !locationId) ? (
                     <div className="p-12 text-center text-gray-400">
                         <Store size={36} className="mx-auto mb-3 text-gray-200" />
@@ -363,7 +367,9 @@ function NewSaleModal({ onClose }) {
                         <button
                             key={product.product_id}
                             onClick={() => addProduct(product)}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                            disabled={Number(product.qty_available || 0) <= 0}
+                            aria-label={`Agregar ${product.name} al carrito`}
+                            className="admin-pos-product-item w-full px-4 py-3 flex items-center gap-3 text-left"
                         >
                             <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0">
                             {img ? (
@@ -402,7 +408,7 @@ function NewSaleModal({ onClose }) {
                 </div>
             </div>
 
-            <div className="lg:col-span-2 p-5 bg-gray-50">
+            <div className="admin-pos-cart lg:col-span-2 p-5 bg-gray-50">
                 <div className="flex items-center justify-between mb-4">
                 <div>
                     <h3 className="font-bold text-gray-900">Resumen de la venta</h3>
@@ -434,6 +440,7 @@ function NewSaleModal({ onClose }) {
 
                         <button
                             onClick={() => removeItem(product.product_id)}
+                            aria-label={`Quitar ${product.name} de la venta`}
                             className="text-red-400 hover:text-red-600 p-1"
                         >
                             <Trash2 size={14} />
@@ -444,6 +451,7 @@ function NewSaleModal({ onClose }) {
                         <div className="flex items-center gap-2">
                             <button
                             onClick={() => updateQty(product.product_id, qty - 1)}
+                            aria-label={`Disminuir cantidad de ${product.name}`}
                             className="w-8 h-8 rounded-lg border border-gray-200 text-sm font-bold hover:bg-gray-50"
                             >
                             -
@@ -451,6 +459,8 @@ function NewSaleModal({ onClose }) {
                             <span className="w-8 text-center font-semibold">{qty}</span>
                             <button
                             onClick={() => updateQty(product.product_id, qty + 1)}
+                            aria-label={`Aumentar cantidad de ${product.name}`}
+                            disabled={qty >= Number(product.qty_available || 0)}
                             className="w-8 h-8 rounded-lg border border-gray-200 text-sm font-bold hover:bg-gray-50"
                             >
                             +
@@ -479,7 +489,7 @@ function NewSaleModal({ onClose }) {
                     Notas (opcional)
                 </label>
                 <input
-                    className="input bg-white"
+                    className="form-control bg-white"
                     placeholder="Método de pago, observaciones..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -497,13 +507,13 @@ function NewSaleModal({ onClose }) {
                 )}
 
                 <div className="mt-6 flex gap-3">
-                <button onClick={onClose} className="btn-secondary flex-1">
+                <button onClick={onClose} className="btn btn-outline-secondary flex-1">
                     Cancelar
                 </button>
                 <button
                     onClick={() => mutation.mutate()}
                     disabled={mutation.isPending || items.length === 0 || (isAdmin && !locationId)}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    className="btn btn-primary flex-1 flex items-center justify-center gap-2"
                 >
                     {mutation.isPending ? (
                     'Registrando...'
@@ -525,6 +535,10 @@ function NewSaleModal({ onClose }) {
 export default function OrdersPage() {
     const [showNewSale, setShowNewSale] = useState(false)
     const [selectedSale, setSelectedSale] = useState(null)
+    const [historySearch, setHistorySearch] = useState('')
+    const [historySort, setHistorySort] = useState('newest')
+    const [page, setPage] = useState(1)
+    const [perPage, setPerPage] = useState(15)
     const { user } = useAuthStore()
     const isAdmin = ['super_admin', 'admin'].includes(user?.role)
 
@@ -540,23 +554,38 @@ export default function OrdersPage() {
         return { totalSales, totalProfit, totalOrders }
     }, [sales])
 
+    const filteredSales = useMemo(() => {
+      const term = historySearch.trim().toLocaleLowerCase('es')
+      return sales.filter(sale => !term || [sale.order_number, sale.location_name]
+        .filter(Boolean).join(' ').toLocaleLowerCase('es').includes(term))
+        .sort((a,b) => {
+          if (historySort === 'highest') return Number(b.total_amount || 0) - Number(a.total_amount || 0)
+          if (historySort === 'lowest') return Number(a.total_amount || 0) - Number(b.total_amount || 0)
+          const diff = new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+          return historySort === 'oldest' ? -diff : diff
+        })
+    }, [sales, historySearch, historySort])
+    const pageCount = Math.max(1, Math.ceil(filteredSales.length / perPage))
+    const currentPage = Math.min(page, pageCount)
+    const pageSales = filteredSales.slice((currentPage - 1) * perPage, currentPage * perPage)
+    const clearFilters = () => { setHistorySearch(''); setHistorySort('newest'); setPage(1) }
+
     return (
-        <div>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="admin-pos-page">
+        <header className="admin-page-intro flex-wrap">
             <div>
-            <h1 className="text-2xl font-bold text-gray-900">Ventas físicas</h1>
-            <p className="text-sm text-gray-500 mt-1">
-                Registro y control de ventas de puntos físicos
-            </p>
+            <p className="admin-page-kicker">Operación presencial</p>
+            <h1 className="admin-page-heading">Ventas físicas</h1>
+            <p className="admin-page-description">Registra ventas desde el punto físico y consulta las transacciones de tu operación.</p>
             </div>
 
             <button
             onClick={() => setShowNewSale(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn btn-primary d-inline-flex align-items-center gap-2"
             >
             <Plus size={16} /> Nueva venta
             </button>
-        </div>
+        </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="card">
@@ -577,18 +606,43 @@ export default function OrdersPage() {
             </div>
         </div>
 
+        <section className="admin-catalog-filter card mb-4" aria-label="Filtros de ventas físicas">
+          <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="h6 fw-bold mb-0 d-inline-flex align-items-center gap-2"><SlidersHorizontal size={17}/> Buscar ventas</h2>
+            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={clearFilters}
+              disabled={!historySearch && historySort === 'newest'}><RotateCcw size={14} className="me-1"/> Limpiar</button>
+          </div>
+          <div className="row g-3">
+            <div className="col-12 col-md-8">
+              <label className="form-label" htmlFor="sale-history-search">Orden o punto físico</label>
+              <div className="admin-catalog-search"><Search size={16} aria-hidden="true"/>
+                <input id="sale-history-search" type="search" className="form-control"
+                  value={historySearch} placeholder="Buscar por orden o punto"
+                  onChange={event => { setHistorySearch(event.target.value); setPage(1) }}/>
+              </div>
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="form-label" htmlFor="sale-history-sort">Ordenar</label>
+              <select id="sale-history-sort" className="form-select" value={historySort}
+                onChange={event => { setHistorySort(event.target.value); setPage(1) }}>
+                <option value="newest">Más recientes</option><option value="oldest">Más antiguas</option>
+                <option value="highest">Mayor valor</option><option value="lowest">Menor valor</option>
+              </select>
+            </div>
+          </div>
+        </section>
         <div className="card overflow-hidden p-0">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
                 <h2 className="font-bold text-gray-900">Historial de ventas físicas</h2>
                 <p className="text-xs text-gray-500 mt-1">
-                {sales.length} ventas registradas
+                {filteredSales.length} ventas encontradas
                 </p>
             </div>
             </div>
 
-            <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <div className="table-responsive">
+            <table className="table table-hover align-middle admin-pos-table mb-0">
                 <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th className="text-left px-4 py-3 text-gray-500 font-semibold">Orden</th>
@@ -614,7 +668,7 @@ export default function OrdersPage() {
                         ))}
                     </tr>
                     ))
-                ) : sales.length === 0 ? (
+                ) : filteredSales.length === 0 ? (
                     <tr>
                     <td colSpan={isAdmin ? 7 : 6} className="px-4 py-16 text-center">
                         <ShoppingBag size={40} className="text-gray-200 mx-auto mb-3" />
@@ -622,7 +676,7 @@ export default function OrdersPage() {
                     </td>
                     </tr>
                 ) : (
-                    sales.map((sale) => (
+                    pageSales.map((sale) => (
                     <tr
                         key={sale.id}
                         className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
@@ -663,7 +717,8 @@ export default function OrdersPage() {
                         <td className="px-4 py-3 text-center">
                         <button
                             onClick={() => setSelectedSale(sale)}
-                            className="text-brand-600 hover:text-brand-700 text-xs font-semibold"
+                            className="btn btn-sm btn-outline-primary"
+                            aria-label={`Ver detalle de venta ${sale.order_number}`}
                         >
                             Ver detalle
                         </button>
@@ -674,6 +729,24 @@ export default function OrdersPage() {
                 </tbody>
             </table>
             </div>
+        </div>
+
+        <div className="admin-catalog-pagination mt-3">
+          <span className="text-secondary small">
+            {filteredSales.length === 0 ? 'Sin resultados' : `Mostrando ${(currentPage-1)*perPage+1}–${Math.min(currentPage*perPage,filteredSales.length)} de ${filteredSales.length}`}
+          </span>
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <label className="small text-secondary" htmlFor="sales-per-page">Por página</label>
+            <select id="sales-per-page" className="form-select form-select-sm admin-catalog-per-page"
+              value={perPage} onChange={event => { setPerPage(Number(event.target.value)); setPage(1) }}>
+              {[10,15,25,50].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Página anterior"
+              disabled={currentPage===1} onClick={() => setPage(p => Math.max(1,p-1))}><ChevronLeft size={16}/></button>
+            <span className="small fw-semibold">{currentPage} / {pageCount}</span>
+            <button type="button" className="btn btn-sm btn-outline-secondary" aria-label="Página siguiente"
+              disabled={currentPage===pageCount} onClick={() => setPage(p => Math.min(pageCount,p+1))}><ChevronRight size={16}/></button>
+          </div>
         </div>
 
         {showNewSale && <NewSaleModal onClose={() => setShowNewSale(false)} />}

@@ -114,6 +114,28 @@ for (const [file, required] of [
   }
 }
 
+// POS y caja: contratos críticos que no deben perderse con cambios visuales.
+for (const [file, required] of [
+  ['src/pages/OrdersPage.jsx', [
+    'physicalSalesApi.create', 'physicalSalesApi.list', 'physicalSalesApi.myStock',
+    'inventoryApi.byLocation', 'qty_available', 'updateQty',
+    "toast.error('No puedes superar el stock disponible')",
+    'location_id: isAdmin', 'admin-location-stock', 'pageSales',
+    'setPerPage', 'setHistorySearch', 'NewSaleModal', 'SaleDetailModal',
+  ]],
+  ['src/pages/CashPage.jsx', [
+    'authApi.me', 'cashApi.sessions', 'cashApi.movements', 'cashApi.open',
+    'cashApi.movement', 'cashApi.close', "action === 'close'",
+    "window.confirm(", "sellerLocationId", "admin &&", "run.isPending",
+    'selected.expected_amount', 'selected.difference',
+  ]],
+]) {
+  const source = read(file)
+  for (const item of required) {
+    if (!source.includes(item)) missing.push(`${file}: falta ${item}`)
+  }
+}
+
 if (missing.length) {
   console.error('Contrato administrativo incompleto:\n' + missing.join('\n'))
   process.exit(1)

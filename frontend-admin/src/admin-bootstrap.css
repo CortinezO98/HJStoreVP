@@ -446,3 +446,68 @@
   .admin-app-shell .admin-web-orders-modal-header{padding:16px}
   .admin-app-shell .admin-shipment-summary{grid-template-columns:1fr}
 }
+
+
+/* Ventas presenciales / POS — Bootstrap 5, aislado de operaciones comerciales. */
+.admin-app-shell .admin-pos-overlay {
+  position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(12,22,40,.66);backdrop-filter:blur(3px);overflow-y:auto
+}
+.admin-app-shell .admin-pos-modal {
+  width:min(860px,100%);max-height:calc(100dvh - 36px);
+  background:#fff;border-radius:18px;overflow-y:auto;
+  box-shadow:0 25px 85px rgba(12,22,40,.34)
+}
+.admin-app-shell .admin-pos-modal-wide {width:min(1190px,100%)}
+.admin-app-shell .admin-pos-product-list button.admin-pos-product-item {
+  border-bottom:1px solid #edf0f6;transition:background .15s;
+}
+.admin-app-shell .admin-pos-product-list button.admin-pos-product-item:hover {
+  background:#f2f4ff
+}
+.admin-app-shell .admin-pos-product-list button.admin-pos-product-item:disabled {
+  cursor:not-allowed;opacity:.48
+}
+.admin-app-shell .admin-pos-cart {background:#f8f9fd}
+.admin-app-shell .admin-pos-table{--bs-table-border-color:#e9eef5;min-width:820px;font-size:12px}
+.admin-app-shell .admin-pos-table thead th {
+  padding:16px 12px;background:#f8f9fc;color:#65738c;
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em
+}
+.admin-app-shell .admin-pos-table tbody td{padding:14px 12px}
+.admin-app-shell .admin-pos-page .btn-primary,
+.admin-app-shell .admin-cash-page .btn-primary {
+  min-height:42px;
+}
+/* Caja: turnos, saldos y arqueos con jerarquía operativa. */
+.admin-app-shell .admin-cash-page .admin-cash-stat-value {
+  font-size:clamp(17px,2.1vw,27px);overflow-wrap:anywhere
+}
+.admin-app-shell .admin-cash-page .admin-cash-card{padding:22px}
+.admin-app-shell .admin-cash-section-heading{
+  display:flex;align-items:center;gap:10px;
+  font-size:16px;font-weight:800;color:#1f2e47;margin-bottom:6px
+}
+.admin-app-shell .admin-cash-section-heading svg{color:#6258df}
+.admin-app-shell .admin-cash-session {
+  background:#fff;transition:border-color .15s,background .15s
+}
+.admin-app-shell .admin-cash-session:hover{border-color:#acb5eb;background:#f8f9ff}
+.admin-app-shell .admin-cash-session-selected{background:#f2f3ff;border-color:#7569ec}
+.admin-app-shell .admin-cash-difference{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:11px 13px;border-radius:10px;
+  border:1px solid #e5e9f2;background:#fafbfe;
+  font-size:12px;color:#36445b
+}
+.admin-app-shell .admin-cash-movements-table{min-width:610px;font-size:12px}
+.admin-app-shell .admin-cash-movements-table th {
+  color:#66748a;text-transform:uppercase;font-weight:800;font-size:10px;
+  background:#f7f9fc;padding:12px
+}
+.admin-app-shell .admin-cash-movements-table td{padding:12px}
+@media(max-width:767px){
+  .admin-app-shell .admin-pos-overlay {padding:8px}
+  .admin-app-shell .admin-pos-modal{max-height:calc(100dvh - 16px)}
+  .admin-app-shell .admin-cash-page .admin-cash-card{padding:17px}
+}
