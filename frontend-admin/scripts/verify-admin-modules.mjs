@@ -141,7 +141,7 @@ for (const [file, symbols] of [
   ['src/pages/UsersPage.jsx', [
     'usersApi.list', 'usersApi.create', 'usersApi.update', 'locationsApi.list',
     "user?.role === 'super_admin'", "user?.role === 'admin'", "form.role === 'seller'",
-    'location_id: form.role', "payload.password = form.password",
+    'payload.location_id = form.role', "payload.password = form.password",
     'UserFormModal', 'pageUsers', 'setPerPage', 'setRoleFilter',
   ]],
   ['src/pages/ReportsPage.jsx', [
