@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, ArrowUpRight, ChevronDown, PackageCheck, Truck, CreditCard } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, PackageCheck, Truck, CreditCard } from 'lucide-react'
 import { productsApi, categoriesApi, storefrontSettingsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
 import PersonalizedShowcase from '../../components/shop/PersonalizedShowcase'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 import { useState } from 'react'
+import useAutoCarousel from '../../hooks/useAutoCarousel'
 
+const API_URL = import.meta.env.VITE_API_URL || ''
+const sourceUrl = (value) => value?.startsWith('/') ? `${API_URL}${value}` : value
 const FAQ = [
   { q: '¿Cómo puedo realizar una compra?', a: 'Selecciona tus productos, agrégalos al carrito y continúa al checkout. Allí podrás revisar las opciones de pago disponibles.' },
   { q: '¿Hacen envíos a otras ciudades?', a: 'Sí, atendemos pedidos en Colombia. La disponibilidad y el costo del envío se confirman durante la gestión del pedido.' },
@@ -45,6 +48,13 @@ export default function HomePage() {
     queryKey: ['products', 'featured', 'editorial'],
     queryFn: () => productsApi.list({ featured: true, per_page: 8 }).then((r) => r.data),
   })
+  // Solo la galería publicada aparece en portada. El campo hero_image_url
+  // heredado no se reutiliza: puede contener imágenes antiguas incorrectas.
+  const [failedHeroImages, setFailedHeroImages] = useState([])
+  const heroImages = (Array.isArray(storeSettings.hero_images) ? storeSettings.hero_images : [])
+    .filter((url) => typeof url === 'string' && url.trim() && !failedHeroImages.includes(url))
+  const carousel = useAutoCarousel(heroImages.length, 6000, heroImages.join('|'))
+  const activeHeroImage = heroImages[carousel.index]
   const showcase = newest.slice(0, 8)
   const featuredShowcase = featured.slice(0, 4)
 
@@ -66,17 +76,50 @@ export default function HomePage() {
             </div>
             <span className="store-home-hero-footnote">SELECCIÓN DE ACCESORIOS · COLOMBIA</span>
           </div>
-          <div className="store-home-hero-art" aria-hidden="true">
-            <div className="store-home-hero-orbit" />
-            <span className="store-home-hero-art-top">CURATED / HJSTOREVP</span>
-            <div className="store-home-hero-art-center">
-              <span>ESTILO</span>
-              <strong>PROPIO<span className="store-home-hero-art-period">.</span></strong>
-            </div>
-            <div className="store-home-hero-art-bottom">
-              <span>DETAILS MAKE THE DIFFERENCE</span>
-              <span>01 — 26</span>
-            </div>
+          <div className="store-home-hero-art store-home-hero-carousel"
+            onMouseEnter={() => carousel.setPaused(true)}
+            onMouseLeave={() => carousel.setPaused(false)}
+            onFocusCapture={() => carousel.setPaused(true)}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) carousel.setPaused(false)
+            }}
+            aria-label="Carrusel de imágenes promocionales">
+            {activeHeroImage ? (
+              <img key={activeHeroImage} className="store-home-hero-carousel-image"
+                src={sourceUrl(activeHeroImage)} alt={`Imagen promocional ${carousel.index + 1} de HJStoreVP`}
+                onError={() => setFailedHeroImages((previous) =>
+                  previous.includes(activeHeroImage) ? previous : [...previous, activeHeroImage])}
+                decoding="async" />
+            ) : (
+              <div className="store-home-hero-fallback" aria-label="Identidad de HJStoreVP">
+                <div className="store-home-hero-orbit" aria-hidden="true" />
+                <span className="store-home-hero-art-top">CURATED / HJSTOREVP</span>
+                <div className="store-home-hero-art-center">
+                  <span>ESTILO</span>
+                  <strong>PROPIO<span className="store-home-hero-art-period">.</span></strong>
+                </div>
+                <div className="store-home-hero-art-bottom">
+                  <span>DETAILS MAKE THE DIFFERENCE</span>
+                  <span>HJSTOREVP</span>
+                </div>
+              </div>
+            )}
+            {heroImages.length > 1 && (
+              <div className="store-home-hero-carousel-controls" aria-label="Controles del carrusel">
+                <button type="button" onClick={() => carousel.goTo(carousel.index - 1)}
+                  aria-label="Imagen promocional anterior"><ChevronLeft size={19}/></button>
+                <div className="store-home-hero-carousel-dots">
+                  {heroImages.map((url, index) => (
+                    <button key={url} type="button" className={index === carousel.index ? 'active' : ''}
+                      aria-label={`Ver imagen promocional ${index + 1}`}
+                      aria-current={index === carousel.index ? 'true' : undefined}
+                      onClick={() => carousel.goTo(index)} />
+                  ))}
+                </div>
+                <button type="button" onClick={() => carousel.goTo(carousel.index + 1)}
+                  aria-label="Imagen promocional siguiente"><ChevronRight size={19}/></button>
+              </div>
+            )}
           </div>
         </div>
       </section>
