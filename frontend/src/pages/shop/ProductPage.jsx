@@ -264,6 +264,16 @@ export default function ProductPage() {
 
   return (
     <div className="store-container store-section">
+      <nav className="store-purchase-journey" aria-label="Ubicación en la tienda">
+        <Link to="/">Inicio</Link><span aria-hidden="true">/</span>
+        <Link to="/catalogo">Catálogo</Link>
+        {categorySlug && <>
+          <span aria-hidden="true">/</span>
+          <Link to={`/catalogo?categoria=${encodeURIComponent(categorySlug)}`}>{categoryName}</Link>
+        </>}
+        <span aria-hidden="true">/</span>
+        <span aria-current="page" className="truncate max-w-44 sm:max-w-72">{product.name}</span>
+      </nav>
       <Link
         to="/catalogo"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600 transition-colors mb-6"
@@ -272,15 +282,16 @@ export default function ProductPage() {
         Volver al catálogo
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-start store-product-layout">
         <div>
-          <div className="bg-neutral-50 overflow-hidden">
+          <div className="bg-neutral-50 overflow-hidden store-product-main-image">
             <div className="aspect-square bg-neutral-50 flex items-center justify-center overflow-hidden">
               {mainImage ? (
                 <img
                   src={mainImage}
                   alt={product.name}
                   className="w-full h-full object-contain"
+                  decoding="async"
                 />
               ) : (
                 <div className="text-gray-300">Sin imagen</div>
@@ -314,7 +325,7 @@ export default function ProductPage() {
           )}
         </div>
 
-        <div>
+        <div className="store-product-purchase-panel">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {categoryName && (
               <span className="inline-flex items-center bg-neutral-100 text-neutral-800 px-3 py-1 text-xs font-bold uppercase tracking-widest">
@@ -347,9 +358,10 @@ export default function ProductPage() {
 
           <p className="text-sm text-gray-400 mt-2">SKU: {selectedVariant?.sku || product.sku}</p>
           {hasVariants && (
-            <div className="mt-5 space-y-2">
-              <label className="block text-sm font-semibold" htmlFor="variant-choice">Elige tu presentación, talla o color</label>
-              <select id="variant-choice" className="input w-full"
+            <div className="mt-5 space-y-2 store-variant-picker">
+              <label className="block text-sm font-semibold" htmlFor="variant-choice">Selecciona presentación, talla o color <span className="text-red-700">*</span></label>
+              <select id="variant-choice" className="input w-full" required
+                aria-describedby="variant-choice-help"
                 value={selectedVariantId}
                 onChange={(e) => { setSelectedVariantId(e.target.value); setSelectedImage(null); setQty(1) }}>
                 <option value="">Selecciona una opción</option>
@@ -359,7 +371,11 @@ export default function ProductPage() {
                   </option>
                 ))}
               </select>
-              {!selectedVariant && <p className="text-sm text-gray-500">Debes seleccionar una referencia para agregarla al carrito.</p>}
+              <p id="variant-choice-help" className="text-sm text-gray-500" role="status">
+                {selectedVariant
+                  ? `Seleccionado: ${selectedVariant.label}. Disponibles: ${selectedVariant.total_stock ?? 0}.`
+                  : 'Elige una referencia disponible antes de agregar el producto al carrito.'}
+              </p>
             </div>
           )}
           <div className="flex flex-wrap gap-2 items-center">
@@ -383,7 +399,7 @@ export default function ProductPage() {
 
             </div>
 
-            <p
+            <p role="status" aria-live="polite"
               className={`mt-2 text-sm font-medium ${
                 isOutOfStock
                   ? 'text-red-500'
@@ -426,7 +442,7 @@ export default function ProductPage() {
                 Pago seguro
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Wompi, PSE y más
+                Verifica los medios habilitados al pagar
               </p>
             </div>
 
@@ -436,7 +452,7 @@ export default function ProductPage() {
                 Confianza
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Productos originales
+                Revisa la información y disponibilidad
               </p>
             </div>
           </div>
@@ -459,7 +475,7 @@ export default function ProductPage() {
                 </div>
               </div>
 
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 store-product-purchase-actions">
                 <button
                   onClick={handleAddToCart}
                   type="button"
@@ -480,6 +496,7 @@ export default function ProductPage() {
                   Comprar ahora
                 </button>
               </div>
+              <p className="text-xs text-neutral-500 mt-3">La disponibilidad y el total definitivo se verifican antes de confirmar el pedido.</p>
             </>
           )}
         </div>
