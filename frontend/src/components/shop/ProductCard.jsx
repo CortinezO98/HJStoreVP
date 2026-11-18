@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Plus, ShoppingBag, Heart, ArrowUpRight } from 'lucide-react'
+import { Plus, Heart, ArrowUpRight } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '../../store'
 import toast from 'react-hot-toast'
 
@@ -36,7 +36,11 @@ export default function ProductCard({ product, label }) {
           {image ? (
             <img src={image} loading="lazy" decoding="async" alt={product.name} />
           ) : (
-            <span className="editorial-product-fallback"><ShoppingBag size={45} strokeWidth={1}/></span>
+            <span className="editorial-product-fallback store-product-placeholder">
+              <span className="store-product-placeholder-mark" aria-hidden="true">HJ<span>VP</span></span>
+              <span className="store-product-placeholder-label">{product.category_name || 'ESTILO PROPIO'}</span>
+              <span className="sr-only">Imagen no disponible</span>
+            </span>
           )}
         </Link>
         {soldOut ? (
