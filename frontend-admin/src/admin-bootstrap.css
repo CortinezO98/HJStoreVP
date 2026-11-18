@@ -568,3 +568,28 @@
   .admin-app-shell .admin-users-form-grid .md\\:col-span-2{grid-column:span 1}
   .admin-app-shell .admin-reports-filters{padding:17px}
 }
+
+
+/* Gestión del ciclo de vida de usuarios — Bootstrap 5 */
+.admin-app-shell .admin-users-actions {
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  flex-wrap:wrap;min-width:315px;
+}
+.admin-app-shell .admin-users-actions .btn {
+  display:inline-flex;align-items:center;gap:5px;
+  white-space:nowrap;padding:6px 9px;font-size:11px
+}
+.admin-app-shell .admin-users-actions .btn:disabled {opacity:.4;cursor:not-allowed}
+.admin-app-shell .admin-users-modal-small{width:min(530px,100%)}
+.admin-app-shell .admin-users-dialog-header{padding:22px 24px;border-bottom:1px solid #e8ecf3}
+.admin-app-shell .admin-users-dialog-footer{
+  padding:17px 24px;border-top:1px solid #e8ecf3;
+  display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;background:#fafbfe
+}
+.admin-app-shell .admin-users-hint{font-size:12px;color:#5d6981;line-height:1.5}
+.admin-app-shell .admin-users-page .admin-users-table {min-width:1190px}
+.admin-app-shell .admin-users-page .admin-users-table td {vertical-align:middle}
+@media(max-width:767px) {
+  .admin-app-shell .admin-users-dialog-header,.admin-app-shell .admin-users-dialog-footer{padding:16px}
+  .admin-app-shell .admin-users-actions{justify-content:flex-start;min-width:285px}
+}
