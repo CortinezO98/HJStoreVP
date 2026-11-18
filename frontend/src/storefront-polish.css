@@ -533,3 +533,20 @@
   }
   .store-footer-bottom nav { gap: 9px 15px; }
 }
+
+/* Copyright en la esquina inferior derecha; políticas a la izquierda. */
+.store-footer-bottom .store-footer-copyright {
+  order: 2;
+  margin-left: auto;
+  text-align: right;
+}
+.store-footer-bottom nav {
+  order: 1;
+}
+@media (max-width: 639px) {
+  .store-footer-bottom .store-footer-copyright {
+    align-self: flex-end;
+    margin-left: 0;
+    text-align: right;
+  }
+}
