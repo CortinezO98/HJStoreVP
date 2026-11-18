@@ -325,3 +325,31 @@
   .admin-app-shell .admin-catalog-overlay {padding:8px}
   .admin-app-shell .admin-catalog-modal {max-height:calc(100dvh - 16px)}
 }
+
+/* Inventario: misma identidad Bootstrap del catálogo, sin modificar reglas comerciales. */
+.admin-app-shell .admin-inventory-page .admin-inventory-stat-value{font-size:clamp(17px,2vw,26px);overflow-wrap:anywhere}
+.admin-app-shell .admin-inventory-table{--bs-table-bg:#fff;--bs-table-border-color:#edf0f5;min-width:920px;font-size:12px}
+.admin-app-shell .admin-inventory-table thead th{padding:15px 12px;background:#f7f9fd;color:#66748b;font-size:10px;white-space:nowrap;font-weight:800;text-transform:uppercase}
+.admin-app-shell .admin-inventory-table tbody td{padding:14px 12px}
+.admin-app-shell .admin-inventory-overlay{
+  position:fixed;inset:0;z-index:70;
+  display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(13,22,40,.65);backdrop-filter:blur(3px);
+  overflow-y:auto;
+}
+.admin-app-shell .admin-inventory-modal{
+  width:min(620px,100%);max-height:calc(100dvh - 36px);
+  overflow:auto;background:#fff;border-radius:18px;
+  box-shadow:0 26px 90px rgba(7,15,33,.32);
+}
+.admin-app-shell .admin-inventory-modal-wide{width:min(870px,100%)}
+.admin-app-shell .admin-inventory-form{
+  padding:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px
+}
+.admin-app-shell .admin-inventory-page .badge{font-size:11px}
+.admin-app-shell .admin-inventory-page .btn{font-weight:600}
+@media(max-width:767px){
+  .admin-app-shell .admin-inventory-overlay{padding:8px}
+  .admin-app-shell .admin-inventory-modal{max-height:calc(100dvh - 16px)}
+  .admin-app-shell .admin-inventory-form{padding:18px}
+}
