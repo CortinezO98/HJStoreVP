@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, ToggleLeft, ToggleRight, Tag } from 'lucide-react'
+import { Plus, Pencil, ToggleLeft, ToggleRight, Tag, Search, Layers, CheckCircle, XCircle } from 'lucide-react'
 import { apiClient } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -30,29 +30,29 @@ function CategoryModal({ category, onClose }) {
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h2 className="font-bold text-gray-900 text-lg">
+        <div className="admin-catalog-modal-backdrop" role="presentation">
+        <div className="admin-catalog-modal admin-category-dialog" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar categoría" : "Nueva categoría"}>
+            <div className="admin-catalog-modal-header">
+            <h2 className="fw-bold fs-5 mb-0">
                 {isEdit ? 'Editar' : 'Nueva'} categoría
             </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+            <button type="button" onClick={onClose} className="btn-close" aria-label="Cerrar editor de categoría" />
             </div>
 
-            <form onSubmit={e => { e.preventDefault(); mutation.mutate(form) }} className="p-6 space-y-4">
+            <form onSubmit={e => { e.preventDefault(); mutation.mutate(form) }} className="admin-category-form">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                <label htmlFor="category-name" className="form-label">Nombre de categoría *</label>
                 <input
-                className="input" required value={form.name}
+                id="category-name" className="form-control" required maxLength={100} value={form.name}
                 onChange={e => set('name', e.target.value)}
                 placeholder="Gorras, Perfumes, Relojes..."
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label htmlFor="category-description" className="form-label">Descripción</label>
                 <textarea
-                className="input resize-none" rows={2}
+                id="category-description" className="form-control" rows={3}
                 value={form.description}
                 onChange={e => set('description', e.target.value)}
                 placeholder="Descripción breve de la categoría"
@@ -60,18 +60,18 @@ function CategoryModal({ category, onClose }) {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Orden de aparición</label>
+                <label htmlFor="category-order" className="form-label">Orden de aparición</label>
                 <input
-                type="number" className="input" min={0}
+                id="category-order" type="number" className="form-control" min={0}
                 value={form.sort_order}
                 onChange={e => set('sort_order', parseInt(e.target.value) || 0)}
                 />
-                <p className="text-xs text-gray-400 mt-1">Número menor = aparece primero en la tienda</p>
+                <p className="form-text">Las categorías con números menores se muestran primero.</p>
             </div>
 
-            <div className="flex gap-3 pt-2">
-                <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-                <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1">
+            <div className="d-flex flex-wrap gap-2 justify-content-end pt-3 border-top">
+                <button type="button" onClick={onClose} className="btn btn-outline-secondary">Cancelar</button>
+                <button type="submit" disabled={mutation.isPending} className="btn btn-primary">
                 {mutation.isPending ? 'Guardando...' : (isEdit ? 'Guardar' : 'Crear categoría')}
                 </button>
             </div>
@@ -84,6 +84,8 @@ function CategoryModal({ category, onClose }) {
     export default function CategoriesPage() {
     const qc = useQueryClient()
     const [modal, setModal] = useState(null)
+    const [search, setSearch] = useState('')
+    const [statusFilter, setStatusFilter] = useState('all')
 
     const { data: categories = [], isLoading } = useQuery({
         queryKey: ['categories'],
@@ -99,19 +101,56 @@ function CategoryModal({ category, onClose }) {
     })
 
     const totalProducts = categories.reduce((acc, c) => acc + (c.product_count || 0), 0)
+    const activeCategories = categories.filter(c => c.active).length
+    const visibleCategories = useMemo(() => categories.filter(cat => {
+      const matchSearch = `${cat.name} ${cat.slug} ${cat.description || ''}`.toLocaleLowerCase('es')
+        .includes(search.trim().toLocaleLowerCase('es'))
+      const matchStatus = statusFilter === 'all' || (statusFilter === 'active' ? cat.active : !cat.active)
+      return matchSearch && matchStatus
+    }).sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)), [categories, search, statusFilter])
 
     return (
         <div>
-        <div className="flex items-center justify-between mb-6">
+        <header className="admin-page-intro">
             <div>
-            <h1 className="text-2xl font-bold text-gray-900">Categorías</h1>
-            <p className="text-sm text-gray-500 mt-1">
-                {categories.length} categorías · {totalProducts} productos en total
-            </p>
+              <p className="admin-page-kicker">Organización del catálogo</p>
+              <h1 className="admin-page-heading">Categorías</h1>
+              <p className="admin-page-description">Agrupa tus productos y organiza cómo aparecen en la tienda.</p>
             </div>
-            <button onClick={() => setModal('create')} className="btn-primary flex items-center gap-2">
-            <Plus size={16} /> Nueva categoría
+            <button type="button" onClick={() => setModal('create')} className="btn btn-primary d-inline-flex align-items-center gap-2">
+              <Plus size={16} /> Nueva categoría
             </button>
+        </header>
+
+        <div className="row g-3 mb-4">
+          {[
+            {label: 'Categorías registradas', value: categories.length, icon: Layers},
+            {label: 'Categorías activas', value: activeCategories, icon: CheckCircle},
+            {label: 'Productos relacionados', value: totalProducts, icon: Tag},
+          ].map(({label, value, icon: Icon}) => <div key={label} className="col-12 col-sm-4">
+            <div className="admin-category-stat">
+              <span className="admin-category-stat-icon"><Icon size={18}/></span>
+              <div><span className="small text-secondary d-block">{label}</span>
+                <strong className="fs-4">{value}</strong></div>
+            </div>
+          </div>)}
+        </div>
+
+        <div className="admin-category-filterbar">
+          <div className="admin-category-search">
+            <Search size={17} aria-hidden="true"/>
+            <input className="form-control" type="search" aria-label="Buscar categoría"
+              placeholder="Buscar por nombre o descripción…" value={search}
+              onChange={e => setSearch(e.target.value)}/>
+          </div>
+          <select className="form-select" aria-label="Filtrar por estado"
+            value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="all">Todas las categorías</option>
+            <option value="active">Solo activas</option>
+            <option value="inactive">Solo inactivas</option>
+          </select>
+          {(search || statusFilter !== 'all') && <button type="button" className="btn btn-outline-secondary"
+            onClick={() => { setSearch(''); setStatusFilter('all') }}>Limpiar filtros</button>}
         </div>
 
         {/* Grid de categorías */}
@@ -132,18 +171,25 @@ function CategoryModal({ category, onClose }) {
                 <Plus size={16} /> Crear primera categoría
             </button>
             </div>
+        ) : visibleCategories.length === 0 ? (
+          <div className="card text-center py-10">
+            <Search size={35} className="text-gray-300 mx-auto mb-3"/>
+            <p className="text-gray-500">No encontramos categorías con estos filtros.</p>
+            <button type="button" className="btn btn-outline-secondary btn-sm mt-3"
+              onClick={() => { setSearch(''); setStatusFilter('all') }}>Mostrar todas</button>
+          </div>
         ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map((cat, idx) => (
+            {visibleCategories.map((cat, idx) => (
                 <div
                 key={cat.id}
-                className={`card flex flex-col gap-3 transition-opacity ${!cat.active ? 'opacity-50' : ''}`}
+                className={`admin-category-card ${!cat.active ? 'admin-category-card-inactive' : ''}`}
                 >
                 {/* Header */}
                 <div className="flex items-center gap-3">
-                    <span className="text-3xl">{EMOJIS[idx % EMOJIS.length]}</span>
+                    <span className="admin-category-emoji" aria-hidden="true">{EMOJIS[idx % EMOJIS.length]}</span>
                     <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 truncate">{cat.name}</p>
+                    <p className="fw-bold text-gray-900 truncate">{cat.name}</p>
                     <p className="text-xs text-gray-400 font-mono">/{cat.slug}</p>
                     </div>
                 </div>
@@ -154,7 +200,7 @@ function CategoryModal({ category, onClose }) {
                 )}
 
                 {/* Stats */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100 mt-auto">
                     <div className="flex items-center gap-3">
                     <span className={`badge-${cat.product_count > 0 ? 'green' : 'gray'} text-xs`}>
                         {cat.product_count} productos
@@ -163,14 +209,15 @@ function CategoryModal({ category, onClose }) {
                     </div>
 
                     <div className="flex items-center gap-1">
-                    <button
+                    <button type="button" aria-label={`Editar categoría ${cat.name}`}
                         onClick={() => setModal(cat)}
                         className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                         title="Editar"
                     >
                         <Pencil size={14} />
                     </button>
-                    <button
+                    <button type="button" disabled={toggleMutation.isPending}
+                        aria-label={`${cat.active ? "Desactivar" : "Activar"} categoría ${cat.name}`}
                         onClick={() => toggleMutation.mutate(cat.id)}
                         className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
                         cat.active
