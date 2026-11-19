@@ -82,9 +82,11 @@ const STATUS_OPTIONS = [
 ]
 
 const MANUAL_STATUS_OPTIONS = {
+  // La reserva pendiente solo puede liberarse si no existe pago iniciado.
   pending: ['cancelled'],
-  paid: ['preparing', 'cancelled'],
-  preparing: ['cancelled'],
+  // Un pedido pagado se devuelve/reembolsa por posventa, jamás por esta ruta.
+  paid: ['preparing'],
+  preparing: [],
   shipped: [],
   delivered: [],
   cancelled: [],
@@ -314,6 +316,10 @@ export default function WebOrdersPage() {
   })
   const handleStatusChange = (order, newStatus) => {
     if (statusMutation.isPending || pendingStatusRef.current || order.status === newStatus) return
+    if (newStatus === 'cancelled' && order.payment_method) {
+      toast.error('El pago ya fue iniciado. Consulta el proveedor antes de cancelar.')
+      return
+    }
     if (!(MANUAL_STATUS_OPTIONS[order.status] || []).includes(newStatus)) {
       toast.error('Este cambio debe realizarse mediante el pago confirmado o el módulo de despachos')
       return
@@ -460,10 +466,12 @@ export default function WebOrdersPage() {
                     <label className="visually-hidden" htmlFor={`order-status-${order.id}`}>Estado de {order.order_number}</label>
                     <select id={`order-status-${order.id}`} className="form-select form-select-sm admin-web-order-select"
                       value={order.status} onChange={event => handleStatusChange(order, event.target.value)}
-                      disabled={statusMutation.isPending || (MANUAL_STATUS_OPTIONS[order.status] || []).length === 0}
-                      title={(MANUAL_STATUS_OPTIONS[order.status] || []).length === 0
-                        ? 'Estado administrado por la pasarela de pagos o por despachos'
-                        : 'Selecciona una transición y confírmala'}>
+                      disabled={statusMutation.isPending || (MANUAL_STATUS_OPTIONS[order.status] || []).length === 0 || (order.status === 'pending' && Boolean(order.payment_method))}
+                      title={order.status === 'pending' && order.payment_method
+                        ? 'Pago iniciado: revisar la transacción con el proveedor'
+                        : (MANUAL_STATUS_OPTIONS[order.status] || []).length === 0
+                          ? 'La cancelación de ventas pagadas se gestiona por posventa y reembolsos'
+                          : 'Selecciona una transición y confírmala'}>
                       <option value={order.status}>{STATUS_META[order.status]?.label || order.status}</option>
                       {(MANUAL_STATUS_OPTIONS[order.status] || []).map(status =>
                         <option key={status} value={status}>{STATUS_META[status]?.label || status}</option>
