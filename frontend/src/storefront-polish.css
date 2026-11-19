@@ -1075,3 +1075,87 @@
 .store-home-hero-carousel.has-image::after {
   display: none;
 }
+
+/* Campaña secundaria administrable: imagen al lado del mensaje, HJVP sin imágenes. */
+.store-home-statement-media {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 42%;
+  height: clamp(230px, 32vw, 435px);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.store-home-statement-media.has-image {
+  background: #e7e6e4;
+  border: 1px solid #d9d8d5;
+}
+.store-home-statement-media.has-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(234 233 231 / 0.14), transparent 28%);
+  pointer-events: none;
+}
+.store-home-statement-media .store-home-statement-mark {
+  transform: rotate(-8deg);
+  font-size: clamp(130px, 18vw, 330px);
+  white-space: nowrap;
+}
+.store-home-statement-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: store-slide-fade 500ms ease both;
+}
+.store-home-statement-controls {
+  position: absolute;
+  z-index: 4;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgb(17 17 17 / 78%);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+.store-home-statement-controls button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: white;
+}
+.store-home-statement-controls button:hover {
+  background: rgb(255 255 255 / 17%);
+  border-radius: 50%;
+}
+@media(max-width: 767px) {
+  .store-home-statement {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .store-home-statement-media {
+    height: 260px;
+    flex: 0 0 auto;
+    margin-top: 18px;
+  }
+  .store-home-statement-media .store-home-statement-mark {
+    position: relative;
+    bottom: auto;
+    right: auto;
+    font-size: 170px;
+    opacity: .55;
+  }
+}
+@media(prefers-reduced-motion: reduce) {
+  .store-home-statement-image {
+    animation: none;
+  }
+}
