@@ -320,9 +320,14 @@ async def wompi_webhook(request: Request, db: Session = Depends(get_db)):
     if not verify_wompi_sig(event, request.headers.get("x-event-checksum", "")):
         raise HTTPException(status_code=401, detail="Firma Wompi inválida")
 
-    event_tx = event.get("data", {}).get("transaction", {})
-    if not isinstance(event_tx, dict) or not event_tx.get("id"):
+    data_block = event.get("data")
+    if not isinstance(data_block, dict):
+        raise HTTPException(status_code=400, detail="Datos de evento inválidos")
+    event_tx = data_block.get("transaction")
+    if not isinstance(event_tx, dict) or not isinstance(event_tx.get("id"), (str, int)):
         raise HTTPException(status_code=400, detail="Transacción inválida")
+    if isinstance(event_tx.get("id"), bool) or not str(event_tx["id"]).strip():
+        raise HTTPException(status_code=400, detail="ID de transacción inválido")
     try:
         tx = await get_wompi_transaction(str(event_tx["id"]))
     except (httpx.HTTPError, ValueError, KeyError):
@@ -395,13 +400,20 @@ async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db))
     except Exception:
         raise HTTPException(status_code=400, detail="Payload inválido")
 
-    # Sistecréditos envía: orderId, status, transactionId
-    order_id   = event.get("orderId") or event.get("order_id")
-    sc_status  = event.get("status", "").upper()
-    tx_id      = event.get("transactionId") or event.get("transaction_id")
-
-    if not order_id:
-        return {"status": "ignored"}
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="Evento inválido")
+    # Sistecréditos envía: orderId, status, transactionId.
+    order_id = event.get("orderId") or event.get("order_id")
+    raw_status = event.get("status")
+    tx_id = event.get("transactionId") or event.get("transaction_id")
+    if not isinstance(raw_status, str) or len(raw_status) > 40:
+        raise HTTPException(status_code=400, detail="Estado de evento inválido")
+    sc_status = raw_status.upper()
+    if not isinstance(order_id, str) or not (1 <= len(order_id) <= 50):
+        raise HTTPException(status_code=400, detail="Identificador de pedido inválido")
+    if tx_id is not None and (not isinstance(tx_id, (str, int)) or isinstance(tx_id, bool)
+                              or not (1 <= len(str(tx_id)) <= 180)):
+        raise HTTPException(status_code=400, detail="Referencia de transacción inválida")
 
     order = db.query(Order).filter(
         Order.order_number == order_id, Order.channel == OrderChannel.WEB,
@@ -457,13 +469,20 @@ async def addi_webhook(request: Request, db: Session = Depends(get_db)):
     except Exception:
         raise HTTPException(status_code=400, detail="Payload inválido")
 
-    # Addi envía: orderId, status, applicationId
-    order_id    = event.get("orderId") or event.get("order_id")
-    addi_status = event.get("status", "").upper()
-    app_id      = event.get("applicationId") or event.get("id")
-
-    if not order_id:
-        return {"status": "ignored"}
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="Evento inválido")
+    # Addi envía: orderId, status, applicationId.
+    order_id = event.get("orderId") or event.get("order_id")
+    raw_status = event.get("status")
+    app_id = event.get("applicationId") or event.get("id")
+    if not isinstance(raw_status, str) or len(raw_status) > 40:
+        raise HTTPException(status_code=400, detail="Estado de evento inválido")
+    addi_status = raw_status.upper()
+    if not isinstance(order_id, str) or not (1 <= len(order_id) <= 50):
+        raise HTTPException(status_code=400, detail="Identificador de pedido inválido")
+    if app_id is not None and (not isinstance(app_id, (str, int)) or isinstance(app_id, bool)
+                               or not (1 <= len(str(app_id)) <= 180)):
+        raise HTTPException(status_code=400, detail="Identificador de aplicación inválido")
 
     order = db.query(Order).filter(
         Order.order_number == order_id, Order.channel == OrderChannel.WEB,
