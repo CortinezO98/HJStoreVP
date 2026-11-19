@@ -69,8 +69,11 @@ function exportToCSV(data, filename) {
         .map((h) => {
             const val = row[h]
             if (val === null || val === undefined) return ''
-            const str = String(val)
-            return str.includes(',') || str.includes('"') || str.includes('\n')
+            // CSV/Excel formula injection protection for untrusted client fields.
+            const raw = String(val)
+            const str = /^[\\s]*[=+@-]/.test(raw) && !/^-?\\d+(?:[.,]\\d+)?$/.test(raw.trim())
+                ? `'${raw}` : raw
+            return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
             ? `"${str.replace(/"/g, '""')}"`
             : str
         })
@@ -124,6 +127,8 @@ export default function ReportsPage() {
     })
 
     const setFilter = (key, value) => {
+        setWebOrdersPage(1)
+        setPhysicalSalesPage(1)
         setFilters((prev) => ({ ...prev, [key]: value }))
     }
 
@@ -139,6 +144,8 @@ export default function ReportsPage() {
         queryFn: () => financialReportsApi.overview(reportParams).then((r) => r.data),
     })
     const [downloadingExcel, setDownloadingExcel] = useState(false)
+    const [webOrdersPage, setWebOrdersPage] = useState(1)
+    const [physicalSalesPage, setPhysicalSalesPage] = useState(1)
     const [downloadError, setDownloadError] = useState('')
 
     const downloadFullExcel = async () => {
@@ -361,6 +368,15 @@ export default function ReportsPage() {
         })),
         'ventas_fisicas'
         )
+
+    const reportPageSize = 8
+    const webPageCount = Math.max(1, Math.ceil(filteredWebOrders.length / reportPageSize))
+    const physicalPageCount = Math.max(1, Math.ceil(filteredPhysicalSales.length / reportPageSize))
+    const currentWebPage = Math.min(webOrdersPage, webPageCount)
+    const currentPhysicalPage = Math.min(physicalSalesPage, physicalPageCount)
+    const visibleWebOrders = filteredWebOrders.slice((currentWebPage - 1) * reportPageSize, currentWebPage * reportPageSize)
+    const visiblePhysicalSales = filteredPhysicalSales.slice((currentPhysicalPage - 1) * reportPageSize, currentPhysicalPage * reportPageSize)
+    const dateRangeInvalid = Boolean(filters.date_from && filters.date_to && filters.date_from > filters.date_to)
 
     const isLoading =
         loadingFinancial || loadingMonth || loadingWeb || loadingPhysical || loadingAccounting
@@ -666,6 +682,17 @@ export default function ReportsPage() {
                 ))}
                 </div>
             )}
+            {filteredWebOrders.length > reportPageSize && (
+                <nav className="admin-report-pager" aria-label="Páginas de pedidos web">
+                    <button type="button" className="btn btn-sm btn-outline-secondary"
+                        disabled={currentWebPage === 1}
+                        onClick={() => setWebOrdersPage((page) => Math.max(1, page - 1))}>Anterior</button>
+                    <span>Página {currentWebPage} de {webPageCount} · {filteredWebOrders.length} pedidos</span>
+                    <button type="button" className="btn btn-sm btn-outline-secondary"
+                        disabled={currentWebPage === webPageCount}
+                        onClick={() => setWebOrdersPage((page) => Math.min(webPageCount, page + 1))}>Siguiente</button>
+                </nav>
+            )}
             </div>
 
             <div className="card">
@@ -844,11 +871,12 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={downloadFullExcel}
+                onClick={exportOrders}
+                disabled={loadingWeb || dateRangeInvalid || filteredWebOrders.length === 0}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
-                Exportar pedidos web
+                Exportar pedidos web (CSV)
             </button>
 
             {loadingWeb ? (
@@ -861,7 +889,7 @@ export default function ReportsPage() {
                 <p className="text-sm text-gray-400">No hay pedidos web para este filtro</p>
             ) : (
                 <div className="space-y-3">
-                {filteredWebOrders.slice(0, 8).map((order) => (
+                {visibleWebOrders.map((order) => (
                     <div
                     key={order.id}
                     className="border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-4"
@@ -903,11 +931,12 @@ export default function ReportsPage() {
             </div>
 
             <button
-                onClick={downloadFullExcel}
+                onClick={exportPhysicalSales}
+                disabled={loadingPhysical || dateRangeInvalid || filteredPhysicalSales.length === 0}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
-                Exportar ventas físicas
+                Exportar ventas físicas (CSV)
             </button>
 
             {loadingPhysical ? (
@@ -920,7 +949,7 @@ export default function ReportsPage() {
                 <p className="text-sm text-gray-400">No hay ventas físicas para este filtro</p>
             ) : (
                 <div className="space-y-3">
-                {filteredPhysicalSales.slice(0, 8).map((sale) => (
+                {visiblePhysicalSales.map((sale) => (
                     <div
                     key={sale.id}
                     className="border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-4"
@@ -947,6 +976,17 @@ export default function ReportsPage() {
                     </div>
                 ))}
                 </div>
+            )}
+            {filteredPhysicalSales.length > reportPageSize && (
+                <nav className="admin-report-pager" aria-label="Páginas de ventas físicas">
+                    <button type="button" className="btn btn-sm btn-outline-secondary"
+                        disabled={currentPhysicalPage === 1}
+                        onClick={() => setPhysicalSalesPage((page) => Math.max(1, page - 1))}>Anterior</button>
+                    <span>Página {currentPhysicalPage} de {physicalPageCount} · {filteredPhysicalSales.length} ventas</span>
+                    <button type="button" className="btn btn-sm btn-outline-secondary"
+                        disabled={currentPhysicalPage === physicalPageCount}
+                        onClick={() => setPhysicalSalesPage((page) => Math.min(physicalPageCount, page + 1))}>Siguiente</button>
+                </nav>
             )}
             </div>
         </div>
