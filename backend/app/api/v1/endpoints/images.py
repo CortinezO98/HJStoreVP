@@ -55,7 +55,11 @@ def product_upload_dir() -> Path:
 
 
 def normalize_image(content: bytes) -> tuple[bytes, str]:
-    """Decodificar y re-guardar: elimina bytes extra y metadatos heredados."""
+    """Normalizar fotos a WEBP optimizado manteniendo detalle y transparencia.
+
+    Límite de decodificación y redimensionado seguro para no publicar originales
+    enormes. Los archivos existentes no se reprocesan ni se alteran.
+    """
     if not content or len(content) > MAX_SIZE_BYTES:
         raise HTTPException(status_code=413, detail="Archivo vacío o superior al límite permitido")
     try:
@@ -64,27 +68,22 @@ def normalize_image(content: bytes) -> tuple[bytes, str]:
                 raise HTTPException(status_code=415, detail="Formato de imagen no permitido")
             if inspection.width * inspection.height > MAX_IMAGE_PIXELS:
                 raise HTTPException(status_code=413, detail="Resolución de imagen demasiado alta")
-            image_format = inspection.format
             inspection.verify()
         with Image.open(io.BytesIO(content)) as original:
             original.seek(0)
             corrected = ImageOps.exif_transpose(original)
-            extension, pillow_format, _ = FORMATS[image_format]
-            if image_format == "JPEG":
-                corrected = corrected.convert("RGB")
-            elif image_format == "GIF":
-                # Fotos de catálogo estáticas; GIF animado se normaliza al primer frame.
-                corrected = corrected.convert("P", palette=Image.Palette.ADAPTIVE)
-            elif image_format == "PNG" and corrected.mode not in ("RGB", "RGBA", "P", "L", "LA"):
-                corrected = corrected.convert("RGBA")
-            elif image_format == "WEBP" and corrected.mode not in ("RGB", "RGBA"):
-                corrected = corrected.convert("RGBA")
+            # 2400 px protege detalle en pantallas HiDPI sin enviar enormes originales.
+            corrected.thumbnail((2400, 2400), Image.Resampling.LANCZOS)
+            has_alpha = corrected.mode in ("RGBA", "LA", "PA") or (
+                corrected.mode == "P" and "transparency" in corrected.info
+            )
+            corrected = corrected.convert("RGBA" if has_alpha else "RGB")
             buffer = io.BytesIO()
-            corrected.save(buffer, format=pillow_format)
+            corrected.save(buffer, format="WEBP", quality=88, method=5, exact=has_alpha)
             normalized = buffer.getvalue()
             if len(normalized) > MAX_SIZE_BYTES:
-                raise HTTPException(status_code=413, detail="Imagen normalizada supera el límite")
-            return normalized, extension
+                raise HTTPException(status_code=413, detail="Imagen optimizada supera el límite")
+            return normalized, "webp"
     except (UnidentifiedImageError, OSError, ValueError, SyntaxError, Image.DecompressionBombError):
         raise HTTPException(status_code=415, detail="El contenido no corresponde a una imagen válida")
 
