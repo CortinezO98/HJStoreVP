@@ -34,7 +34,7 @@ export default function ProductCard({ product, label }) {
       <div className="editorial-product-media">
         <Link to={`/producto/${product.slug}`} aria-label={`Ver ${product.name}`}>
           {image ? (
-            <img src={image} loading="lazy" decoding="async" alt={product.name} />
+            <img src={image} loading="lazy" decoding="async" fetchPriority="low" alt={product.name} />
           ) : (
             <span className="editorial-product-fallback store-product-placeholder">
               <span className="store-product-placeholder-mark" aria-hidden="true">HJ<span>VP</span></span>
