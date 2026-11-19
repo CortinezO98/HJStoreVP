@@ -60,8 +60,24 @@ export default function PaymentConfirmationPage() {
     if (reconciliation) refetch()
   }, [reconciliation, refetch])
 
-  const status = !orderNumber || isError ? 'error' : payment?.status === 'paid'
+  const confirmedStatuses = ['paid', 'preparing', 'shipped', 'delivered']
+  const status = !orderNumber || isError ? 'error' : confirmedStatuses.includes(payment?.status)
     ? 'paid' : payment?.status === 'cancelled' ? 'cancelled' : 'pending'
+
+  useEffect(() => {
+    // No reciclar la misma intención de compra cuando el proveedor ya
+    // confirmó o canceló este pedido. No borrar otras compras pendientes.
+    if (!orderNumber || (status !== 'paid' && status !== 'cancelled')) return
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('hjstore_checkout_idempotency_v1') || 'null')
+      if (saved?.order_number === orderNumber) {
+        sessionStorage.removeItem('hjstore_checkout_idempotency_v1')
+      }
+    } catch {
+      // Un borrador corrupto no debe afectar la visualización del pago.
+    }
+  }, [orderNumber, status])
+
   const config = STATES[status]
   const Icon = config.icon
 
