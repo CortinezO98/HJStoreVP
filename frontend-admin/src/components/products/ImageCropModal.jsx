@@ -70,15 +70,17 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
         imageMetrics.scaledWidth, imageMetrics.scaledHeight)
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
       let visible = 0
-      let min = 255, max = 0
+      let min = 255, max = 0, minAlpha = 255, maxAlpha = 0
       for (let i = 0; i < pixels.length; i += 64) {
+        minAlpha = Math.min(minAlpha, pixels[i + 3])
+        maxAlpha = Math.max(maxAlpha, pixels[i + 3])
         if (pixels[i + 3] > 12) {
           visible++
           min = Math.min(min, pixels[i], pixels[i + 1], pixels[i + 2])
           max = Math.max(max, pixels[i], pixels[i + 1], pixels[i + 2])
         }
       }
-      if (!visible || max - min < 5) {
+      if (!visible || (max - min < 5 && maxAlpha - minAlpha < 5)) {
         throw new Error('El recorte parece vacío o de un solo color. Revisa el encuadre.')
       }
       const blob = await new Promise((resolve, reject) =>
