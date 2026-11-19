@@ -6,7 +6,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -37,6 +37,11 @@ class ImageOut(BaseModel):
 
 class SetPrimaryRequest(BaseModel):
     image_id: int
+
+class ReorderProductImagesRequest(BaseModel):
+    """Orden completo: evita pérdidas, duplicados y asignaciones cruzadas."""
+    image_ids: list[int] = Field(min_length=1, max_length=100)
+
 
 
 def product_upload_dir() -> Path:
@@ -161,7 +166,33 @@ def get_product_images(product_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     return db.query(ProductImage).filter(
         ProductImage.product_id == product_id
-    ).order_by(ProductImage.sort_order).all()
+    ).order_by(ProductImage.sort_order, ProductImage.id).all()
+
+
+@router.patch("/{product_id}/images/order", response_model=List[ImageOut])
+def reorder_product_images(
+    product_id: int,
+    data: ReorderProductImagesRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    if len(set(data.image_ids)) != len(data.image_ids):
+        raise HTTPException(status_code=422, detail="La lista contiene imágenes repetidas")
+    # Serializa cambios simultáneos a la galería del mismo producto.
+    product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    images = db.query(ProductImage).filter(
+        ProductImage.product_id == product_id
+    ).order_by(ProductImage.sort_order, ProductImage.id).all()
+    current_ids = {image.id for image in images}
+    if current_ids != set(data.image_ids) or len(images) != len(data.image_ids):
+        raise HTTPException(status_code=409, detail="La galería cambió. Recarga las imágenes y vuelve a ordenar.")
+    by_id = {image.id: image for image in images}
+    for order, image_id in enumerate(data.image_ids):
+        by_id[image_id].sort_order = order
+    db.commit()
+    return [by_id[image_id] for image_id in data.image_ids]
 
 
 @router.patch("/{product_id}/images/primary", response_model=ImageOut)
