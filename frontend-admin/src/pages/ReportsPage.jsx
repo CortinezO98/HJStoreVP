@@ -177,10 +177,22 @@ export default function ReportsPage() {
 
     const { data: products = [] } = useQuery({
         queryKey: ['report-products'],
-        queryFn: () =>
-        productsApi
-            .list({ include_inactive: true, per_page: 200 })
-            .then((r) => r.data),
+        queryFn: async () => {
+            // El backend acepta máximo 100 referencias por página.
+            // Recuperar todas las páginas mantiene correctos los reportes por categoría.
+            const results = []
+            let page = 1
+            const perPage = 100
+            while (true) {
+                const { data } = await productsApi.list({
+                    include_inactive: true, page, per_page: perPage,
+                })
+                results.push(...data)
+                if (data.length < perPage) break
+                page += 1
+            }
+            return results
+        },
     })
 
     const { data: salesByMonth = [], isLoading: loadingMonth } = useQuery({
