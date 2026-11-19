@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
     Search,
@@ -263,6 +263,8 @@ export default function WebOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [statusConfirmation, setStatusConfirmation] = useState(null)
   const pendingStatusRef = useRef(false)
+  const confirmCancelRef = useRef(null)
+  const confirmActionRef = useRef(null)
 
   const { data: orders = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['web-orders-list', statusFilter],
@@ -323,6 +325,34 @@ export default function WebOrdersPage() {
     pendingStatusRef.current = true
     statusMutation.mutate({ id: statusConfirmation.id, status: statusConfirmation.status })
   }
+  useEffect(() => {
+    if (!statusConfirmation) return undefined
+    const previousFocus = document.activeElement
+    confirmCancelRef.current?.focus()
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' && !pendingStatusRef.current) {
+        event.preventDefault()
+        setStatusConfirmation(null)
+      }
+      if (event.key === 'Tab') {
+        const first = confirmCancelRef.current
+        const last = confirmActionRef.current
+        if (!first || !last) return
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previousFocus?.focus?.()
+    }
+  }, [statusConfirmation])
   const clearFilters = () => { setSearch(''); setStatusFilter(''); setSortBy('newest'); setPage(1) }
   const filterActive = Boolean(search || statusFilter || sortBy !== 'newest')
 
@@ -483,9 +513,9 @@ export default function WebOrdersPage() {
                 ' Esta operación cancela el pedido y puede liberar sus reservas de inventario.'}
             </p>
             <div className="admin-order-confirm-actions">
-              <button type="button" className="btn btn-outline-secondary"
+              <button ref={confirmCancelRef} type="button" className="btn btn-outline-secondary"
                 disabled={statusMutation.isPending} onClick={() => setStatusConfirmation(null)}>Volver</button>
-              <button type="button" className={statusConfirmation.status === 'cancelled' ? 'btn btn-danger' : 'btn btn-primary'}
+              <button ref={confirmActionRef} type="button" className={statusConfirmation.status === 'cancelled' ? 'btn btn-danger' : 'btn btn-primary'}
                 disabled={statusMutation.isPending} onClick={confirmStatusChange}>
                 {statusMutation.isPending ? 'Procesando…' : 'Confirmar cambio'}
               </button>
