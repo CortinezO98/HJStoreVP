@@ -12,13 +12,24 @@ Fecha: 2026-11-18. Implementación incremental en `main`.
 - Las imágenes con error de carga se excluyen en el cliente hasta que se actualice la página. El servidor valida URLs y limita a ocho entradas.
 - El autoplay se pausa al pasar el cursor o enfocar los controles, con la pestaña en segundo plano o si el sistema pide movimiento reducido.
 
-## 2. Carrusel de productos
+## 2. Carrusel de la campaña «Haz que tu estilo hable»
+
+- El superadministrador puede publicar hasta 8 imágenes independientes para esta segunda sección desde **Configuración de la tienda → Portada → Carrusel «Haz que tu estilo hable»**.
+- Las URLs ordenadas se guardan en `storefront_settings.settings_data.statement_images`; no hacen falta migraciones.
+- Avanza automáticamente cada **6 segundos** y tiene controles para anterior/siguiente. Sin imágenes configuradas, mantiene la composición HJVP original.
+- El carrusel promocional principal y el secundario son independientes y no comparten las imágenes ni el orden.
+
+## 3. Carrusel de productos
 
 - Al abrir `/producto/:slug`, la ficha usa `product.images` ordenadas por `sort_order`, o las imágenes de la variante seleccionada, o la imagen principal en ausencia de galería.
 - Si hay dos o más fotografías, rotan cada **5 segundos**; hay flechas y miniaturas para navegar manualmente. Si solo hay una, no aparece autoplay. Cuando cambias de variante, se reinicia desde la primera fotografía disponible.
 - Al pasar el cursor, enfocar los controles, ocultar la pestaña o solicitar movimiento reducido, se pausa el desplazamiento.
 - Cuando no hay ninguna fotografía disponible, se presenta una marca «HJVP · FOTOGRAFÍA NO DISPONIBLE».
 - Esto **no sube imágenes de productos**: la carga y administración de fotografías sigue en su módulo de catálogo. La galería usa imágenes reales existentes y no inventa productos.
+
+## Diseño de referencia adjuntado
+
+El usuario compartió el archivo `frontend-tienda-hjstorevp.zip` con una propuesta completa de diseño responsive, diferente a la estructura visual de la rama principal. La implementación de carruseles se añadió a la rama principal y se preparó por separado un ZIP de referencia con su diseño y ambos carruseles para revisión antes de sustituir la interfaz completa. **El ZIP no se integró automáticamente en GitHub main**, para no sobreescribir código de funcionalidades comerciales que todavía no se han comparado integralmente.
 
 ## Despliegue local
 
