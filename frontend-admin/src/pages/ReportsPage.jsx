@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import OperationalAnalytics from '../components/OperationalAnalytics'
 import CommerceOperationsPanel from '../components/CommerceOperationsPanel'
+import PaymentIntegrityPanel from '../components/PaymentIntegrityPanel'
 import {
     analyticsApi,
     financialReportsApi,
@@ -1019,6 +1020,7 @@ export default function ReportsPage() {
 
         <div className="admin-reports-section border-t border-slate-200 pt-8 mt-8">
           <CommerceOperationsPanel />
+          <PaymentIntegrityPanel />
         </div>
 
         {/* Nueva sección independiente; el reporte contable original se conserva íntegro. */}
