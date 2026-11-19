@@ -28,6 +28,35 @@ from app.services.credito import (
 
 router = APIRouter(prefix="/payments", tags=["Pagos"])
 
+# Los webhooks no transportan archivos. Limitar payload antes de decodificar
+# JSON/HMAC evita que un remitente anónimo consuma memoria sin límite.
+MAX_WEBHOOK_BODY_BYTES = 128 * 1024
+
+
+async def read_bounded_webhook(request: Request) -> bytes:
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            declared = int(content_length)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Content-Length inválido")
+        if declared < 0:
+            raise HTTPException(status_code=400, detail="Content-Length inválido")
+        if declared > MAX_WEBHOOK_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="Webhook demasiado grande")
+
+    size = 0
+    chunks = []
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > MAX_WEBHOOK_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="Webhook demasiado grande")
+        chunks.append(chunk)
+    if not size:
+        raise HTTPException(status_code=400, detail="Webhook vacío")
+    return b"".join(chunks)
+
+
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -278,9 +307,10 @@ def apply_wompi_transaction(db: Session, order: Order, tx: dict) -> dict:
 async def wompi_webhook(request: Request, db: Session = Depends(get_db)):
     if not wompi_enabled():
         raise HTTPException(status_code=503, detail="Wompi no configurado")
+    body = await read_bounded_webhook(request)
     try:
-        event = await request.json()
-    except (ValueError, json.JSONDecodeError):
+        event = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
         raise HTTPException(status_code=400, detail="Evento JSON inválido")
     if not isinstance(event, dict) or event.get("event") != "transaction.updated":
         return {"status": "ignored"}
@@ -350,8 +380,11 @@ async def reconcile_wompi(
 
 @router.post("/webhook/sistecreditos", status_code=status.HTTP_200_OK)
 async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db)):
-    body = await request.body()
-    payload_str = body.decode("utf-8")
+    body = await read_bounded_webhook(request)
+    try:
+        payload_str = body.decode("utf-8")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Codificación de webhook inválida")
     signature   = request.headers.get("x-signature", "")
 
     if not verify_sistecreditos_webhook(payload_str, signature):
@@ -409,8 +442,11 @@ async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db))
 
 @router.post("/webhook/addi", status_code=status.HTTP_200_OK)
 async def addi_webhook(request: Request, db: Session = Depends(get_db)):
-    body = await request.body()
-    payload_str = body.decode("utf-8")
+    body = await read_bounded_webhook(request)
+    try:
+        payload_str = body.decode("utf-8")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Codificación de webhook inválida")
     signature   = request.headers.get("x-addi-signature", "")
 
     if not verify_addi_webhook(payload_str, signature):
