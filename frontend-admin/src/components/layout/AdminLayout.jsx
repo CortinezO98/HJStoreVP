@@ -30,7 +30,7 @@ import {
   ChevronDown,
   Command,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuthStore } from '../../store'
 import toast from 'react-hot-toast'
 import AdminCommandPalette from './AdminCommandPalette'
@@ -221,6 +221,7 @@ export default function AdminLayout() {
   const { user, logout } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
+  const closeCommand = useCallback(() => setCommandOpen(false), [])
   const [navSearch, setNavSearch] = useState('')
   const [expandedGroups, setExpandedGroups] = useState(() => NAV_GROUPS.map(group => group.label))
   const navSearchRef = useRef(null)
@@ -367,7 +368,7 @@ export default function AdminLayout() {
           <div className="admin-main-inner"><Outlet /></div>
         </main>
       </div>
-      <AdminCommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={navItems}/>
+      <AdminCommandPalette open={commandOpen} onClose={closeCommand} items={navItems}/>
     </div>
   )
 }
