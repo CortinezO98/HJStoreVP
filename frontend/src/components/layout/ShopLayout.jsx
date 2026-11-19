@@ -1,14 +1,17 @@
 import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram, Heart } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { categoriesApi, storefrontSettingsApi, productsApi } from '../../services/api'
 import hjShield from '../../assets/hj-shield.svg'
+import MiniCartDrawer from '../shop/MiniCartDrawer'
 import { useCartStore, useAuthStore, useWishlistStore } from '../../store'
 
 
 export default function ShopLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
+  const closeCart = useCallback(() => setCartOpen(false), [])
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -40,6 +43,7 @@ export default function ShopLayout() {
   useEffect(() => {
     setMenuOpen(false)
     setSearchOpen(false)
+    setCartOpen(false)
   }, [location.pathname, location.search])
 
   useEffect(() => {
@@ -126,10 +130,13 @@ export default function ShopLayout() {
               <Heart size={19} strokeWidth={1.5} />
               {wishlistCount > 0 && <span>{wishlistCount > 99 ? '99+' : wishlistCount}</span>}
             </Link>
-            <Link to="/carrito" className="editorial-bag" aria-label={`Ver carrito, ${cartCount} productos`}>
+            <button type="button" className="editorial-bag"
+              onClick={() => { setCartOpen(true); setSearchOpen(false); setMenuOpen(false) }}
+              aria-controls="store-mini-cart" aria-expanded={cartOpen}
+              aria-label={`Abrir mini-carrito, ${cartCount} unidades`}>
               <ShoppingBag size={19} strokeWidth={1.5} />
               {cartCount > 0 && <span>{cartCount > 99 ? '99+' : cartCount}</span>}
-            </Link>
+            </button>
             <button type="button" className="editorial-menu-toggle lg:hidden"
               onClick={() => { setMenuOpen((v) => !v); setSearchOpen(false) }}
               aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-controls="store-mobile-menu" aria-expanded={menuOpen}>
@@ -267,6 +274,8 @@ export default function ShopLayout() {
             ))}
           </nav>
         </div>
-      </footer>    </div>
+      </footer>
+      <MiniCartDrawer open={cartOpen} onClose={closeCart}/>
+    </div>
   )
 }
