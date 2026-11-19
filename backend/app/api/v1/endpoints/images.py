@@ -191,6 +191,7 @@ def reorder_product_images(
     by_id = {image.id: image for image in images}
     for order, image_id in enumerate(data.image_ids):
         by_id[image_id].sort_order = order
+        by_id[image_id].is_primary = order == 0
     db.commit()
     return [by_id[image_id] for image_id in data.image_ids]
 
@@ -211,10 +212,14 @@ def set_primary_image(
     ).first()
     if not image:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
-    db.query(ProductImage).filter(
+    # La portada y la primera fotografía de la galería deben coincidir.
+    ordered = db.query(ProductImage).filter(
         ProductImage.product_id == product_id
-    ).update({"is_primary": False}, synchronize_session="fetch")
-    image.is_primary = True
+    ).order_by(ProductImage.sort_order, ProductImage.id).all()
+    ordered = [image] + [entry for entry in ordered if entry.id != image.id]
+    for position, entry in enumerate(ordered):
+        entry.sort_order = position
+        entry.is_primary = entry.id == image.id
     db.commit()
     db.refresh(image)
     return image
