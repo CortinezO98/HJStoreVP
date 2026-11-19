@@ -488,7 +488,9 @@ async def payment_status(
         "total_amount":   float(order.total_amount),
         "paid_at":        order.paid_at.isoformat() if order.paid_at else None,
         "payment_method": order.payment_method,
-        "payment_ref":    order.payment_ref,
+        # No exponer el marcador técnico de una iniciación Addi incompleta.
+        "payment_ref":    None if (order.payment_ref or "").startswith("INITIATING-") else order.payment_ref,
+        "payment_initiation_pending": (order.payment_ref or "").startswith("INITIATING-"),
     }
 
 
