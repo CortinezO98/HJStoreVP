@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { storefrontSettingsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../components/products/ImageCropModal'
+import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const GROUPS = [
   {
@@ -107,6 +108,7 @@ export default function StorefrontSettingsPage() {
     setUploading(entry.key)
     try {
       const { data } = await storefrontSettingsApi.upload(file)
+      await verifyUploadedImage(data.url)
       setForm((current) => ({
         ...current,
         [entry.key]: [...(current[entry.key] || []), data.url].slice(0, 8),
