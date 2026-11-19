@@ -2,14 +2,15 @@
 Endpoint de órdenes web (checkout de la tienda pública).
 Crea la orden, reserva el stock y espera confirmación de pago.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from pydantic import Field, model_validator
 from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime, timedelta
 from decimal import Decimal
-import random, string
+import random, string, hashlib, json, re
 
 from app.db.session import get_db
 from app.core.deps import get_current_user, require_admin
@@ -141,13 +142,68 @@ def reserve_stock(db: Session, product_id: int, qty: int):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+def _existing_order_response(db: Session, order: Order) -> WebOrderOut:
+    """Devuelve el pedido persistido sin volver a crear reservas."""
+    return WebOrderOut(
+        id=order.id, order_number=order.order_number, status=order.status.value,
+        subtotal=float(order.subtotal),
+        shipping_amount=float(order.shipping_amount or 0),
+        discount_amount=float(order.discount_amount or 0),
+        coupon_code=db.query(CouponRedemption.code_snapshot).filter_by(order_id=order.id).scalar(),
+        total_amount=float(order.total_amount),
+        shipping_address=order.shipping_address or {},
+        notes=order.notes,
+        items=[
+            OrderItemOut(
+                id=item.id, product_id=item.product_id, product_name=item.product_name,
+                product_sku=item.product_sku, qty=item.qty,
+                unit_price=float(item.unit_price),
+                line_total=float(item.unit_price * item.qty),
+            ) for item in order.items
+        ],
+        created_at=order.created_at,
+    )
+
+
+def _replayed_order(db: Session, *, customer_id: int, key: str, digest: str):
+    order = (db.query(Order).filter(
+        Order.customer_id == customer_id,
+        Order.channel == OrderChannel.WEB,
+        Order.idempotency_key == key,
+    ).options(joinedload(Order.items)).first())
+    if order is None:
+        return None
+    if order.idempotency_hash != digest:
+        raise HTTPException(
+            status_code=409,
+            detail="Clave idempotente reutilizada con un carrito o dirección diferente",
+        )
+    return _existing_order_response(db, order)
+
+
 @router.post("/web", response_model=WebOrderOut, status_code=status.HTTP_201_CREATED)
 def create_web_order(
     data: WebOrderCreate,
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Crea una orden desde la tienda web."""
+    """Crea una sola orden por clave; falta de clave es compatibilidad heredada."""
+    digest = None
+    if idempotency_key is not None:
+        if not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", idempotency_key):
+            raise HTTPException(status_code=400, detail="Idempotency-Key inválida")
+        canonical = json.dumps(
+            data.model_dump(mode="json"), ensure_ascii=False,
+            sort_keys=True, separators=(",", ":"),
+        )
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        replayed = _replayed_order(
+            db, customer_id=current_user.id, key=idempotency_key, digest=digest,
+        )
+        if replayed is not None:
+            return replayed
+
     if not data.items:
         raise HTTPException(status_code=400, detail="El pedido debe tener al menos un producto")
 
@@ -233,6 +289,8 @@ def create_web_order(
     order = Order(
         order_number=generate_order_number(),
         customer_id=current_user.id,
+        idempotency_key=idempotency_key,
+        idempotency_hash=digest,
         channel=OrderChannel.WEB,
         status=OrderStatus.PENDING,
         subtotal=subtotal,
@@ -249,7 +307,18 @@ def create_web_order(
         updated_at=datetime.utcnow(),
     )
     db.add(order)
-    db.flush()
+    try:
+        # UNIQUE fuerza un solo ganador antes de reservar inventario.
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        if idempotency_key is not None:
+            replayed = _replayed_order(
+                db, customer_id=current_user.id, key=idempotency_key, digest=digest,
+            )
+            if replayed is not None:
+                return replayed
+        raise
     if coupon is not None:
         db.add(CouponRedemption(
             coupon_id=coupon.id, order_id=order.id, customer_id=current_user.id,
