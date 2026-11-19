@@ -16,6 +16,25 @@ import { useCartStore } from '../../store'
 import { apiClient } from '../../services/api'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
+const CHECKOUT_KEY_STORAGE = 'hjstore_checkout_idempotency_v1'
+
+// Mantener la misma clave en un reintento exacto, incluso tras recargar.
+// Cambios al carrito, dirección, cupón o tarifa generan una compra distinta.
+function checkoutIdempotencyKey(payload) {
+  const fingerprint = JSON.stringify(payload)
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_KEY_STORAGE) || 'null')
+    if (saved?.fingerprint === fingerprint &&
+        /^[a-zA-Z0-9_-]{16,80}$/.test(saved?.key || '')) {
+      return saved.key
+    }
+  } catch {
+    // Registro anterior incompleto: se sustituirá.
+  }
+  const key = crypto.randomUUID()
+  sessionStorage.setItem(CHECKOUT_KEY_STORAGE, JSON.stringify({ key, fingerprint }))
+  return key
+}
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', {
@@ -275,6 +294,7 @@ export default function CheckoutPage() {
                     method: selectedMethod,
                   })
                   clearCart()
+                  sessionStorage.removeItem(CHECKOUT_KEY_STORAGE)
                   setStep('confirmed')
                 } catch {
                   toast.error('Error al confirmar pago demo')
@@ -396,7 +416,10 @@ export default function CheckoutPage() {
       // no reservar nuevamente el stock ni crear órdenes duplicadas.
       let order = createdOrder
       if (!order) {
-        const { data } = await apiClient.post('/orders/web', orderPayload)
+        const idempotencyKey = checkoutIdempotencyKey(orderPayload)
+        const { data } = await apiClient.post('/orders/web', orderPayload, {
+          headers: { 'Idempotency-Key': idempotencyKey },
+        })
         order = data
         setCreatedOrder(order)
       }
