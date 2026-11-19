@@ -19,6 +19,7 @@ import {
 import { inventoryApi, locationsApi, productsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import InventoryAuditPanel from '../components/InventoryAuditPanel'
+import { useAuthStore } from '../store'
 
 function formatNumber(n) {
   return new Intl.NumberFormat('es-CO').format(Number(n || 0))
@@ -398,6 +399,8 @@ function TransferModal({ products, locations, onClose }) {
 
 export default function InventoryPage() {
   const queryClient = useQueryClient()
+  const userRole = useAuthStore((state) => state.user?.role)
+  const isAdmin = userRole === 'super_admin' || userRole === 'admin'
   const [search, setSearch] = useState('')
   const [stockFilter, setStockFilter] = useState('all')
   const [activeFilter, setActiveFilter] = useState('all')
@@ -411,6 +414,7 @@ export default function InventoryPage() {
   const [matrixPage, setMatrixPage] = useState(1)
   const { data: matrix, isLoading: matrixLoading, isError: matrixError } = useQuery({
     queryKey: ['inventory-omnichannel-overview', matrixSearch, matrixPage],
+    enabled: isAdmin,
     queryFn: () => inventoryApi.overview({
       search: matrixSearch || undefined,
       page: matrixPage,
@@ -419,13 +423,13 @@ export default function InventoryPage() {
   })
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
-    queryKey: ['inventory-products'],
+    queryKey: ['inventory-products', userRole],
     queryFn: async () => {
       // El backend limita las páginas a 100 elementos; recorrerlas evita listados incompletos.
       const all = []
       let page = 1
       while (true) {
-        const { data } = await productsApi.list({ include_inactive: true, page, per_page: 100 })
+        const { data } = await productsApi.list({ include_inactive: isAdmin, page, per_page: 100 })
         all.push(...data)
         if (data.length < 100) break
         page += 1
@@ -441,6 +445,7 @@ export default function InventoryPage() {
 
   const { data: lowStock = [], isLoading: loadingLowStock } = useQuery({
     queryKey: ['inventory-low-stock'],
+    enabled: isAdmin,
     queryFn: () => inventoryApi.lowStock().then((r) => r.data),
   })
 
@@ -504,18 +509,20 @@ export default function InventoryPage() {
         <div>
           <p className="admin-page-kicker">Operación omnicanal</p>
           <h1 className="admin-page-heading">Inventario</h1>
-          <p className="admin-page-description">Consulta existencias, detecta alertas y administra entradas y transferencias sin salir del módulo.</p>
+          <p className="admin-page-description">{isAdmin
+            ? 'Consulta existencias, detecta alertas y administra entradas y transferencias sin salir del módulo.'
+            : 'Consulta el catálogo y el detalle de existencias de tu punto físico.'}</p>
         </div>
         <div className="d-flex flex-wrap gap-2">
           <button type="button" onClick={refreshAll} className="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
             <RefreshCw size={16}/> Actualizar
           </button>
-          <button type="button" onClick={() => setShowReplenish(true)} className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
+          {isAdmin && <button type="button" onClick={() => setShowReplenish(true)} className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
             <PackagePlus size={16}/> Ingreso de mercancía
-          </button>
-          <button type="button" onClick={() => setShowTransfer(true)} className="btn btn-primary d-inline-flex align-items-center gap-2">
+          </button>}
+          {isAdmin && <button type="button" onClick={() => setShowTransfer(true)} className="btn btn-primary d-inline-flex align-items-center gap-2">
             <ArrowRightLeft size={16}/> Transferir stock
-          </button>
+          </button>}
         </div>
       </header>
       <div className="row g-3" aria-label="Indicadores de inventario">
@@ -523,14 +530,14 @@ export default function InventoryPage() {
           { label: 'Productos monitoreados', value: formatNumber(products.length) },
           { label: 'Puntos físicos', value: formatNumber(physicalLocations.length) },
           { label: 'Canal web', value: webLocation?.name || 'No configurado' },
-          { label: 'Alertas de stock', value: formatNumber(lowStock.length) },
+          ...(isAdmin ? [{ label: 'Alertas de stock', value: formatNumber(lowStock.length) }] : []),
         ].map(item => <div key={item.label} className="col-12 col-sm-6 col-xl-3">
           <div className="admin-catalog-stat"><span>{item.label}</span><strong className="admin-inventory-stat-value">{item.value}</strong></div>
         </div>)}
       </div>
 
       {/* Matriz omnicanal — datos agregados directamente desde la BD. */}
-      <section className="card" aria-label="Matriz omnicanal de existencias">
+      {isAdmin && <section className="card" aria-label="Matriz omnicanal de existencias">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="font-bold text-gray-900">Existencias por sede y disponibilidad web</h2>
@@ -624,12 +631,12 @@ export default function InventoryPage() {
             </p>
           </>
         )}
-      </section>
+      </section>}
 
-      <InventoryAuditPanel locations={locations} />
+      {isAdmin && <InventoryAuditPanel locations={locations} />}
 
       {/* Alertas */}
-      <div className="card">
+      {isAdmin && <div className="card">
         <div className="flex items-center gap-2 mb-5">
           <AlertTriangle size={18} className="text-amber-600" />
           <div>
@@ -674,7 +681,7 @@ export default function InventoryPage() {
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Visión general y filtros — no alteran operaciones ni existencias. */}
       <section className="admin-catalog-filter card" aria-label="Filtros de inventario">
