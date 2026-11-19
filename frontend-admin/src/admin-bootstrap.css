@@ -742,3 +742,95 @@
   outline: 2px solid #5551d8;
   outline-offset: 2px;
 }
+
+/* Etapa 2 — tablas administrativas y estados coherentes. */
+.admin-app-shell .admin-table-feedback-cell {
+  padding: 44px 20px !important;
+  background: #fff;
+  border-bottom: 0;
+}
+.admin-app-shell .admin-table-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 410px;
+  margin: auto;
+  text-align: center;
+  color: #667085;
+}
+.admin-app-shell .admin-table-feedback svg { color: #75829a; }
+.admin-app-shell .admin-table-feedback[role="alert"] svg { color: #b45309; }
+.admin-app-shell .admin-table-feedback strong {
+  color: #253249;
+  font-weight: 800;
+  font-size: 14px;
+}
+.admin-app-shell .admin-table-feedback p {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0 0 5px;
+}
+.admin-app-shell .admin-table-feedback button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+/* Horizontal scroll maintains full read-only and action columns on mobile. */
+.admin-app-shell .table-responsive {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.admin-app-shell .admin-catalog-table,
+.admin-app-shell .admin-inventory-table,
+.admin-app-shell .admin-pos-table,
+.admin-app-shell .admin-web-orders-table {
+  min-width: 860px;
+  margin-bottom: 0;
+}
+.admin-app-shell .admin-catalog-table thead th,
+.admin-app-shell .admin-inventory-table thead th,
+.admin-app-shell .admin-pos-table thead th,
+.admin-app-shell .admin-web-orders-table thead th {
+  background: #f8fafc;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .015em;
+  border-bottom: 1px solid #e7ebf3;
+  vertical-align: middle;
+}
+.admin-app-shell .admin-catalog-table tbody tr:hover,
+.admin-app-shell .admin-inventory-table tbody tr:hover,
+.admin-app-shell .admin-pos-table tbody tr:hover,
+.admin-app-shell .admin-web-orders-table tbody tr:hover {
+  background: #f9faff;
+}
+.admin-app-shell .admin-catalog-table :is(button,a):focus-visible,
+.admin-app-shell .admin-inventory-table :is(button,a):focus-visible,
+.admin-app-shell .admin-pos-table :is(button,a):focus-visible,
+.admin-app-shell .admin-web-orders-table :is(button,a):focus-visible {
+  outline: 2px solid #6158d8;
+  outline-offset: 3px;
+}
+.admin-app-shell .admin-catalog-page .card,
+.admin-app-shell .admin-inventory-page .card {
+  min-width: 0;
+}
+@media (max-width: 639px) {
+  .admin-app-shell .admin-table-feedback-cell { padding: 32px 15px !important; }
+  .admin-app-shell .table-responsive::after {
+    content: 'Desliza horizontalmente para ver todas las columnas';
+    display: block;
+    color: #798397;
+    background: #fafbfd;
+    border-top: 1px solid #edf0f5;
+    padding: 7px 12px;
+    text-align: right;
+    font-size: 10px;
+  }
+}
