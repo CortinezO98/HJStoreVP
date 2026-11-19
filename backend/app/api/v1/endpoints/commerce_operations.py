@@ -288,7 +288,8 @@ async def verify_wompi_order_read_only(
     )
     status_conflict = (
         (provider_status == "APPROVED" and not locally_paid) or
-        (provider_status in ("DECLINED", "ERROR", "VOIDED") and locally_paid)
+        (provider_status in ("DECLINED", "ERROR", "VOIDED") and
+         order.status != OrderStatus.CANCELLED)
     )
     if not all(checks.values()):
         finding = "identity_mismatch"
