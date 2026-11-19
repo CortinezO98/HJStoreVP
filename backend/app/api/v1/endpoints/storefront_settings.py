@@ -29,6 +29,7 @@ DEFAULTS = {
     "hero_button": "EXPLORAR COLECCIÓN",
     "hero_image_url": "",
     "hero_images": [],
+    "statement_images": [],
     "logo_url": "",
     "contact_email": "",
     "contact_phone": "",
@@ -53,6 +54,7 @@ class SettingsPayload(BaseModel):
     hero_button: str = Field(max_length=60)
     hero_image_url: str = Field(max_length=500)
     hero_images: list[str] = Field(default_factory=list, max_length=8)
+    statement_images: list[str] = Field(default_factory=list, max_length=8)
     logo_url: str = Field(max_length=500)
     contact_email: str = Field(max_length=254)
     contact_phone: str = Field(max_length=50)
@@ -66,7 +68,7 @@ class SettingsPayload(BaseModel):
     privacy_policy: str = Field(max_length=12000)
     terms_policy: str = Field(max_length=12000)
 
-    @field_validator("hero_images")
+    @field_validator("hero_images", "statement_images")
     @classmethod
     def validate_hero_images(cls, images: list[str]) -> list[str]:
         unique: list[str] = []
