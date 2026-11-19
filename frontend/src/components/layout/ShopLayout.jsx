@@ -2,7 +2,7 @@ import { Outlet, Link, NavLink, useNavigate, useLocation } from 'react-router-do
 import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram, Heart } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { categoriesApi, storefrontSettingsApi } from '../../services/api'
+import { categoriesApi, storefrontSettingsApi, productsApi } from '../../services/api'
 import hjShield from '../../assets/hj-shield.svg'
 import { useCartStore, useAuthStore, useWishlistStore } from '../../store'
 
@@ -11,6 +11,8 @@ export default function ShopLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [highlightedSuggestion, setHighlightedSuggestion] = useState(-1)
   const searchRef = useRef(null)
   const cartCount = useCartStore((s) => s.count())
   const wishlistCount = useWishlistStore((s) => s.items.length)
@@ -52,12 +54,35 @@ export default function ShopLayout() {
     return () => document.removeEventListener('keydown', onEscape)
   }, [menuOpen, searchOpen])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchText.trim()), 280)
+    return () => window.clearTimeout(timer)
+  }, [searchText])
+
+  const { data: searchResults = [], isFetching: searchBusy } = useQuery({
+    queryKey: ['store-header-search', debouncedSearch],
+    queryFn: () => productsApi.list({ search: debouncedSearch, per_page: 6, page: 1 })
+      .then((response) => response.data),
+    enabled: searchOpen && debouncedSearch.length >= 2,
+    staleTime: 30000,
+  })
+
+  const suggestedProducts = Array.isArray(searchResults) ? searchResults : []
+  const displayedSuggestions = debouncedSearch.length >= 2 ? suggestedProducts : []
+  const selectSuggestion = (slug) => {
+    setSearchOpen(false)
+    setSearchText('')
+    setHighlightedSuggestion(-1)
+    navigate(`/producto/${encodeURIComponent(slug)}`)
+  }
+
   const handleSearch = (event) => {
     event.preventDefault()
     const query = searchText.trim()
     if (!query) return
     navigate(`/catalogo?q=${encodeURIComponent(query)}`)
     setSearchText('')
+    setHighlightedSuggestion(-1)
     setSearchOpen(false)
     setMenuOpen(false)
   }
@@ -113,12 +138,68 @@ export default function ShopLayout() {
           </div>
         </div>
         {searchOpen && (
-          <form id="store-search-panel" className="editorial-search" role="search" onSubmit={handleSearch}>
-            <Search size={19} strokeWidth={1.5} />
-            <input ref={searchRef} value={searchText} onChange={(e) => setSearchText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setSearchOpen(false) }}
-              placeholder="¿Qué estás buscando?" aria-label="Buscar productos" type="search" />
-            <button type="submit">BUSCAR <ArrowRight size={15} /></button>
-          </form>
+          <div id="store-search-panel" className="store-search-shell">
+            <form className="editorial-search" role="search" onSubmit={handleSearch}>
+              <Search size={19} strokeWidth={1.5} aria-hidden="true"/>
+              <input ref={searchRef} value={searchText}
+                onChange={(event) => { setSearchText(event.target.value); setHighlightedSuggestion(-1) }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setSearchOpen(false)
+                  if (event.key === 'ArrowDown' && displayedSuggestions.length) {
+                    event.preventDefault()
+                    setHighlightedSuggestion((index) => Math.min(displayedSuggestions.length - 1, index + 1))
+                  }
+                  if (event.key === 'ArrowUp' && displayedSuggestions.length) {
+                    event.preventDefault()
+                    setHighlightedSuggestion((index) => Math.max(-1, index - 1))
+                  }
+                  if (event.key === 'Enter' && highlightedSuggestion >= 0 && displayedSuggestions[highlightedSuggestion]) {
+                    event.preventDefault()
+                    selectSuggestion(displayedSuggestions[highlightedSuggestion].slug)
+                  }
+                }}
+                placeholder="Busca por nombre o referencia" aria-label="Buscar productos"
+                aria-autocomplete="list" aria-controls="store-search-suggestions"
+                aria-expanded={displayedSuggestions.length > 0}
+                aria-activedescendant={highlightedSuggestion >= 0 ? `store-search-option-${highlightedSuggestion}` : undefined}
+                role="combobox" autoComplete="off" type="search"/>
+              <button type="submit" disabled={!searchText.trim()}>VER RESULTADOS <ArrowRight size={15}/></button>
+            </form>
+            <div id="store-search-suggestions" className="store-search-suggestions" role="listbox"
+              aria-label="Sugerencias de productos">
+              {debouncedSearch.length < 2 ? (
+                <p className="store-search-assist">Escribe al menos dos letras para encontrar productos.</p>
+              ) : searchBusy ? (
+                <p className="store-search-assist" role="status">Buscando productos...</p>
+              ) : displayedSuggestions.length ? (
+                displayedSuggestions.map((item, index) => (
+                  <button id={`store-search-option-${index}`} key={item.id}
+                    type="button" role="option" aria-selected={highlightedSuggestion === index}
+                    className={`store-search-suggestion ${highlightedSuggestion === index ? 'is-active' : ''}`}
+                    onMouseEnter={() => setHighlightedSuggestion(index)}
+                    onClick={() => selectSuggestion(item.slug)}>
+                    <span className="store-search-suggestion-title">{item.name}</span>
+                    <span className="store-search-suggestion-meta">
+                      {item.category_name || 'Catálogo'} · {new Intl.NumberFormat('es-CO',
+                        { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(item.sale_price || 0))}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p className="store-search-assist">Sin coincidencias. Puedes buscar en todo el catálogo.</p>
+              )}
+              {debouncedSearch.length >= 2 && (
+                <button type="button" className="store-search-all"
+                  onClick={() => {
+                    navigate(`/catalogo?q=${encodeURIComponent(searchText.trim())}`)
+                    setSearchOpen(false)
+                    setSearchText('')
+                  }}>
+                  VER TODOS LOS RESULTADOS <ArrowRight size={14}/>
+                </button>
+              )}
+            </div>
+          </div>
         )}
         {menuOpen && (
           <nav id="store-mobile-menu" className="editorial-mobile-nav" aria-label="Menú móvil">
