@@ -55,6 +55,11 @@ export default function HomePage() {
     .filter((url) => typeof url === 'string' && url.trim() && !failedHeroImages.includes(url))
   const carousel = useAutoCarousel(heroImages.length, 6000, heroImages.join('|'))
   const activeHeroImage = heroImages[carousel.index]
+  const [failedStatementImages, setFailedStatementImages] = useState([])
+  const statementImages = (Array.isArray(storeSettings.statement_images) ? storeSettings.statement_images : [])
+    .filter((url) => typeof url === 'string' && url.trim() && !failedStatementImages.includes(url))
+  const statementCarousel = useAutoCarousel(statementImages.length, 6000, statementImages.join('|'))
+  const activeStatementImage = statementImages[statementCarousel.index]
   const showcase = newest.slice(0, 8)
   const featuredShowcase = featured.slice(0, 4)
 
@@ -148,7 +153,34 @@ export default function HomePage() {
             DESCUBRIR PRODUCTOS <ArrowUpRight size={18} aria-hidden="true" />
           </Link>
         </div>
-        <div className="store-home-statement-mark" aria-hidden="true">HJ<span>VP</span></div>
+        <div className={`store-home-statement-media ${activeStatementImage ? 'has-image' : ''}`}
+          onMouseEnter={() => statementCarousel.setPaused(true)}
+          onMouseLeave={() => statementCarousel.setPaused(false)}
+          onFocusCapture={() => statementCarousel.setPaused(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) statementCarousel.setPaused(false)
+          }}>
+          {activeStatementImage ? (
+            <img className="store-home-statement-image" key={activeStatementImage}
+              src={sourceUrl(activeStatementImage)}
+              alt={`Imagen de campaña de estilo ${statementCarousel.index + 1}`}
+              decoding="async"
+              onError={() => setFailedStatementImages((current) =>
+                current.includes(activeStatementImage) ? current : [...current, activeStatementImage])}
+            />
+          ) : (
+            <div className="store-home-statement-mark" aria-hidden="true">HJ<span>VP</span></div>
+          )}
+          {statementImages.length > 1 && (
+            <div className="store-home-statement-controls" aria-label="Carrusel de campaña">
+              <button type="button" aria-label="Imagen anterior"
+                onClick={() => statementCarousel.goTo(statementCarousel.index - 1)}><ChevronLeft size={18}/></button>
+              <span aria-live="off">{statementCarousel.index + 1} / {statementImages.length}</span>
+              <button type="button" aria-label="Imagen siguiente"
+                onClick={() => statementCarousel.goTo(statementCarousel.index + 1)}><ChevronRight size={18}/></button>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="editorial-products-section">
