@@ -388,27 +388,41 @@ def physical_sale_integrity(
     Solo se comparan movimientos asociados al mismo pedido, producto y sede.
     No compara saldos actuales, que incluyen operaciones posteriores.
     """
-    stock_discounts = (
-        db.query(func.coalesce(func.sum(StockMovement.qty), 0))
-        .filter(
-            StockMovement.reference_id == Order.id,
-            StockMovement.product_id == OrderItem.product_id,
-            StockMovement.location_id == Order.location_id,
-            StockMovement.movement_type == StockMovementType.OUT_SALE,
+    # Agrupar movimientos una sola vez: evita subconsultas correlacionadas
+    # por cada línea de venta y funciona sin índices adicionales ni migración.
+    movement_totals = (
+        db.query(
+            StockMovement.reference_id.label("order_id"),
+            StockMovement.product_id.label("product_id"),
+            StockMovement.location_id.label("location_id"),
+            func.sum(StockMovement.qty).label("movement_qty"),
         )
-        .correlate(Order, OrderItem)
-        .scalar_subquery()
+        .filter(StockMovement.movement_type == StockMovementType.OUT_SALE)
+        .group_by(
+            StockMovement.reference_id, StockMovement.product_id,
+            StockMovement.location_id,
+        )
+        .subquery()
     )
+    movement_qty = func.coalesce(movement_totals.c.movement_qty, 0)
     source = (
-        db.query(OrderItem, Order, Product, Location, stock_discounts.label("movement_qty"))
+        db.query(OrderItem, Order, Product, Location, movement_qty.label("movement_qty"))
         .join(Order, Order.id == OrderItem.order_id)
         .outerjoin(Product, Product.id == OrderItem.product_id)
         .outerjoin(Location, Location.id == Order.location_id)
+        .outerjoin(
+            movement_totals,
+            and_(
+                movement_totals.c.order_id == Order.id,
+                movement_totals.c.product_id == OrderItem.product_id,
+                movement_totals.c.location_id == Order.location_id,
+            ),
+        )
         .filter(
             Order.channel == OrderChannel.PHYSICAL,
             or_(
                 Order.location_id.is_(None),
-                stock_discounts != -OrderItem.qty,
+                movement_qty != -OrderItem.qty,
             ),
         )
     )
