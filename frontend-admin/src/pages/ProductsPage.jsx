@@ -23,6 +23,7 @@ import { categoriesApi, productsApi, apiClient } from '../services/api'
 import toast from 'react-hot-toast'
 import ProductVariantsManager from '../components/products/ProductVariantsManager'
 import ImageCropModal from '../components/products/ImageCropModal'
+import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -122,11 +123,19 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
 
     setUploading(true)
     try {
-      await apiClient.post(`/products/${product.id}/images`, formData, {
+      const response = await apiClient.post(`/products/${product.id}/images`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-
-      toast.success('Imágenes subidas correctamente')
+      try {
+        await Promise.all((response.data || []).map((entry) => verifyUploadedImage(entry.url)))
+      } catch (validationError) {
+        queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
+        onUploaded?.()
+        toast.error(validationError.message)
+        setFiles([])
+        return
+      }
+      toast.success('Imágenes subidas y visualización verificada')
       setFiles([])
       queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
