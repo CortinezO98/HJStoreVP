@@ -22,6 +22,7 @@ import {
 import { categoriesApi, productsApi, apiClient } from '../services/api'
 import toast from 'react-hot-toast'
 import ProductVariantsManager from '../components/products/ProductVariantsManager'
+import ImageCropModal from '../components/products/ImageCropModal'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -83,6 +84,7 @@ function ImageAltEditor({ image, productId, onSaved }) {
 function ProductImagesManager({ product, onClose, onUploaded }) {
   const queryClient = useQueryClient()
   const [files, setFiles] = useState([])
+  const [cropQueue, setCropQueue] = useState([])
   const [uploading, setUploading] = useState(false)
 
   const { data: images = [], isLoading } = useQuery({
@@ -90,6 +92,24 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
     queryFn: () => apiClient.get(`/products/${product.id}/images`).then((r) => r.data),
     enabled: !!product?.id,
   })
+
+  const prepareFiles = (selected) => {
+    const candidates = Array.from(selected || [])
+    if (!candidates.length) return
+    if (candidates.length + files.length + cropQueue.length > 10) {
+      toast.error('Prepara máximo 10 fotografías por lote')
+      return
+    }
+    if (candidates.some((item) => !['image/jpeg', 'image/png', 'image/webp'].includes(item.type))) {
+      toast.error('Usa fotografías JPG, PNG o WEBP')
+      return
+    }
+    setCropQueue((current) => [...current, ...candidates])
+  }
+  const confirmCrop = async (file) => {
+    setFiles((current) => [...current, file])
+    setCropQueue((current) => current.slice(1))
+  }
 
   const handleUpload = async () => {
     if (!files.length) {
@@ -193,20 +213,30 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className="form-control"
-                onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                onChange={(e) => { prepareFiles(e.target.files); e.target.value = '' }}
               />
             </div>
 
             <button
               onClick={handleUpload}
-              disabled={uploading}
+              disabled={uploading || cropQueue.length > 0 || files.length === 0}
               className="btn-primary flex items-center gap-2"
             >
               {uploading ? 'Subiendo...' : <><ImageIcon size={16} /> Subir imágenes</>}
             </button>
           </div>
+          {files.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2 items-center text-sm text-gray-600">
+              <span>{files.length} fotografías encuadradas listas para subir</span>
+              <button type="button" className="btn btn-outline-secondary btn-sm"
+                onClick={() => setFiles([])} disabled={uploading}>Descartar preparadas</button>
+            </div>
+          )}
+          {cropQueue.length > 0 && <p className="text-sm text-gray-600 mt-2">
+            Ajustando fotografía 1 de {cropQueue.length} pendientes.
+          </p>}
         </div>
 
         <div className="p-6">
@@ -288,6 +318,11 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
           )}
         </div>
       </div>
+      {cropQueue[0] && <ImageCropModal key={cropQueue[0].name + cropQueue[0].lastModified}
+        file={cropQueue[0]} ratio={1} width={1800}
+        title="Encuadrar fotografía del producto"
+        onCancel={() => setCropQueue((current) => current.slice(1))}
+        onConfirm={confirmCrop}/>}
     </div>
   )
 }
