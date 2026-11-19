@@ -15,6 +15,7 @@ const kinds = [
   { id: 'alerts', label: 'Alertas por sede', icon: AlertTriangle },
   { id: 'movements', label: 'Movimientos', icon: ClipboardList },
   { id: 'anomalies', label: 'Inconsistencias', icon: ShieldAlert },
+  { id: 'reservations', label: 'Conciliación de reservas web', icon: ClipboardList },
 ]
 
 export default function InventoryAuditPanel({ locations }) {
@@ -38,6 +39,7 @@ export default function InventoryAuditPanel({ locations }) {
         ...common, movement_type: movementType || undefined,
         date_from: dateFrom || undefined, date_to: dateTo || undefined,
       })).data
+      if (tab === 'reservations') return (await inventoryApi.reservationIntegrity(common)).data
       return (await inventoryApi.anomalies(common)).data
     },
     staleTime: 15000,
@@ -128,9 +130,11 @@ export default function InventoryAuditPanel({ locations }) {
       {query.isLoading ? (
         <p className="text-sm text-gray-500">Cargando registros...</p>
       ) : query.isError ? (
-        <p role="alert" className="text-sm text-red-700">
-          No fue posible consultar el inventario. Revisa los filtros o los registros del backend.
-        </p>
+        <div role="alert" className="text-sm text-red-700">
+          No fue posible consultar la auditoría. Revisa los filtros o los registros del backend.
+          <button type="button" className="btn btn-outline-secondary btn-sm ms-2"
+            onClick={() => query.refetch()}>Reintentar</button>
+        </div>
       ) : (
         <>
           <p className="text-sm text-gray-600 mb-3">
@@ -151,6 +155,11 @@ export default function InventoryAuditPanel({ locations }) {
                     <th className="p-2 text-right">Cambio</th><th className="p-2 text-right">Antes → Después</th>
                     <th className="p-2">Responsable / referencia</th>
                   </tr>
+                ) : tab === 'reservations' ? (
+                  <tr className="border-b text-left text-gray-600">
+                    <th className="p-2">Pedido / estado</th><th className="p-2">Producto / sede</th>
+                    <th className="p-2 text-right">Reservado / pedido</th><th className="p-2">Diferencias</th>
+                  </tr>
                 ) : (
                   <tr className="border-b text-left text-gray-600">
                     <th className="p-2">Producto / SKU</th><th className="p-2">Sede</th>
@@ -161,7 +170,8 @@ export default function InventoryAuditPanel({ locations }) {
               <tbody>
                 {items.map((item) => (
                   <tr key={tab === 'movements' ? item.id
-                    : `${item.product_id}-${item.location_id}-${item.kind || 'alert'}`}
+                    : tab === 'reservations' ? item.reservation_id
+                      : `${item.product_id}-${item.location_id}-${item.kind || 'alert'}`}
                     className="border-b border-gray-100 align-top">
                     {tab === 'alerts' ? (
                       <>
@@ -189,13 +199,36 @@ export default function InventoryAuditPanel({ locations }) {
                             {item.notes ? ` · ${item.notes}` : ''}
                           </span></td>
                       </>
+                    ) : tab === 'reservations' ? (
+                      <>
+                        <td className="p-2">
+                          <strong>{item.order_number}</strong>
+                          <span className="block text-xs text-gray-500">
+                            Pedido: {item.order_status} · Reserva: {item.reservation_status}
+                          </span>
+                        </td>
+                        <td className="p-2">
+                          <strong>{item.product_name}</strong>
+                          <span className="block text-xs text-gray-500">
+                            {item.sku} · {item.location_name}
+                          </span>
+                        </td>
+                        <td className="p-2 text-right">
+                          {number(item.reserved_qty)} / {item.order_item_qty == null ? '—' : number(item.order_item_qty)}
+                        </td>
+                        <td className="p-2 text-amber-800">
+                          {(item.issues || []).join('; ')}
+                        </td>
+                      </>
                     ) : (
                       <>
                         <td className="p-2"><strong>{item.product_name}</strong>
                           <span className="block text-xs text-gray-500">{item.sku}</span></td>
                         <td className="p-2">{item.location_name}</td>
                         <td className="p-2 text-red-700 font-semibold">
-                          {item.kind === 'negative_quantity' ? 'Cantidad negativa' : 'Reserva sin inventario'}</td>
+                          {item.kind === 'negative_quantity' ? 'Cantidad negativa'
+                            : item.kind === 'movement_arithmetic' ? 'Movimiento inconsistente'
+                              : 'Reserva sin inventario'}</td>
                         <td className="p-2">{item.detail}</td>
                       </>
                     )}
