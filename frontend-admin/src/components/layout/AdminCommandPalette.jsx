@@ -52,7 +52,20 @@ export default function AdminCommandPalette({ open, onClose, items }) {
     <div className="admin-command-overlay" role="presentation"
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="admin-command-dialog" role="dialog" aria-modal="true"
-        aria-label="Buscar módulo administrativo" ref={dialogRef}>
+        aria-label="Buscar módulo administrativo" ref={dialogRef}
+        onKeyDown={(event) => {
+          if (event.key !== 'Tab') return
+          const controls = Array.from(dialogRef.current?.querySelectorAll('input:not(:disabled), button:not(:disabled)') || [])
+          if (!controls.length) return
+          const first = controls[0], last = controls[controls.length - 1]
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault()
+            last.focus()
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault()
+            first.focus()
+          }
+        }}>
         <div className="admin-command-search-bar">
           <Search size={19} aria-hidden="true"/>
           <input ref={searchRef} type="search" autoComplete="off"
@@ -68,7 +81,7 @@ export default function AdminCommandPalette({ open, onClose, items }) {
               if (event.key === 'ArrowDown') { event.preventDefault(); setSelected((index) => Math.min(results.length - 1, index + 1)) }
               else if (event.key === 'ArrowUp') { event.preventDefault(); setSelected((index) => Math.max(0, index - 1)) }
               else if (event.key === 'Enter') { event.preventDefault(); goTo(results[selected]) }
-              else if (event.key === 'Tab' && event.shiftKey) { event.preventDefault(); dialogRef.current?.querySelector('.admin-command-close')?.focus() }
+
             }}/>
           <button type="button" className="admin-command-close" onClick={onClose}
             aria-label="Cerrar buscador"><X size={19}/></button>
