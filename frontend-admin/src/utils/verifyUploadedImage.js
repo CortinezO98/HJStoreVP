@@ -41,15 +41,15 @@ export async function verifyUploadedImage(path) {
   const objectUrl = URL.createObjectURL(blob)
   try {
     const img = new Image()
-    const decoded = new Promise((resolve, reject) => {
-      img.onload = resolve
-      img.onerror = reject
-    })
-    img.src = objectUrl
     if (typeof img.decode === 'function') {
+      img.src = objectUrl
       await img.decode()
     } else {
-      await decoded
+      await new Promise((resolve, reject) => {
+        img.onload = resolve
+        img.onerror = reject
+        img.src = objectUrl
+      })
     }
     if (!img.naturalWidth || !img.naturalHeight) {
       throw new Error('No hay dimensiones válidas')
