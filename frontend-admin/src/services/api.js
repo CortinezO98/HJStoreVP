@@ -38,7 +38,15 @@ apiClient.interceptors.response.use(
     const isAuthRequest = originalRequest?.url?.includes('/auth/login') ||
       originalRequest?.url?.includes('/auth/refresh')
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {
+    const status = error.response?.status
+    // El catálogo es público para lecturas normales. Una credencial expirada
+    // en una solicitud include_inactive se interpreta como anónima y devuelve
+    // 403; para el administrador, renovar una sola vez evita un falso bloqueo.
+    const privilegedCatalogRequest = status === 403 &&
+      /\/\b(products|categories)(?:\/|$)/.test(originalRequest?.url || '') &&
+      (originalRequest?.params?.include_inactive === true ||
+       originalRequest?.params?.include_inactive === 'true')
+    if ((status === 401 || privilegedCatalogRequest) && originalRequest && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true
       const refresh = sessionStorage.getItem('refresh_token')
 
@@ -64,8 +72,14 @@ apiClient.interceptors.response.use(
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
           localStorage.removeItem('hjstore-auth')
-          window.location.assign('/login')
+          if (window.location.pathname !== '/login') window.location.replace('/login')
+          return Promise.reject(error)
         }
+      } else if (status === 401) {
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('refresh_token')
+        localStorage.removeItem('hjstore-auth')
+        if (window.location.pathname !== '/login') window.location.replace('/login')
       }
     }
 
