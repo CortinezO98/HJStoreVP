@@ -23,6 +23,7 @@ import { categoriesApi, productsApi, apiClient } from '../services/api'
 import toast from 'react-hot-toast'
 import ProductVariantsManager from '../components/products/ProductVariantsManager'
 import ImageCropModal from '../components/products/ImageCropModal'
+import AdminTableMessage from '../components/AdminTableMessage'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -632,7 +633,7 @@ export default function ProductsPage() {
     queryFn: () => categoriesApi.list().then((r) => r.data),
   })
 
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading, isError: listError, refetch: retryList } = useQuery({
     queryKey: ['admin-products'],
     queryFn: async () => {
       // El backend permite un máximo de 100 productos por solicitud.
@@ -839,13 +840,10 @@ export default function ProductsPage() {
                     ))}
                   </tr>
                 ))
+              ) : listError ? (
+                <AdminTableMessage columns={9} error onRetry={() => retryList()}/>
               ) : filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center">
-                    <Boxes size={40} className="mx-auto mb-3 text-gray-200" />
-                    <p className="text-gray-400 text-sm">No hay productos para este filtro</p>
-                  </td>
-                </tr>
+                <AdminTableMessage columns={9} emptyTitle="No hay productos para este filtro"/>
               ) : (
                 pageProducts.map((product) => {
                   const image = resolveImage(product.primary_image)
