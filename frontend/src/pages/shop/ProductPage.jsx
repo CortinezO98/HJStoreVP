@@ -305,7 +305,7 @@ export default function ProductPage() {
             <div className="aspect-square bg-neutral-50 flex items-center justify-center overflow-hidden">
               {mainImage ? (
                 <img key={mainImage} src={mainImage} alt={images[productCarousel.index]?.alt || product.name}
-                  className="w-full h-full object-contain" decoding="async" />
+                  className="w-full h-full object-contain" decoding="async" loading="eager" fetchPriority="high" />
               ) : (
                 <div className="store-product-gallery-empty" role="img" aria-label="Producto sin fotografía">
                   <span>HJ<span>VP</span></span>
@@ -337,7 +337,7 @@ export default function ProductPage() {
                   aria-pressed={productCarousel.index === index}
                   onClick={() => productCarousel.goTo(index)}
                   className={`store-product-gallery-thumb ${productCarousel.index === index ? 'is-active' : ''}`}>
-                  <img src={img.url} alt="" loading="lazy" decoding="async"/>
+                  <img src={img.url} alt="" loading="lazy" decoding="async" fetchPriority="low"/>
                 </button>
               ))}
             </div>
