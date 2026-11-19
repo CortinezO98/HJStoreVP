@@ -170,6 +170,7 @@ def payment_integrity(
              Order.payment_method.is_(None)),
         and_(Order.payment_method.is_not(None), Order.payment_ref.is_not(None),
              Order.payment_ref != "", duplicate_refs.c.reference.is_not(None)),
+        and_(Order.payment_method == "addi", Order.payment_ref.like("INITIATING-%")),
     )
     query = (
         db.query(Order, duplicate_refs.c.reference.label("duplicated_reference"))
@@ -207,6 +208,11 @@ def payment_integrity(
             reasons.append("Referencia externa sin proveedor asociado")
         if duplicated_reference is not None:
             reasons.append("Referencia externa repetida en pedidos del mismo proveedor")
+        if order.payment_method == "addi" and (order.payment_ref or "").startswith("INITIATING-"):
+            reasons.append(
+                "Intento Addi reservado sin referencia definitiva: conciliar "
+                "con el proveedor antes de iniciar otra solicitud"
+            )
         findings.append({
             "order_id": order.id,
             "order_number": order.order_number,
