@@ -13,7 +13,7 @@ from app.core.deps import require_admin
 from app.db.session import get_db
 from app.models.models import (
     Inventory, Location, Order, OrderItem, OrderStatus, OrderStockReservation,
-    Product, StockMovement, User,
+    Product, StockMovement, StockMovementType, OrderChannel, User,
 )
 
 router = APIRouter(prefix="/inventory", tags=["Auditoría de inventario"])
@@ -371,5 +371,76 @@ def reservation_integrity(
             "No aumentar existencias ni cancelar pedidos basándose únicamente "
             "en este diagnóstico. Las órdenes heredadas sin reservas requieren "
             "revisión histórica separada."
+        ),
+    }
+
+
+@router.get("/audit/physical-sale-integrity")
+def physical_sale_integrity(
+    location_id: int | None = Query(None, ge=1),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Compara unidades de ventas físicas con sus movimientos OUT_SALE.
+
+    Solo se comparan movimientos asociados al mismo pedido, producto y sede.
+    No compara saldos actuales, que incluyen operaciones posteriores.
+    """
+    stock_discounts = (
+        db.query(func.coalesce(func.sum(StockMovement.qty), 0))
+        .filter(
+            StockMovement.reference_id == Order.id,
+            StockMovement.product_id == OrderItem.product_id,
+            StockMovement.location_id == Order.location_id,
+            StockMovement.movement_type == StockMovementType.OUT_SALE,
+        )
+        .correlate(Order, OrderItem)
+        .scalar_subquery()
+    )
+    source = (
+        db.query(OrderItem, Order, Product, Location, stock_discounts.label("movement_qty"))
+        .join(Order, Order.id == OrderItem.order_id)
+        .outerjoin(Product, Product.id == OrderItem.product_id)
+        .outerjoin(Location, Location.id == Order.location_id)
+        .filter(
+            Order.channel == OrderChannel.PHYSICAL,
+            or_(
+                Order.location_id.is_(None),
+                stock_discounts != -OrderItem.qty,
+            ),
+        )
+    )
+    if location_id is not None:
+        source = source.filter(Order.location_id == location_id)
+    total = source.order_by(None).count()
+    selected = (
+        source.order_by(OrderItem.id)
+        .offset((page - 1) * per_page).limit(per_page).all()
+    )
+    return {
+        "total": total, "page": page, "per_page": per_page,
+        "items": [{
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "order_item_id": item.id,
+            "product_id": item.product_id,
+            "product_name": item.product_name,
+            "sku": item.product_sku,
+            "location_id": order.location_id,
+            "location_name": location.name if location else "Sede no encontrada",
+            "sold_qty": item.qty,
+            "movement_qty": int(movement_qty),
+            "difference": int(movement_qty) + item.qty,
+            "detail": (
+                "Sede de venta sin asignar" if order.location_id is None else
+                "Movimientos de venta no coinciden con la cantidad registrada"
+            ),
+        } for item, order, product, location, movement_qty in selected],
+        "note": (
+            "Solo lectura. Detecta diferencias históricas de trazabilidad, "
+            "no determina el stock actual ni recomienda un ajuste automático. "
+            "Revisar transacciones heredadas con una persona responsable."
         ),
     }
