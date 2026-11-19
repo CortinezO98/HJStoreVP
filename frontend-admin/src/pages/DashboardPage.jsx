@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   TrendingUp,
   ShoppingCart,
@@ -11,6 +11,8 @@ import {
   BarChart3,
   Boxes,
   Clock,
+  RefreshCw,
+  ArrowUpRight,
 } from 'lucide-react'
 import {
   analyticsApi,
@@ -137,6 +139,7 @@ function HorizontalBars({ data = [], labelKey, valueKey, formatter = (v) => v })
 }
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient()
   const { user } = useAuthStore()
   const isAdmin = ['super_admin', 'admin'].includes(user?.role)
   const year = getCurrentYear()
@@ -232,11 +235,34 @@ export default function DashboardPage() {
 
   if (!isAdmin) {
     return (
-      <div className="card">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-sm text-gray-500">
-          Este módulo está disponible solo para administradores.
-        </p>
+      <div className="space-y-6">
+        <div className="admin-dashboard-heading">
+          <div>
+            <p className="admin-dashboard-overline">HJSTOREVP · OPERACIÓN</p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Tu centro de trabajo</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Accede a las funciones de ventas, caja e inventario habilitadas para tu perfil.
+            </p>
+          </div>
+        </div>
+        <section aria-label="Accesos operativos del vendedor" className="row g-3">
+          {[
+            { to: '/pedidos', icon: ShoppingCart, title: 'Ventas físicas', subtitle: 'Registrar y consultar ventas del punto' },
+            { to: '/caja', icon: DollarSign, title: 'Caja y arqueos', subtitle: 'Gestionar turno y movimientos de caja' },
+            { to: '/inventario', icon: Boxes, title: 'Inventario', subtitle: 'Consultar existencias y disponibilidad' },
+          ].map(({ to, icon: Icon, title, subtitle }) => (
+            <div key={to} className="col-12 col-md-6 col-xl-4">
+              <Link to={to} className="admin-dashboard-quick-link h-100">
+                <span className="admin-dashboard-quick-icon"><Icon size={23}/></span>
+                <span className="flex-grow-1 min-w-0">
+                  <strong className="d-block">{title}</strong>
+                  <small className="text-secondary">{subtitle}</small>
+                </span>
+                <ArrowUpRight size={17} aria-hidden="true"/>
+              </Link>
+            </div>
+          ))}
+        </section>
       </div>
     )
   }
@@ -251,8 +277,21 @@ export default function DashboardPage() {
           Resumen comercial y financiero de tienda web + puntos físicos
           </p>
         </div>
-        <div className="inline-flex items-center self-start sm:self-auto gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold">
-          <Clock size={14} /> PERÍODO {year}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold">
+            <Clock size={14} /> PERÍODO {year}
+          </div>
+          <button type="button" className="admin-dashboard-refresh"
+            aria-label="Actualizar indicadores del dashboard"
+            onClick={() => {
+              for (const key of [
+                ['dashboard-summary'], ['sales-by-month', year], ['top-products'],
+                ['low-rotation'], ['sales-by-location'], ['low-stock'],
+                ['recent-web-orders-dashboard'], ['recent-physical-sales-dashboard'],
+              ]) queryClient.invalidateQueries({ queryKey: key })
+            }}>
+            <RefreshCw size={15} aria-hidden="true"/> Actualizar indicadores
+          </button>
         </div>
       </div>
 
