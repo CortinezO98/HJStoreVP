@@ -421,6 +421,16 @@ export default function CheckoutPage() {
           headers: { 'Idempotency-Key': idempotencyKey },
         })
         order = data
+        try {
+          const draft = JSON.parse(sessionStorage.getItem(CHECKOUT_KEY_STORAGE) || 'null')
+          if (draft?.key === idempotencyKey) {
+            sessionStorage.setItem(CHECKOUT_KEY_STORAGE, JSON.stringify({
+              ...draft, order_number: order.order_number,
+            }))
+          }
+        } catch {
+          // La referencia en servidor sigue siendo la fuente de verdad.
+        }
         setCreatedOrder(order)
       }
 
