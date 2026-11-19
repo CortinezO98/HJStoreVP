@@ -42,6 +42,10 @@ class ReorderProductImagesRequest(BaseModel):
     """Orden completo: evita pérdidas, duplicados y asignaciones cruzadas."""
     image_ids: list[int] = Field(min_length=1, max_length=100)
 
+class UpdateProductImageAltRequest(BaseModel):
+    alt_text: str = Field(min_length=3, max_length=180)
+
+
 
 
 def product_upload_dir() -> Path:
@@ -220,6 +224,31 @@ def set_primary_image(
     for position, entry in enumerate(ordered):
         entry.sort_order = position
         entry.is_primary = entry.id == image.id
+    db.commit()
+    db.refresh(image)
+    return image
+
+
+@router.patch("/{product_id}/images/{image_id}/alt", response_model=ImageOut)
+def update_product_image_alt(
+    product_id: int,
+    image_id: int,
+    data: UpdateProductImageAltRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    description = data.alt_text.strip()
+    if len(description) < 3:
+        raise HTTPException(status_code=422, detail="La descripción debe tener al menos 3 caracteres")
+    product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    image = db.query(ProductImage).filter(
+        ProductImage.id == image_id, ProductImage.product_id == product_id
+    ).first()
+    if image is None:
+        raise HTTPException(status_code=404, detail="Fotografía no encontrada")
+    image.alt_text = description
     db.commit()
     db.refresh(image)
     return image
