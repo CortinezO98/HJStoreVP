@@ -219,12 +219,12 @@ export default function ReportsPage() {
         return { current, previous, change: previous > 0 ? ((current - previous) / previous) * 100 : null }
     }, [salesByMonth, previousYearSales])
 
-    const { data: webOrders = [], isLoading: loadingWeb } = useQuery({
+    const { data: webOrders = [], isLoading: loadingWeb, isError: webOrdersError, refetch: retryWebOrders } = useQuery({
         queryKey: ['report-web-orders'],
         queryFn: () => ordersApi.list({}).then((r) => r.data),
     })
 
-    const { data: physicalSales = [], isLoading: loadingPhysical } = useQuery({
+    const { data: physicalSales = [], isLoading: loadingPhysical, isError: physicalSalesError, refetch: retryPhysicalSales } = useQuery({
         queryKey: ['report-physical-sales'],
         queryFn: () => physicalSalesApi.list({}).then((r) => r.data),
     })
@@ -690,7 +690,7 @@ export default function ReportsPage() {
                 ))}
                 </div>
             )}
-            {filteredWebOrders.length > reportPageSize && (
+            {!webOrdersError && filteredWebOrders.length > reportPageSize && (
                 <nav className="admin-report-pager" aria-label="Páginas de pedidos web">
                     <button type="button" className="btn btn-sm btn-outline-secondary"
                         disabled={currentWebPage === 1}
@@ -880,7 +880,7 @@ export default function ReportsPage() {
 
             <button
                 onClick={exportOrders}
-                disabled={loadingWeb || dateRangeInvalid || filteredWebOrders.length === 0}
+                disabled={loadingWeb || webOrdersError || dateRangeInvalid || filteredWebOrders.length === 0}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
@@ -892,6 +892,12 @@ export default function ReportsPage() {
                 {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="h-14 bg-gray-50 rounded-xl animate-pulse" />
                 ))}
+                </div>
+            ) : webOrdersError ? (
+                <div role="alert" className="admin-report-fetch-error">
+                  <p>No pudimos cargar los pedidos web. No se exportará información incompleta.</p>
+                  <button type="button" className="btn btn-outline-secondary btn-sm"
+                    onClick={() => retryWebOrders()}>Reintentar</button>
                 </div>
             ) : filteredWebOrders.length === 0 ? (
                 <p className="text-sm text-gray-400">No hay pedidos web para este filtro</p>
@@ -940,7 +946,7 @@ export default function ReportsPage() {
 
             <button
                 onClick={exportPhysicalSales}
-                disabled={loadingPhysical || dateRangeInvalid || filteredPhysicalSales.length === 0}
+                disabled={loadingPhysical || physicalSalesError || dateRangeInvalid || filteredPhysicalSales.length === 0}
                 className="btn-secondary mb-4 inline-flex items-center gap-2"
             >
                 <Download size={15} />
@@ -952,6 +958,12 @@ export default function ReportsPage() {
                 {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="h-14 bg-gray-50 rounded-xl animate-pulse" />
                 ))}
+                </div>
+            ) : physicalSalesError ? (
+                <div role="alert" className="admin-report-fetch-error">
+                  <p>No pudimos cargar las ventas físicas. No se exportará información incompleta.</p>
+                  <button type="button" className="btn btn-outline-secondary btn-sm"
+                    onClick={() => retryPhysicalSales()}>Reintentar</button>
                 </div>
             ) : filteredPhysicalSales.length === 0 ? (
                 <p className="text-sm text-gray-400">No hay ventas físicas para este filtro</p>
@@ -985,7 +997,7 @@ export default function ReportsPage() {
                 ))}
                 </div>
             )}
-            {filteredPhysicalSales.length > reportPageSize && (
+            {!physicalSalesError && filteredPhysicalSales.length > reportPageSize && (
                 <nav className="admin-report-pager" aria-label="Páginas de ventas físicas">
                     <button type="button" className="btn btn-sm btn-outline-secondary"
                         disabled={currentPhysicalPage === 1}
