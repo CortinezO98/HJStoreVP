@@ -2,6 +2,7 @@
 Endpoints de pagos — Wompi + Sistecréditos + Addi.
 """
 import json
+import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session, joinedload
@@ -187,6 +188,13 @@ async def initiate_payment(
                     "Verifica su estado antes de crear otra aplicación."
                 ),
             )
+        # Registrar intención ANTES de invocar al proveedor. Si la llamada
+        # remota funciona pero la respuesta se pierde, no generar otra
+        # solicitud que pueda producir una segunda aprobación.
+        attempt_marker = "INITIATING-" + uuid.uuid4().hex
+        order.payment_method = "addi"
+        order.payment_ref = attempt_marker
+        db.commit()
         items = [
             {
                 "name":       oi.product_name,
@@ -207,9 +215,17 @@ async def initiate_payment(
         # Guardar el ID de la aplicación Addi en la orden para seguimiento
         if not result.get("applicationId") or not result.get("url"):
             raise HTTPException(status_code=502, detail="Addi no devolvió una solicitud válida")
-        order.payment_ref = str(result["applicationId"])
-        order.payment_method = "addi"
-        db.commit()
+        # Puede haber llegado un webhook firmado durante la llamada remota.
+        # Nunca sobrescribir una referencia confirmada por el proveedor.
+        order = lock_web_order(db, order.id)
+        if order.payment_ref == attempt_marker and order.status == OrderStatus.PENDING:
+            order.payment_ref = str(result["applicationId"])
+            db.commit()
+        elif order.payment_ref != str(result["applicationId"]):
+            raise HTTPException(
+                status_code=409,
+                detail="La solicitud cambió durante la iniciación; revisar el proveedor",
+            )
 
         return InitiatePaymentResponse(
             order_number=order.order_number, method="addi",
@@ -422,14 +438,14 @@ async def addi_webhook(request: Request, db: Session = Depends(get_db)):
 
     if order.payment_method not in (None, "addi"):
         raise HTTPException(status_code=409, detail="Evento de otro proveedor; requiere conciliación")
-    if app_id and order.payment_ref and str(order.payment_ref) != str(app_id):
+    if app_id and order.payment_ref and not str(order.payment_ref).startswith("INITIATING-") and str(order.payment_ref) != str(app_id):
         raise HTTPException(status_code=409, detail="Solicitud Addi incompatible")
     if addi_status in ["APPROVED", "PAID", "ACTIVE"]:
         if order.payment_method not in (None, "addi"):
             raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
         if not app_id:
             raise HTTPException(status_code=409, detail="Aprobación Addi sin identificador")
-        if order.payment_ref and str(order.payment_ref) != str(app_id):
+        if order.payment_ref and not str(order.payment_ref).startswith("INITIATING-") and str(order.payment_ref) != str(app_id):
             raise HTTPException(status_code=409, detail="Solicitud Addi contradictoria")
         if order.status == OrderStatus.CANCELLED:
             return {"status": "manual_review", "reason": "late_payment"}
