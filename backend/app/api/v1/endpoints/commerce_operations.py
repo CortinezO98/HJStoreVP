@@ -316,3 +316,107 @@ async def verify_wompi_order_read_only(
             "Ante discrepancias, investigar con soporte de la pasarela."
         ),
     }
+
+
+@router.get("/payment-recovery-queue")
+def payment_recovery_queue(
+    pending_minutes: int = Query(30, ge=5, le=10080),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    provider: str | None = Query(None),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Cola diagnóstica: nunca confirma, revierte ni reintenta transacciones.
+
+    Solo pedidos WEB cuyo proveedor fue iniciado; los pendientes con referencia
+    desconocida requieren inspección manual antes de tomar decisiones.
+    """
+    supported = ("wompi", "addi", "sistecreditos")
+    if provider not in (None, *supported):
+        raise HTTPException(status_code=422, detail="Proveedor no válido")
+    now = datetime.utcnow()
+    cutoff = now - timedelta(minutes=pending_minutes)
+    pending = Order.status == OrderStatus.PENDING
+    marker = and_(
+        Order.payment_method == "addi",
+        Order.payment_ref.like("INITIATING-%"),
+    )
+    stale_pending = and_(
+        pending,
+        Order.payment_method.in_(supported),
+        Order.updated_at <= cutoff,
+    )
+    cancelled_paid = and_(
+        Order.status == OrderStatus.CANCELLED,
+        Order.paid_at.is_not(None),
+    )
+    query = db.query(Order).filter(
+        Order.channel == OrderChannel.WEB,
+        or_(marker, stale_pending, cancelled_paid),
+    )
+    if provider:
+        query = query.filter(Order.payment_method == provider)
+
+    total = query.order_by(None).count()
+    rows = (
+        query.order_by(Order.created_at.desc(), Order.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    items = []
+    for order in rows:
+        is_marker = (
+            order.payment_method == "addi"
+            and (order.payment_ref or "").startswith("INITIATING-")
+        )
+        is_late = order.status == OrderStatus.CANCELLED and order.paid_at is not None
+        age_minutes = max(0, int((now - (order.updated_at or order.created_at)).total_seconds() / 60))
+        if is_late:
+            kind = "cancelled_with_payment"
+            priority = "critical"
+            next_action = (
+                "Revisar comprobante y liquidación con el proveedor; escalar a "
+                "posventa si corresponde. No rehabilitar inventario automáticamente."
+            )
+        elif is_marker:
+            kind = "unresolved_addi_initiation"
+            priority = "high"
+            next_action = (
+                "Buscar la solicitud original por número de pedido en el portal Addi. "
+                "El marcador no es el ID de una aplicación; no crear una segunda."
+            )
+        else:
+            kind = "stale_pending"
+            priority = "medium"
+            next_action = (
+                "Consultar la transacción por número de pedido y evidencia en "
+                "el portal del proveedor. No asumir que el pago fue rechazado."
+            )
+        items.append({
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "provider": order.payment_method,
+            "order_status": order.status.value,
+            "kind": kind,
+            "priority": priority,
+            "age_minutes_since_update": age_minutes,
+            "external_reference_available": bool(order.payment_ref) and not is_marker,
+            "amount": float(order.total_amount),
+            "created_at_utc": order.created_at.isoformat() if order.created_at else None,
+            "next_action": next_action,
+        })
+    return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pending_minutes": pending_minutes,
+        "items": items,
+        "read_only": True,
+        "note": (
+            "El tiempo de espera es orientativo y no un plazo de expiración. "
+            "La ausencia de webhook no demuestra un cobro fallido. Esta cola "
+            "no hace solicitudes de pago, cambios de estado ni liberación de reservas."
+        ),
+    }
