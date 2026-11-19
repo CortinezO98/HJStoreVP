@@ -139,6 +139,7 @@ export const inventoryApi = {
   movementHistory: (params = {}) => apiClient.get('/inventory/audit/movements', { params }),
   anomalies: (params = {}) => apiClient.get('/inventory/audit/anomalies', { params }),
   reservationIntegrity: (params = {}) => apiClient.get('/inventory/audit/reservation-integrity', { params }),
+  physicalSaleIntegrity: (params = {}) => apiClient.get('/inventory/audit/physical-sale-integrity', { params }),
 }
 
 // ─────────────────────────────────────────────────────────
