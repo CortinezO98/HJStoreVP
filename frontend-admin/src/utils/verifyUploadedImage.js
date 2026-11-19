@@ -12,13 +12,16 @@ export async function verifyUploadedImage(path) {
   const image = new Image()
   image.decoding = 'async'
   try {
-    const loaded = new Promise((resolve, reject) => {
-      image.onload = resolve
-      image.onerror = reject
-    })
-    image.src = url
-    if (typeof image.decode === 'function') await image.decode()
-    else await loaded
+    if (typeof image.decode === 'function') {
+      image.src = url
+      await image.decode()
+    } else {
+      await new Promise((resolve, reject) => {
+        image.onload = resolve
+        image.onerror = reject
+        image.src = url
+      })
+    }
     if (!image.naturalWidth || !image.naturalHeight) throw new Error('Imagen sin dimensiones')
     return url
   } catch {
