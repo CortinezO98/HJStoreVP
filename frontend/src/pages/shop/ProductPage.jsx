@@ -118,7 +118,11 @@ export default function ProductPage() {
 
     const productImages = Array.isArray(product.images)
       ? [...product.images]
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .sort((a, b) =>
+            (Number(b.is_primary) - Number(a.is_primary)) ||
+            (Number(a.sort_order || 0) - Number(b.sort_order || 0)) ||
+            (Number(a.id || 0) - Number(b.id || 0))
+          )
           .map((img) => ({
             id: img.id,
             url: buildImageUrl(img.url),
@@ -137,7 +141,11 @@ export default function ProductPage() {
       : []
 
     const variantImages = Array.isArray(selectedVariant?.images)
-      ? selectedVariant.images.map((img) => ({
+      ? [...selectedVariant.images].sort((a,b) =>
+          (Number(b.is_primary) - Number(a.is_primary)) ||
+          (Number(a.sort_order || 0) - Number(b.sort_order || 0)) ||
+          (Number(a.id || 0) - Number(b.id || 0))
+        ).map((img) => ({
           id: `variant-${img.id}`,
           url: buildImageUrl(img.url),
           alt: img.alt_text || selectedVariant.label || product.name,
