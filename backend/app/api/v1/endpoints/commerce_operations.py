@@ -127,3 +127,105 @@ def commerce_overview(
             "Los estados de despacho se registran internamente, no se sincronizan automáticamente con transportadoras.",
         ],
     }
+
+
+@router.get("/payment-integrity")
+def payment_integrity(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Hallazgos no destructivos de pagos WEB y referencias duplicadas.
+
+    No consulta ni confirma transacciones externas: comparar con el proveedor
+    antes de cualquier cancelación, devolución o modificación de inventario.
+    """
+    paid_statuses = (
+        OrderStatus.PAID, OrderStatus.PREPARING,
+        OrderStatus.SHIPPED, OrderStatus.DELIVERED,
+    )
+    duplicate_refs = (
+        db.query(
+            Order.payment_method.label("method"),
+            Order.payment_ref.label("reference"),
+        )
+        .filter(
+            Order.channel == OrderChannel.WEB,
+            Order.payment_method.is_not(None),
+            Order.payment_ref.is_not(None),
+            Order.payment_ref != "",
+        )
+        .group_by(Order.payment_method, Order.payment_ref)
+        .having(func.count(Order.id) > 1)
+        .subquery()
+    )
+    conditions = or_(
+        and_(Order.status.in_(paid_statuses), Order.paid_at.is_(None)),
+        and_(Order.status.in_(paid_statuses), Order.payment_method.is_(None)),
+        and_(Order.status.in_(paid_statuses), Order.payment_ref.is_(None)),
+        and_(Order.status == OrderStatus.PENDING, Order.paid_at.is_not(None)),
+        and_(Order.status == OrderStatus.CANCELLED, Order.paid_at.is_not(None)),
+        and_(Order.status == OrderStatus.PENDING, Order.payment_ref.is_not(None),
+             Order.payment_method.is_(None)),
+        and_(Order.payment_method.is_not(None), Order.payment_ref.is_not(None),
+             Order.payment_ref != "", duplicate_refs.c.reference.is_not(None)),
+    )
+    query = (
+        db.query(Order, duplicate_refs.c.reference.label("duplicated_reference"))
+        .outerjoin(
+            duplicate_refs,
+            and_(
+                Order.payment_method == duplicate_refs.c.method,
+                Order.payment_ref == duplicate_refs.c.reference,
+            ),
+        )
+        .filter(Order.channel == OrderChannel.WEB, conditions)
+    )
+    count = query.order_by(None).count()
+    rows = (
+        query.order_by(Order.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    findings = []
+    for order, duplicated_reference in rows:
+        reasons = []
+        if order.status in paid_statuses:
+            if order.paid_at is None:
+                reasons.append("Pedido pagado sin fecha de confirmación")
+            if not order.payment_method:
+                reasons.append("Pedido pagado sin proveedor registrado")
+            if not order.payment_ref:
+                reasons.append("Pedido pagado sin referencia externa")
+        if order.status == OrderStatus.PENDING and order.paid_at:
+            reasons.append("Pedido pendiente con fecha de pago registrada")
+        if order.status == OrderStatus.CANCELLED and order.paid_at:
+            reasons.append("Pedido cancelado con fecha de pago; revisar posible pago tardío")
+        if order.status == OrderStatus.PENDING and order.payment_ref and not order.payment_method:
+            reasons.append("Referencia externa sin proveedor asociado")
+        if duplicated_reference is not None:
+            reasons.append("Referencia externa repetida en pedidos del mismo proveedor")
+        findings.append({
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "status": order.status.value,
+            "payment_method": order.payment_method,
+            "payment_ref": order.payment_ref,
+            "amount": float(order.total_amount),
+            "created_at": order.created_at.isoformat() if order.created_at else None,
+            "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+            "issues": reasons,
+        })
+    return {
+        "total": count,
+        "page": page,
+        "per_page": per_page,
+        "items": findings,
+        "note": (
+            "Auditoría interna de solo lectura, no confirmación del proveedor. "
+            "Pedidos antiguos o integraciones históricas pueden carecer de referencia. "
+            "Nunca liberar stock ni cambiar un pago con base únicamente en estos hallazgos."
+        ),
+    }
