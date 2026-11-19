@@ -362,18 +362,28 @@ function ProductFormModal({ product, categories, onClose }) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!form.name || !form.sku || form.cost_price === '' || form.margin_pct === '') {
-        throw new Error('Completa los campos obligatorios')
+      if (!form.name.trim() || !form.sku.trim() || form.cost_price === '' || form.margin_pct === '') {
+        throw new Error('Completa nombre, SKU, costo y porcentaje de ganancia')
+      }
+      const cost = Number(form.cost_price)
+      const margin = Number(form.margin_pct)
+      const alertQty = Number(form.stock_min_alert)
+      if (![cost, margin, alertQty].every(Number.isFinite) ||
+          cost < 0 || margin < 0 || !Number.isSafeInteger(alertQty) || alertQty < 0) {
+        throw new Error('Costo y margen deben ser valores positivos; la alerta debe ser un entero mayor o igual a cero')
+      }
+      if (!Number.isFinite(salePricePreview) || salePricePreview < 0) {
+        throw new Error('El precio de venta calculado no es válido')
       }
 
       const payload = {
-        name: form.name,
-        sku: form.sku,
+        name: form.name.trim(),
+        sku: form.sku.trim(),
         description: form.description || null,
         category_id: form.category_id ? Number(form.category_id) : null,
-        cost_price: Number(form.cost_price),
-        margin_pct: Number(form.margin_pct),
-        stock_min_alert: Number(form.stock_min_alert || 5),
+        cost_price: cost,
+        margin_pct: margin,
+        stock_min_alert: alertQty,
         featured: Boolean(form.featured),
         active: Boolean(form.active),
       }
@@ -440,8 +450,8 @@ function ProductFormModal({ product, categories, onClose }) {
 
           <div className="admin-catalog-form-grid">
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-600 mb-1">Nombre *</label>
-              <input
+              <label htmlFor="admin-product-name" className="block text-sm text-gray-600 mb-1">Nombre *</label>
+              <input id="admin-product-name" required maxLength={200}
                 className="input"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
@@ -450,8 +460,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">SKU *</label>
-              <input
+              <label htmlFor="admin-product-sku" className="block text-sm text-gray-600 mb-1">SKU *</label>
+              <input id="admin-product-sku" required maxLength={100}
                 className="input"
                 value={form.sku}
                 onChange={(e) => setForm((p) => ({ ...p, sku: e.target.value }))}
@@ -460,8 +470,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Categoría</label>
-              <select
+              <label htmlFor="admin-product-category" className="block text-sm text-gray-600 mb-1">Categoría</label>
+              <select id="admin-product-category"
                 className="input"
                 value={form.category_id}
                 onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}
@@ -476,8 +486,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Costo del producto *</label>
-              <input
+              <label htmlFor="admin-product-cost" className="block text-sm text-gray-600 mb-1">Costo del producto *</label>
+              <input id="admin-product-cost" required step="0.01"
                 type="number"
                 min="0"
                 className="input"
@@ -488,8 +498,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">% de ganancia *</label>
-              <input
+              <label htmlFor="admin-product-margin" className="block text-sm text-gray-600 mb-1">% de ganancia *</label>
+              <input id="admin-product-margin" required step="0.01"
                 type="number"
                 min="0"
                 className="input"
@@ -502,13 +512,15 @@ function ProductFormModal({ product, categories, onClose }) {
             <div>
               <label className="block text-sm text-gray-600 mb-1">Precio de venta calculado</label>
               <div className="admin-catalog-price-preview">
-                {formatCOP(salePricePreview)}
+                {Number.isFinite(salePricePreview) && salePricePreview >= 0
+                  ? formatCOP(salePricePreview)
+                  : 'Revisa el costo y margen'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Alerta mínima de stock</label>
-              <input
+              <label htmlFor="admin-product-stock-alert" className="block text-sm text-gray-600 mb-1">Alerta mínima de stock</label>
+              <input id="admin-product-stock-alert" step="1"
                 type="number"
                 min="0"
                 className="input"
@@ -519,8 +531,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-600 mb-1">Descripción</label>
-              <textarea
+              <label htmlFor="admin-product-description" className="block text-sm text-gray-600 mb-1">Descripción</label>
+              <textarea id="admin-product-description"
                 className="form-control min-h-[110px]"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
