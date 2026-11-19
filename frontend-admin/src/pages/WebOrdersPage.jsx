@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
     Search,
@@ -21,6 +21,7 @@ import {
 import { ordersApi } from '../services/api'
 import ShipmentManager from '../components/ShipmentManager'
 import toast from 'react-hot-toast'
+import AdminTableMessage from '../components/AdminTableMessage'
 
 function formatCOP(n) {
     return new Intl.NumberFormat('es-CO', {
@@ -80,7 +81,14 @@ const STATUS_OPTIONS = [
     { value: 'cancelled', label: 'Cancelado' },
 ]
 
-const NEXT_STATUS_OPTIONS = ['pending', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled']
+const MANUAL_STATUS_OPTIONS = {
+  pending: ['cancelled'],
+  paid: ['preparing', 'cancelled'],
+  preparing: ['cancelled'],
+  shipped: [],
+  delivered: [],
+  cancelled: [],
+}
 
 function OrderDetailModal({ order, onClose }) {
     if (!order) return null
@@ -253,6 +261,8 @@ export default function WebOrdersPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(15)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [statusConfirmation, setStatusConfirmation] = useState(null)
+  const pendingStatusRef = useRef(false)
 
   const { data: orders = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['web-orders-list', statusFilter],
@@ -289,13 +299,29 @@ export default function WebOrdersPage() {
     onSuccess: (_, vars) => {
       toast.success(`Pedido actualizado a ${STATUS_META[vars.status]?.label || vars.status}`)
       queryClient.invalidateQueries({ queryKey: ['web-orders-list'] })
+      setSelectedOrder(null)
     },
     onError: error => {
       toast.error(error?.response?.data?.detail || 'No fue posible actualizar el estado del pedido')
+      queryClient.invalidateQueries({ queryKey: ['web-orders-list'] })
+    },
+    onSettled: () => {
+      pendingStatusRef.current = false
+      setStatusConfirmation(null)
     },
   })
-  const handleStatusChange = (orderId, newStatus) => {
-    statusMutation.mutate({ id: orderId, status: newStatus })
+  const handleStatusChange = (order, newStatus) => {
+    if (statusMutation.isPending || pendingStatusRef.current || order.status === newStatus) return
+    if (!(MANUAL_STATUS_OPTIONS[order.status] || []).includes(newStatus)) {
+      toast.error('Este cambio debe realizarse mediante el pago confirmado o el módulo de despachos')
+      return
+    }
+    setStatusConfirmation({ id: order.id, number: order.order_number, from: order.status, status: newStatus })
+  }
+  const confirmStatusChange = () => {
+    if (!statusConfirmation || statusMutation.isPending || pendingStatusRef.current) return
+    pendingStatusRef.current = true
+    statusMutation.mutate({ id: statusConfirmation.id, status: statusConfirmation.status })
   }
   const clearFilters = () => { setSearch(''); setStatusFilter(''); setSortBy('newest'); setPage(1) }
   const filterActive = Boolean(search || statusFilter || sortBy !== 'newest')
@@ -370,10 +396,7 @@ export default function WebOrdersPage() {
           </div>
           <span className="badge text-bg-light border text-secondary">{filteredOrders.length} resultados</span>
         </div>
-        {isError && <div className="alert alert-danger m-3" role="alert">
-          No fue posible cargar los pedidos.
-          <button type="button" className="btn btn-outline-danger btn-sm ms-2" onClick={() => refetch()}>Reintentar</button>
-        </div>}
+
         <div className="table-responsive">
           <table className="table table-hover align-middle admin-web-orders-table mb-0">
             <thead><tr>
@@ -385,13 +408,11 @@ export default function WebOrdersPage() {
               {isLoading ? Array.from({ length: 6 }).map((_,i) =>
                 <tr key={i}>{Array.from({ length: 8 }).map((__,j) =>
                   <td key={j}><div className="placeholder-glow"><span className="placeholder col-8"/></div></td>)}</tr>)
-                : isError ? null
-                : filteredOrders.length === 0 ? <tr><td colSpan={8} className="text-center py-5 text-secondary">
-                  <Package size={30} className="mx-auto mb-2"/>
-                  <p>No hay pedidos que coincidan con los filtros.</p>
-                  {filterActive && <button type="button" className="btn btn-outline-secondary btn-sm"
-                    onClick={clearFilters}>Limpiar filtros</button>}
-                </td></tr> : pageOrders.map(order => {
+                : isError ? <AdminTableMessage columns={8} error onRetry={() => refetch()}/>
+                : filteredOrders.length === 0 ? <AdminTableMessage columns={8}
+                    emptyTitle="No hay pedidos para estos filtros"
+                    emptyDescription="Prueba con otro número de pedido o limpia los filtros."/>
+                : pageOrders.map(order => {
                 const shipping = order.shipping_address || {}
                 const statusInfo = STATUS_META[order.status] || STATUS_META.pending
                 const StatusIcon = statusInfo.icon
@@ -408,12 +429,15 @@ export default function WebOrdersPage() {
                   <td>
                     <label className="visually-hidden" htmlFor={`order-status-${order.id}`}>Estado de {order.order_number}</label>
                     <select id={`order-status-${order.id}`} className="form-select form-select-sm admin-web-order-select"
-                      value={order.status} onChange={event => handleStatusChange(order.id,event.target.value)}
-                      disabled={statusMutation.isPending}>
-                      {NEXT_STATUS_OPTIONS.map(status => <option key={status} value={status}
-                        disabled={status === 'shipped' || status === 'delivered'}>
-                        {STATUS_META[status]?.label || status}
-                      </option>)}
+                      value={order.status} onChange={event => handleStatusChange(order, event.target.value)}
+                      disabled={statusMutation.isPending || (MANUAL_STATUS_OPTIONS[order.status] || []).length === 0}
+                      title={(MANUAL_STATUS_OPTIONS[order.status] || []).length === 0
+                        ? 'Estado administrado por la pasarela de pagos o por despachos'
+                        : 'Selecciona una transición y confírmala'}>
+                      <option value={order.status}>{STATUS_META[order.status]?.label || order.status}</option>
+                      {(MANUAL_STATUS_OPTIONS[order.status] || []).map(status =>
+                        <option key={status} value={status}>{STATUS_META[status]?.label || status}</option>
+                      )}
                     </select>
                   </td>
                   <td><button type="button" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
@@ -443,6 +467,32 @@ export default function WebOrdersPage() {
         </div>
       </div>
       {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)}/>}
+      {statusConfirmation && (
+        <div className="admin-order-confirm-overlay" role="presentation"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget && !statusMutation.isPending) setStatusConfirmation(null)
+          }}>
+          <section className="admin-order-confirm-dialog" role="alertdialog" aria-modal="true"
+            aria-labelledby="order-confirm-title" aria-describedby="order-confirm-description">
+            <h2 id="order-confirm-title">Confirmar cambio de estado</h2>
+            <p id="order-confirm-description">
+              Pedido <strong>{statusConfirmation.number}</strong>: cambiar de
+              {' '}{STATUS_META[statusConfirmation.from]?.label || statusConfirmation.from} a
+              {' '}{STATUS_META[statusConfirmation.status]?.label || statusConfirmation.status}.
+              {statusConfirmation.status === 'cancelled' &&
+                ' Esta operación cancela el pedido y puede liberar sus reservas de inventario.'}
+            </p>
+            <div className="admin-order-confirm-actions">
+              <button type="button" className="btn btn-outline-secondary"
+                disabled={statusMutation.isPending} onClick={() => setStatusConfirmation(null)}>Volver</button>
+              <button type="button" className={statusConfirmation.status === 'cancelled' ? 'btn btn-danger' : 'btn btn-primary'}
+                disabled={statusMutation.isPending} onClick={confirmStatusChange}>
+                {statusMutation.isPending ? 'Procesando…' : 'Confirmar cambio'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
