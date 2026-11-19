@@ -124,6 +124,18 @@ class Settings(BaseSettings):
                 raise ValueError("Configura FIRST_ADMIN_PASSWORD segura antes de producción")
             if "hjstore123" in self.DATABASE_URL or "rootpass" in self.DATABASE_URL:
                 raise ValueError("Credenciales de base de datos de desarrollo prohibidas en producción")
+            if not self.ALLOWED_ORIGINS or any(
+                not origin.startswith("https://") or
+                origin.startswith(("https://localhost", "https://127.0.0.1"))
+                for origin in self.ALLOWED_ORIGINS
+            ):
+                raise ValueError("ALLOWED_ORIGINS debe contener únicamente orígenes HTTPS públicos en producción")
+            if not self.API_BASE_URL.startswith("https://"):
+                raise ValueError("API_BASE_URL debe usar HTTPS en producción")
+            if not self.STORE_PUBLIC_URL.startswith("https://"):
+                raise ValueError("STORE_PUBLIC_URL debe usar HTTPS en producción")
+            if self.WOMPI_ENV == "production" and not self.WOMPI_ALLOW_LIVE_PAYMENTS:
+                raise ValueError("WOMPI_ENV=production requiere opt-in de pagos reales")
         return self
 
     class Config:
