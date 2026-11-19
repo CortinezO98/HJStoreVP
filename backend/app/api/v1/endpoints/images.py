@@ -85,7 +85,11 @@ def normalize_image(content: bytes) -> tuple[bytes, str]:
             extrema = check.getextrema()
             if has_alpha and extrema[3][1] < 16:
                 raise HTTPException(status_code=422, detail="La imagen no contiene píxeles visibles")
+            # Siluetas negras sobre fondo transparente son imágenes válidas.
+            # Su RGB puede ser uniforme, pero la máscara alfa contiene la figura.
             variations = [top - bottom for bottom, top in extrema[:3]]
+            if has_alpha:
+                variations.append(extrema[3][1] - extrema[3][0])
             if max(variations) < 4:
                 raise HTTPException(status_code=422, detail="La imagen parece vacía o de un solo color. Revisa el encuadre.")
             buffer = io.BytesIO()
