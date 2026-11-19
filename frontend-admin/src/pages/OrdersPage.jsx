@@ -19,6 +19,7 @@ import {
 import { physicalSalesApi, inventoryApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
 import toast from 'react-hot-toast'
+import AdminTableMessage from '../components/AdminTableMessage'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -542,7 +543,7 @@ export default function OrdersPage() {
     const { user } = useAuthStore()
     const isAdmin = ['super_admin', 'admin'].includes(user?.role)
 
-    const { data: sales = [], isLoading } = useQuery({
+    const { data: sales = [], isLoading, isError: listError, refetch: retryList } = useQuery({
         queryKey: ['physical-sales-list'],
         queryFn: () => physicalSalesApi.list().then((r) => r.data),
     })
@@ -668,13 +669,12 @@ export default function OrdersPage() {
                         ))}
                     </tr>
                     ))
+                ) : listError ? (
+                    <AdminTableMessage columns={isAdmin ? 7 : 6} error onRetry={() => retryList()}/>
                 ) : filteredSales.length === 0 ? (
-                    <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="px-4 py-16 text-center">
-                        <ShoppingBag size={40} className="text-gray-200 mx-auto mb-3" />
-                        <p className="text-gray-400 text-sm">Aún no hay ventas físicas registradas</p>
-                    </td>
-                    </tr>
+                    <AdminTableMessage columns={isAdmin ? 7 : 6}
+                      emptyTitle="No hay ventas físicas para mostrar"
+                      emptyDescription="Cuando registres ventas, aparecerán aquí. También puedes limpiar los filtros."/>
                 ) : (
                     pageSales.map((sale) => (
                     <tr
