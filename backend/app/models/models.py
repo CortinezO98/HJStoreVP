@@ -310,6 +310,13 @@ class Order(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     order_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    # NULL para pedidos históricos y ventas físicas. Para pedidos web nuevos,
+    # (customer_id, idempotency_key) es único en MariaDB.
+    __table_args__ = (
+        UniqueConstraint("customer_id", "idempotency_key", name="uq_orders_customer_idempotency"),
+    )
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    idempotency_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
     # Cliente (nullable para ventas físicas anónimas)
     customer_id: Mapped[Optional[int]] = mapped_column(
