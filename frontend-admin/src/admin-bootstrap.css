@@ -907,3 +907,27 @@
   margin-bottom: 10px;
   line-height: 1.6;
 }
+
+/* Paginated, read-only diagnostic table for payment integrity. */
+.admin-app-shell .admin-payment-audit-table {
+  min-width: 830px;
+}
+.admin-app-shell .admin-payment-audit-table thead th {
+  background: #f8fafc;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 800;
+  border-bottom: 1px solid #e7ebf3;
+}
+.admin-app-shell .admin-payment-audit-table td {
+  vertical-align: top;
+  font-size: 12px;
+}
+.admin-app-shell .admin-payment-audit-notice {
+  padding: 13px 16px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #9a3412;
+  font-size: 13px;
+}
