@@ -43,6 +43,10 @@ app.add_middleware(
 @app.middleware("http")
 async def security_headers(request, call_next):
     response = await call_next(request)
+    # URLs de archivos nuevos usan UUID: cache larga sin invalidación manual.
+    # No cachear respuestas JSON, sesiones ni endpoints privados.
+    if request.url.path.startswith(("/uploads/products/", "/uploads/branding/")) and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
