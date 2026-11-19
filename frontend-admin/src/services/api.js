@@ -138,6 +138,7 @@ export const inventoryApi = {
   lowStockByLocation: (params = {}) => apiClient.get('/inventory/alerts/by-location', { params }),
   movementHistory: (params = {}) => apiClient.get('/inventory/audit/movements', { params }),
   anomalies: (params = {}) => apiClient.get('/inventory/audit/anomalies', { params }),
+  reservationIntegrity: (params = {}) => apiClient.get('/inventory/audit/reservation-integrity', { params }),
 }
 
 // ─────────────────────────────────────────────────────────
