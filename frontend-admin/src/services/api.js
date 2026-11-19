@@ -197,6 +197,7 @@ export const analyticsApi = {
 export const commerceOperationsApi = {
   overview: (params = {}) => apiClient.get('/commerce-operations/overview', { params }),
   paymentIntegrity: (params = {}) => apiClient.get('/commerce-operations/payment-integrity', { params }),
+  verifyWompi: (orderId) => apiClient.get(`/commerce-operations/wompi-verify/${orderId}`),
 }
 
 export const financialReportsApi = {
