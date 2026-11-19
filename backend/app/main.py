@@ -36,8 +36,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Requested-With"],
 )
 
 @app.middleware("http")
@@ -64,15 +64,34 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if request.url.path.startswith("/api/v1/auth/"):
+    # La app sirve la API; el contenido HTML de Vite tiene su propia política.
+    # HSTS solo se anuncia en el entorno productivo, donde debe usarse HTTPS.
+    if settings.ENVIRONMENT.lower() == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if (
+        request.method not in ("GET", "HEAD")
+        or request.url.path.startswith((
+            "/api/v1/auth/", "/api/v1/orders/", "/api/v1/payments/",
+            "/api/v1/commerce-operations/", "/api/v1/post-sale/",
+            "/api/v1/users/", "/api/v1/inventory/", "/api/v1/cash/",
+        ))
+    ):
         response.headers["Cache-Control"] = "no-store"
     return response
 
 
 # ─── ARCHIVOS ESTÁTICOS (uploads locales) ───────────────────────────────────
 if settings.STORAGE_BACKEND == "local":
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+    # Nunca publicar la raíz completa de uploads: puede contener copias,
+    # archivos temporales u otros documentos que no son catálogo público.
+    for category in ("products", "branding"):
+        directory = os.path.join(settings.UPLOAD_DIR, category)
+        os.makedirs(directory, exist_ok=True)
+        app.mount(
+            f"/uploads/{category}",
+            StaticFiles(directory=directory, follow_symlink=False),
+            name=f"uploads-{category}",
+        )
 
 # ─── RUTAS ───────────────────────────────────────────────────────────────────
 app.include_router(api_router)
