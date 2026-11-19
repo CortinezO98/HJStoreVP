@@ -94,6 +94,32 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
     }
   }
 
+  const [reordering, setReordering] = useState(false)
+  const moveImage = async (imageId, direction) => {
+    if (reordering || uploading) return
+    const ordered = [...images].sort((a, b) =>
+      (a.sort_order - b.sort_order) || (a.id - b.id))
+    const at = ordered.findIndex((image) => image.id === imageId)
+    const target = at + direction
+    if (at < 0 || target < 0 || target >= ordered.length) return
+    ;[ordered[at], ordered[target]] = [ordered[target], ordered[at]]
+    setReordering(true)
+    try {
+      await apiClient.patch(`/products/${product.id}/images/order`, {
+        image_ids: ordered.map((image) => image.id),
+      })
+      queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      onUploaded?.()
+      toast.success('Orden de galería actualizado')
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'No se pudo cambiar el orden')
+      queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
+    } finally {
+      setReordering(false)
+    }
+  }
+
   const deleteImage = async (imageId) => {
     try {
       await apiClient.delete(`/products/${product.id}/images/${imageId}`)
@@ -148,6 +174,10 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
         </div>
 
         <div className="p-6">
+          <p className="text-sm text-gray-500 mb-4">
+            Marca una fotografía como principal para la portada del catálogo y utiliza las flechas
+            para establecer la secuencia de la galería y su carrusel en la tienda pública.
+          </p>
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -161,7 +191,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {images.map((img) => {
+              {[...images].sort((a,b) => (a.sort_order-b.sort_order) || (a.id-b.id)).map((img, imageIndex) => {
                 const src = resolveImage(img.url)
                 return (
                   <div key={img.id} className="border border-gray-100 rounded-xl overflow-hidden bg-white">
@@ -176,6 +206,19 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
                     </div>
 
                     <div className="p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-gray-500">Posición {imageIndex + 1} / {images.length}</span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" className="btn btn-outline-secondary btn-sm"
+                            aria-label={`Mover fotografía ${imageIndex + 1} a la izquierda`}
+                            title="Mover antes" disabled={reordering || uploading || imageIndex === 0}
+                            onClick={() => moveImage(img.id, -1)}><ChevronLeft size={15}/></button>
+                          <button type="button" className="btn btn-outline-secondary btn-sm"
+                            aria-label={`Mover fotografía ${imageIndex + 1} a la derecha`}
+                            title="Mover después" disabled={reordering || uploading || imageIndex === images.length - 1}
+                            onClick={() => moveImage(img.id, 1)}><ChevronRight size={15}/></button>
+                        </div>
+                      </div>
                       {img.is_primary ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">
                           <Star size={12} />
