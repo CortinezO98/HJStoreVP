@@ -15,7 +15,8 @@ const kinds = [
   { id: 'alerts', label: 'Alertas por sede', icon: AlertTriangle },
   { id: 'movements', label: 'Movimientos', icon: ClipboardList },
   { id: 'anomalies', label: 'Inconsistencias', icon: ShieldAlert },
-  { id: 'reservations', label: 'Conciliación de reservas web', icon: ClipboardList },
+  { id: 'reservations', label: 'Reservas web', icon: ClipboardList },
+  { id: 'physical', label: 'Ventas físicas', icon: ShieldAlert },
 ]
 
 export default function InventoryAuditPanel({ locations }) {
@@ -40,6 +41,7 @@ export default function InventoryAuditPanel({ locations }) {
         date_from: dateFrom || undefined, date_to: dateTo || undefined,
       })).data
       if (tab === 'reservations') return (await inventoryApi.reservationIntegrity(common)).data
+      if (tab === 'physical') return (await inventoryApi.physicalSaleIntegrity(common)).data
       return (await inventoryApi.anomalies(common)).data
     },
     staleTime: 15000,
@@ -138,12 +140,14 @@ export default function InventoryAuditPanel({ locations }) {
       ) : (
         <>
           <p className="text-sm text-gray-600 mb-3">
-            {number(total)} {tab === 'reservations' ? 'posibles diferencias detectadas' : 'registros'} · Página {page} de {lastPage}
+            {number(total)} {tab === 'reservations' || tab === 'physical' ? 'posibles diferencias detectadas' : 'registros'} · Página {page} de {lastPage}
           </p>
-          {tab === 'reservations' && (
+          {(tab === 'reservations' || tab === 'physical') && (
             <p className="text-xs text-amber-800 mb-3">
-              Diagnóstico de reservas trazables: los pedidos históricos sin reservas
-              no se incluyen. No modificar stock ni cancelar pagos por un hallazgo aislado.
+              {tab === 'reservations'
+                ? 'Diagnóstico de reservas trazables: los pedidos históricos sin reservas no se incluyen.'
+                : 'Comparación histórica de unidades vendidas y movimientos de salida por pedido y sede.'}
+              {' '}No modificar stock ni cancelar pagos por un hallazgo aislado.
             </p>
           )}
           <div className="overflow-x-auto">
@@ -161,6 +165,11 @@ export default function InventoryAuditPanel({ locations }) {
                     <th className="p-2 text-right">Cambio</th><th className="p-2 text-right">Antes → Después</th>
                     <th className="p-2">Responsable / referencia</th>
                   </tr>
+                ) : tab === 'physical' ? (
+                  <tr className="border-b text-left text-gray-600">
+                    <th className="p-2">Venta / sede</th><th className="p-2">Referencia</th>
+                    <th className="p-2 text-right">Vendido / descontado</th><th className="p-2">Hallazgo</th>
+                  </tr>
                 ) : tab === 'reservations' ? (
                   <tr className="border-b text-left text-gray-600">
                     <th className="p-2">Pedido / estado</th><th className="p-2">Producto / sede</th>
@@ -177,7 +186,8 @@ export default function InventoryAuditPanel({ locations }) {
                 {items.map((item) => (
                   <tr key={tab === 'movements' ? item.id
                     : tab === 'reservations' ? item.reservation_id
-                      : `${item.product_id}-${item.location_id}-${item.kind || 'alert'}`}
+                      : tab === 'physical' ? item.order_item_id
+                        : `${item.product_id}-${item.location_id}-${item.kind || 'alert'}`}
                     className="border-b border-gray-100 align-top">
                     {tab === 'alerts' ? (
                       <>
@@ -204,6 +214,21 @@ export default function InventoryAuditPanel({ locations }) {
                             {item.reference_id ? `Ref. ${item.reference_id}` : 'Sin referencia'}
                             {item.notes ? ` · ${item.notes}` : ''}
                           </span></td>
+                      </>
+                    ) : tab === 'physical' ? (
+                      <>
+                        <td className="p-2">
+                          <strong>{item.order_number}</strong>
+                          <span className="block text-xs text-gray-500">{item.location_name}</span>
+                        </td>
+                        <td className="p-2">
+                          <strong>{item.product_name}</strong>
+                          <span className="block text-xs text-gray-500">{item.sku}</span>
+                        </td>
+                        <td className="p-2 text-right">
+                          {number(item.sold_qty)} / {number(-item.movement_qty)}
+                        </td>
+                        <td className="p-2 text-amber-800">{item.detail}</td>
                       </>
                     ) : tab === 'reservations' ? (
                       <>
@@ -247,7 +272,9 @@ export default function InventoryAuditPanel({ locations }) {
             <p className="text-sm text-gray-500 py-4" role="status">
               {tab === 'reservations'
                 ? 'No se detectaron diferencias en las reservas trazables para esta selección.'
-                : 'No se encontraron registros para este filtro.'}
+                : tab === 'physical'
+                  ? 'No se detectaron diferencias entre ventas físicas y movimientos de salida trazables.'
+                  : 'No se encontraron registros para este filtro.'}
             </p>
           )}
           <div className="flex items-center justify-between mt-4">
