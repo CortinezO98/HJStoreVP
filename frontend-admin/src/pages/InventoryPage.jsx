@@ -19,6 +19,7 @@ import {
 import { inventoryApi, locationsApi, productsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import InventoryAuditPanel from '../components/InventoryAuditPanel'
+import AdminTableMessage from '../components/AdminTableMessage'
 import { useAuthStore } from '../store'
 
 function formatNumber(n) {
@@ -422,7 +423,7 @@ export default function InventoryPage() {
     }).then((response) => response.data),
   })
 
-  const { data: products = [], isLoading: loadingProducts } = useQuery({
+  const { data: products = [], isLoading: loadingProducts, isError: listError, refetch: retryList } = useQuery({
     queryKey: ['inventory-products', userRole],
     queryFn: async () => {
       // El backend limita las páginas a 100 elementos; recorrerlas evita listados incompletos.
@@ -764,13 +765,10 @@ export default function InventoryPage() {
                     ))}
                   </tr>
                 ))
+              ) : listError ? (
+                <AdminTableMessage columns={7} error onRetry={() => retryList()}/>
               ) : filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
-                    <Boxes size={40} className="text-gray-200 mx-auto mb-3" />
-                    <p className="text-gray-400 text-sm">No hay productos para este filtro</p>
-                  </td>
-                </tr>
+                <AdminTableMessage columns={7} emptyTitle="No hay productos para este filtro"/>
               ) : (
                 pageProducts.map((product) => {
                   const totalStock = Number(product.total_stock || 0)
