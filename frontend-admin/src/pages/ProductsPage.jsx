@@ -44,6 +44,42 @@ function calcSalePrice(cost, margin) {
   return c * (1 + m / 100)
 }
 
+function ImageAltEditor({ image, productId, onSaved }) {
+  const [draft, setDraft] = useState(image.alt_text || '')
+  const [saving, setSaving] = useState(false)
+  const save = async () => {
+    const value = draft.trim()
+    if (value.length < 3 || value.length > 180) {
+      toast.error('Escribe una descripción entre 3 y 180 caracteres')
+      return
+    }
+    setSaving(true)
+    try {
+      await apiClient.patch(`/products/${productId}/images/${image.id}/alt`, { alt_text: value })
+      toast.success('Descripción de fotografía guardada')
+      onSaved()
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'No se pudo guardar la descripción')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs text-gray-600" htmlFor={`product-image-alt-${image.id}`}>
+        Descripción de la foto
+      </label>
+      <input id={`product-image-alt-${image.id}`} className="form-control text-xs"
+        type="text" maxLength={180} value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder="Ej. Gorra negra vista frontal"/>
+      <button type="button" className="btn btn-outline-secondary btn-sm"
+        disabled={saving || draft.trim() === (image.alt_text || '')}
+        onClick={save}>{saving ? 'Guardando...' : 'Guardar descripción'}</button>
+    </div>
+  )
+}
+
 function ProductImagesManager({ product, onClose, onUploaded }) {
   const queryClient = useQueryClient()
   const [files, setFiles] = useState([])
@@ -176,7 +212,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
         <div className="p-6">
           <p className="text-sm text-gray-500 mb-4">
             Marca una fotografía como principal para la portada del catálogo y utiliza las flechas
-            para establecer la secuencia de la galería y su carrusel en la tienda pública.
+            para establecer la secuencia de la galería y su carrusel en la tienda pública. La primera imagen será la principal.
           </p>
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -233,6 +269,11 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
                         </button>
                       )}
 
+                      <ImageAltEditor key={`${img.id}-${img.alt_text || ''}`} image={img} productId={product.id}
+                        onSaved={() => {
+                          queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
+                          onUploaded?.()
+                        }}/>
                       <button
                         onClick={() => deleteImage(img.id)}
                         className="text-xs text-red-500 hover:text-red-600 font-semibold block"
