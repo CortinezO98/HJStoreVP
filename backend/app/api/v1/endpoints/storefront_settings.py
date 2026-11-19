@@ -76,10 +76,10 @@ class SettingsPayload(BaseModel):
             if not isinstance(raw, str):
                 raise ValueError("Cada imagen debe ser una URL")
             value = raw.strip()
-            if not value or len(value) > 500 or "\\x00" in value:
+            if not value or len(value) > 500 or chr(0) in value:
                 raise ValueError("URL de banner no válida")
             if value.startswith("/uploads/branding/"):
-                if ".." in value or "\\\\" in value or "?" in value or "#" in value:
+                if ".." in value or chr(92) in value or "?" in value or "#" in value:
                     raise ValueError("Ruta de banner no válida")
                 if len(value.removeprefix("/uploads/branding/")) < 5:
                     raise ValueError("Imagen de banner no válida")
