@@ -46,6 +46,19 @@ async def security_headers(request, call_next):
     # URLs de archivos nuevos usan UUID: cache larga sin invalidación manual.
     # No cachear respuestas JSON, sesiones ni endpoints privados.
     if request.url.path.startswith(("/uploads/products/", "/uploads/branding/")) and response.status_code == 200:
+        # Some hosts classify WEBP as text/plain when MIME is inferred from
+        # the operating system. Image decoding with nosniff then fails,
+        # even though StaticFiles serves the correct bytes (HTTP 200).
+        image_types = {
+            ".webp": "image/webp",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+        }
+        extension = os.path.splitext(request.url.path.lower())[1]
+        if extension in image_types:
+            response.headers["Content-Type"] = image_types[extension]
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
