@@ -14,6 +14,9 @@ const when = (value) => value
 
 export default function PaymentIntegrityPanel() {
   const [page, setPage] = useState(1)
+  const [verifyingId, setVerifyingId] = useState(null)
+  const [verification, setVerification] = useState(null)
+  const [verificationError, setVerificationError] = useState('')
   const perPage = 15
   const query = useQuery({
     queryKey: ['payment-integrity', page, perPage],
@@ -21,6 +24,24 @@ export default function PaymentIntegrityPanel() {
       .then((response) => response.data),
     staleTime: 30000,
   })
+  const verifyWompi = async (item) => {
+    if (verifyingId !== null) return
+    setVerifyingId(item.order_id)
+    setVerification(null)
+    setVerificationError('')
+    try {
+      const { data } = await commerceOperationsApi.verifyWompi(item.order_id)
+      setVerification(data)
+    } catch (error) {
+      setVerificationError(
+        typeof error?.response?.data?.detail === 'string'
+          ? error.response.data.detail
+          : 'No se pudo consultar la transacción con Wompi',
+      )
+    } finally {
+      setVerifyingId(null)
+    }
+  }
   const total = query.data?.total || 0
   const pages = Math.max(1, Math.ceil(total / perPage))
   const currentPage = Math.min(page, pages)
@@ -59,7 +80,7 @@ export default function PaymentIntegrityPanel() {
                 <thead>
                   <tr>
                     <th>Pedido</th><th>Estado y proveedor</th><th>Referencia</th>
-                    <th className="text-end">Total</th><th>Observaciones</th>
+                    <th className="text-end">Total</th><th>Observaciones</th><th>Verificación</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -75,6 +96,15 @@ export default function PaymentIntegrityPanel() {
                           <span key={reason} className="d-block">{reason}</span>
                         ))}
                       </td>
+                      <td>
+                        {item.payment_method === 'wompi' && item.payment_ref ? (
+                          <button type="button" className="btn btn-outline-secondary btn-sm"
+                            disabled={verifyingId !== null}
+                            onClick={() => verifyWompi(item)}>
+                            {verifyingId === item.order_id ? 'Consultando…' : 'Consultar Wompi'}
+                          </button>
+                        ) : <span className="text-secondary text-xs">Revisión manual</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -83,6 +113,16 @@ export default function PaymentIntegrityPanel() {
           ) : <p className="text-sm text-gray-500" role="status">
             No se detectaron inconsistencias entre los datos de pago registrados en esta revisión.
           </p>}
+          {verification && (
+            <div className="admin-payment-audit-notice mt-4" role="status" aria-live="polite">
+              <strong>Resultado de Wompi · {verification.order_number}</strong>
+              <p className="mb-1">Estado local: {verification.local_status} · Estado proveedor: {verification.provider_status}</p>
+              <p className="mb-1">Diagnóstico: {verification.finding}</p>
+              <p className="mb-1">Referencia: {verification.identity_checks?.reference_matches ? 'Coincide' : 'No coincide'} · Importe: {verification.identity_checks?.amount_matches ? 'Coincide' : 'No coincide'} · Moneda: {verification.identity_checks?.currency_matches ? 'Coincide' : 'No coincide'} · Transacción: {verification.identity_checks?.transaction_matches ? 'Coincide' : 'No coincide'}</p>
+              <p>{verification.note}</p>
+            </div>
+          )}
+          {verificationError && <div className="admin-payment-audit-notice mt-4" role="alert">{verificationError}</div>}
           <nav className="admin-report-pager" aria-label="Paginación de conciliación de pagos">
             <button type="button" className="btn btn-sm btn-outline-secondary"
               disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Anterior</button>
