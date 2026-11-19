@@ -176,6 +176,17 @@ async def initiate_payment(
     elif method == "addi":
         if not addi_enabled():
             raise HTTPException(status_code=503, detail="Addi no está configurado")
+        # Addi crea un recurso externo real por cada solicitud. No repetir
+        # aplicaciones ya asociadas: el cliente debe consultar primero la
+        # solicitud existente para evitar varias aprobaciones del mismo pedido.
+        if order.payment_method == "addi" and order.payment_ref:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Este pedido ya tiene una solicitud Addi iniciada. "
+                    "Verifica su estado antes de crear otra aplicación."
+                ),
+            )
         items = [
             {
                 "name":       oi.product_name,
