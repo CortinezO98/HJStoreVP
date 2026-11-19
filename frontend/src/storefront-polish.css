@@ -1159,3 +1159,69 @@
     animation: none;
   }
 }
+
+/* Identidad HJ STORE: monograma original del usuario + nombre horizontal.
+   La forma vertical completa se mantiene como recurso de marca, pero el lockup
+   horizontal evita que el header gane altura o que el escudo resulte ilegible. */
+.editorial-logo.store-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.store-brand-emblem {
+  display: block;
+  width: 29px;
+  height: 36px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+.store-brand-name {
+  display: inline-flex;
+  align-items: baseline;
+  color: #111;
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: -.045em;
+}
+.store-brand-name small {
+  padding-left: 3px;
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  letter-spacing: 0;
+  font-weight: 800;
+  color: #666;
+}
+.store-brand-light .store-brand-emblem {
+  filter: brightness(0) invert(1);
+  width: 34px;
+  height: 43px;
+}
+.store-brand-light .store-brand-name {
+  color: #fff;
+  font-size: 27px;
+}
+.store-brand-light .store-brand-name small { color: #a9a9a9; }
+.store-footer-brand > p {
+  letter-spacing: .18em;
+  font-size: 10px;
+  margin-top: 10px;
+}
+.store-custom-header-logo {
+  display: block;
+  max-height: 40px;
+  max-width: 150px;
+  object-fit: contain;
+}
+@media (max-width: 639px) {
+  .editorial-logo.store-brand-lockup { gap: 6px; }
+  .store-brand-emblem { width: 23px; height: 30px; }
+  .store-brand-name { font-size: 22px; }
+  .store-brand-name small { font-size: 8px; }
+  .store-brand-light .store-brand-emblem { width: 31px; height: 38px; }
+}
