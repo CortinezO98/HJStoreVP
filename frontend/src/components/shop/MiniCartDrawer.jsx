@@ -81,7 +81,7 @@ export default function MiniCartDrawer({ open, onClose }) {
     <div className="store-cart-overlay" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <aside className="store-cart-drawer" role="dialog" aria-modal="true"
+      <aside id="store-mini-cart" className="store-cart-drawer" role="dialog" aria-modal="true"
         aria-labelledby="store-cart-drawer-title">
         <div className="store-cart-drawer-heading">
           <div>
