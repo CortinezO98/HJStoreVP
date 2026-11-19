@@ -834,3 +834,63 @@
     font-size: 10px;
   }
 }
+
+/* Confirmaciones explícitas de pedidos y paginadores de reportes. */
+.admin-order-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(15 23 42 / .62);
+}
+.admin-order-confirm-dialog {
+  width: min(100%, 470px);
+  border-radius: 17px;
+  border: 1px solid #e2e6ee;
+  background: #fff;
+  box-shadow: 0 20px 70px rgb(15 23 42 / .23);
+  padding: clamp(20px, 3vw, 29px);
+  color: #1f2937;
+}
+.admin-order-confirm-dialog h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.admin-order-confirm-dialog p {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+.admin-order-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.admin-order-confirm-actions button { min-height: 43px; }
+.admin-report-pager {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid #e5eaf2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-report-pager > span {
+  font-size: 12px;
+  font-weight: 650;
+  color: #475569;
+  text-align: center;
+}
+.admin-report-pager button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 575px) {
+  .admin-report-pager { justify-content: center; }
+  .admin-order-confirm-actions button { flex: 1; }
+}
