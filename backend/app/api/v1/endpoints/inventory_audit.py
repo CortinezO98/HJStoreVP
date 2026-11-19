@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session, aliased
 from app.core.deps import require_admin
 from app.db.session import get_db
 from app.models.models import (
-    Inventory, Location, OrderStockReservation, Product, StockMovement, User,
+    Inventory, Location, Order, OrderItem, OrderStatus, OrderStockReservation,
+    Product, StockMovement, User,
 )
 
 router = APIRouter(prefix="/inventory", tags=["Auditoría de inventario"])
@@ -251,5 +252,124 @@ def inventory_anomalies(
             "qty_reserved heredado no equivale a reservas HELD y no debe "
             "compararse directamente con qty_available. Requiere revisión "
             "operativa antes de corregir existencias."
+        ),
+    }
+
+
+@router.get("/audit/reservation-integrity")
+def reservation_integrity(
+    location_id: int | None = Query(None, ge=1),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Conciliación SOLO LECTURA de reservas web contra pedido, línea y sede.
+
+    No infiere que qty_reserved sea igual al total HELD: las reservas HELD
+    ya reducen qty_available. No repara saldos, cancela pedidos ni cobra.
+    Las órdenes históricas sin reservas se investigan por separado.
+    """
+    active_sale_states = (
+        OrderStatus.PAID, OrderStatus.PREPARING,
+        OrderStatus.SHIPPED, OrderStatus.DELIVERED,
+    )
+    issues = or_(
+        OrderStockReservation.qty <= 0,
+        OrderItem.id.is_(None),
+        OrderItem.order_id != OrderStockReservation.order_id,
+        OrderItem.product_id != OrderStockReservation.product_id,
+        OrderItem.qty != OrderStockReservation.qty,
+        and_(
+            OrderStockReservation.status == "held",
+            or_(Order.status != OrderStatus.PENDING, Inventory.id.is_(None)),
+        ),
+        and_(
+            OrderStockReservation.status == "committed",
+            ~Order.status.in_(active_sale_states),
+        ),
+        and_(
+            OrderStockReservation.status == "released",
+            Order.status != OrderStatus.CANCELLED,
+        ),
+        ~OrderStockReservation.status.in_(("held", "committed", "released")),
+    )
+    rows = (
+        db.query(
+            OrderStockReservation, Order, OrderItem, Inventory, Product, Location,
+        )
+        .join(Order, Order.id == OrderStockReservation.order_id)
+        .outerjoin(OrderItem, OrderItem.id == OrderStockReservation.order_item_id)
+        .outerjoin(
+            Inventory, and_(
+                Inventory.product_id == OrderStockReservation.product_id,
+                Inventory.location_id == OrderStockReservation.location_id,
+            ),
+        )
+        .outerjoin(Product, Product.id == OrderStockReservation.product_id)
+        .outerjoin(Location, Location.id == OrderStockReservation.location_id)
+        .filter(issues)
+    )
+    if location_id is not None:
+        rows = rows.filter(OrderStockReservation.location_id == location_id)
+
+    total = rows.order_by(None).count()
+    selected = (
+        rows.order_by(OrderStockReservation.id)
+        .offset((page - 1) * per_page).limit(per_page).all()
+    )
+    findings = []
+    for reservation, order, item, inventory, product, location in selected:
+        reasons = []
+        if reservation.qty <= 0:
+            reasons.append("Cantidad de reserva inválida")
+        if item is None:
+            reasons.append("Línea del pedido no encontrada")
+        else:
+            if item.order_id != reservation.order_id:
+                reasons.append("La línea corresponde a otro pedido")
+            if item.product_id != reservation.product_id:
+                reasons.append("El SKU reservado difiere de la línea")
+            if item.qty != reservation.qty:
+                reasons.append("La cantidad difiere de la línea del pedido")
+        if reservation.status == "held":
+            if order.status != OrderStatus.PENDING:
+                reasons.append("Reserva HELD con pedido no pendiente")
+            if inventory is None:
+                reasons.append("Reserva HELD sin inventario de origen")
+        elif reservation.status == "committed":
+            if order.status not in active_sale_states:
+                reasons.append("Reserva COMMITTED con estado de pedido incompatible")
+        elif reservation.status == "released":
+            if order.status != OrderStatus.CANCELLED:
+                reasons.append("Reserva RELEASED sin pedido cancelado")
+        else:
+            reasons.append("Estado de reserva desconocido")
+
+        findings.append({
+            "reservation_id": reservation.id,
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "order_status": order.status.value,
+            "reservation_status": reservation.status,
+            "product_id": reservation.product_id,
+            "product_name": product.name if product else "Producto no disponible",
+            "sku": product.sku if product else "—",
+            "location_id": reservation.location_id,
+            "location_name": location.name if location else "Sede no disponible",
+            "reserved_qty": reservation.qty,
+            "order_item_qty": item.qty if item is not None else None,
+            "issues": reasons,
+        })
+    return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "items": findings,
+        "note": (
+            "Solo lectura. Una reserva HELD ya se descontó del disponible. "
+            "No aumentar existencias ni cancelar pedidos basándose únicamente "
+            "en este diagnóstico. Las órdenes heredadas sin reservas requieren "
+            "revisión histórica separada."
         ),
     }
