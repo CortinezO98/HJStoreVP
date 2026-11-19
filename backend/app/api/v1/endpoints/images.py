@@ -99,6 +99,12 @@ def normalize_image(content: bytes) -> tuple[bytes, str]:
                 raise HTTPException(status_code=422, detail="El archivo de imagen generado está vacío")
             if len(normalized) > MAX_SIZE_BYTES:
                 raise HTTPException(status_code=413, detail="Imagen optimizada supera el límite")
+            # Decodificar la salida antes de escribir al volumen, para no
+            # almacenar imágenes WEBP dañadas aunque el encoder no lance error.
+            with Image.open(io.BytesIO(normalized)) as verified:
+                if verified.format != "WEBP" or verified.width < 1 or verified.height < 1:
+                    raise HTTPException(status_code=422, detail="La imagen optimizada no es válida")
+                verified.verify()
             return normalized, "webp"
     except (UnidentifiedImageError, OSError, ValueError, SyntaxError, Image.DecompressionBombError):
         raise HTTPException(status_code=415, detail="El contenido no corresponde a una imagen válida")
