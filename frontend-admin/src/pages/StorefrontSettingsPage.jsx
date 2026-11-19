@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { storefrontSettingsApi } from '../services/api'
 import toast from 'react-hot-toast'
+import ImageCropModal from '../components/products/ImageCropModal'
 
 const GROUPS = [
   {
@@ -56,6 +57,7 @@ export default function StorefrontSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(null)
+  const [cropQueue, setCropQueue] = useState([])
 
   const refresh = async () => {
     setLoading(true)
@@ -85,37 +87,35 @@ export default function StorefrontSettingsPage() {
       setUploading(null)
     }
   }
-  const uploadGalleryImages = async (key, files) => {
+  const uploadGalleryImages = (key, files) => {
     const selected = Array.from(files || [])
     if (!selected.length) return
-    const current = form?.[key] || []
-    if (selected.length + current.length > 8) {
+    const alreadyQueued = cropQueue.filter((entry) => entry.key === key).length
+    if (selected.length + (form?.[key] || []).length + alreadyQueued > 8) {
       toast.error('El carrusel admite un máximo de 8 imágenes')
       return
     }
-    setUploading(key)
-    const uploaded = []
+    if (selected.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) {
+      toast.error('Selecciona imágenes JPG, PNG o WEBP')
+      return
+    }
+    setCropQueue((current) => [...current, ...selected.map((file) => ({ key, file }))])
+  }
+  const saveCroppedGalleryImage = async (file) => {
+    const entry = cropQueue[0]
+    if (!entry) return
+    setUploading(entry.key)
     try {
-      for (const file of selected) {
-        if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
-          throw new Error('Solo se aceptan imágenes JPG, PNG, WEBP o GIF')
-        }
-        const { data } = await storefrontSettingsApi.upload(file)
-        uploaded.push(data.url)
-      }
-      setForm((currentForm) => ({
-        ...currentForm,
-        [key]: [...(currentForm[key] || []), ...uploaded].slice(0, 8),
+      const { data } = await storefrontSettingsApi.upload(file)
+      setForm((current) => ({
+        ...current,
+        [entry.key]: [...(current[entry.key] || []), data.url].slice(0, 8),
       }))
-      toast.success('Imágenes cargadas. Guarda y publica para actualizar la portada.')
+      setCropQueue((current) => current.slice(1))
+      toast.success('Imagen optimizada y lista. Guarda y publica para mostrarla.')
     } catch (error) {
-      toast.error(error.message || errorText(error))
-      if (uploaded.length) {
-        setForm((currentForm) => ({
-          ...currentForm,
-          [key]: [...(currentForm[key] || []), ...uploaded].slice(0, 8),
-        }))
-      }
+      toast.error(errorText(error))
+      throw error
     } finally {
       setUploading(null)
     }
@@ -173,6 +173,12 @@ export default function StorefrontSettingsPage() {
           Reintentar
         </button>
       </div>}
+      {cropQueue[0] && <ImageCropModal
+        key={cropQueue[0].file.name + cropQueue[0].file.lastModified + cropQueue[0].key}
+        file={cropQueue[0].file} ratio={16 / 9} width={1920}
+        title={cropQueue[0].key === 'hero_images' ? 'Encuadrar banner principal' : 'Encuadrar imagen promocional'}
+        onCancel={() => setCropQueue((current) => current.slice(1))}
+        onConfirm={saveCroppedGalleryImage} />}
       {form && <form onSubmit={save} className="row g-4 align-items-start">
         <div className="col-12 col-lg-3">
           <nav className="admin-settings-nav card p-3" aria-label="Secciones de configuración">
@@ -252,8 +258,8 @@ export default function StorefrontSettingsPage() {
                 <label className="form-label mt-3" htmlFor={`settings-${galleryKey}-upload`}>
                   Subir imágenes para el carrusel
                 </label>
-                <input id={`settings-${galleryKey}-upload`} type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-                  multiple className="form-control" disabled={!!uploading || (form[galleryKey] || []).length >= 8}
+                <input id={`settings-${galleryKey}-upload`} type="file" accept="image/png,image/jpeg,image/webp"
+                  multiple className="form-control" disabled={!!uploading || cropQueue.length > 0 || (form[galleryKey] || []).length >= 8}
                   onChange={(event) => {
                     uploadGalleryImages(galleryKey, event.target.files)
                     event.target.value = ''
@@ -301,7 +307,7 @@ export default function StorefrontSettingsPage() {
             </div>
             <div className="d-flex flex-wrap gap-2">
               <button type="button" className="btn btn-outline-secondary"
-                disabled={!dirty || busy || !!uploading} onClick={() => setForm(saved)}>
+                disabled={!dirty || busy || !!uploading || cropQueue.length > 0} onClick={() => setForm(saved)}>
                 Descartar cambios
               </button>
               <button type="submit" className="btn btn-primary"
