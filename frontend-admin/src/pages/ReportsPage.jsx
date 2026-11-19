@@ -71,7 +71,7 @@ function exportToCSV(data, filename) {
             if (val === null || val === undefined) return ''
             // CSV/Excel formula injection protection for untrusted client fields.
             const raw = String(val)
-            const str = /^[\\s]*[=+@-]/.test(raw) && !/^-?\\d+(?:[.,]\\d+)?$/.test(raw.trim())
+            const str = /^\s*[=+@-]/.test(raw) && !/^-?\d+(?:[.,]\d+)?$/.test(raw.trim())
                 ? `'${raw}` : raw
             return str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')
             ? `"${str.replace(/"/g, '""')}"`
@@ -149,7 +149,7 @@ export default function ReportsPage() {
     const [downloadError, setDownloadError] = useState('')
 
     const downloadFullExcel = async () => {
-        if (downloadingExcel) return
+        if (downloadingExcel || dateRangeInvalid) return
         setDownloadingExcel(true)
         setDownloadError('')
         try {
@@ -405,7 +405,7 @@ export default function ReportsPage() {
               </h2>
               <button type="button" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2"
                 disabled={!filters.date_from && !filters.date_to && !filters.location_id && !filters.category_id && filters.year === currentYear}
-                onClick={() => setFilters({date_from:'',date_to:'',location_id:'',category_id:'',year:currentYear})}>
+                onClick={() => { setWebOrdersPage(1); setPhysicalSalesPage(1); setFilters({date_from:'',date_to:'',location_id:'',category_id:'',year:currentYear}) }}>
                 <RotateCcw size={14}/> Restablecer
               </button>
             </div>
@@ -413,6 +413,12 @@ export default function ReportsPage() {
               Ajusta el periodo, la sede y la categoría; el año controla el gráfico mensual.
             </p>
 
+            {dateRangeInvalid && (
+              <p className="alert alert-warning" role="alert">
+                El rango de fechas no es válido: «Desde» debe ser anterior o igual a «Hasta».
+                Ajusta las fechas antes de exportar información.
+              </p>
+            )}
             <div className="row g-3">
             <div className="col-12 col-sm-6 col-xl">
                 <label className="form-label" htmlFor="report-date-from">Fecha desde</label>
@@ -420,6 +426,7 @@ export default function ReportsPage() {
                 type="date"
                 id="report-date-from"
                 className="form-control"
+                max={filters.date_to || undefined}
                 value={filters.date_from}
                 onChange={(e) => setFilter('date_from', e.target.value)}
                 />
@@ -431,6 +438,7 @@ export default function ReportsPage() {
                 type="date"
                 id="report-date-to"
                 className="form-control"
+                min={filters.date_from || undefined}
                 value={filters.date_to}
                 onChange={(e) => setFilter('date_to', e.target.value)}
                 />
