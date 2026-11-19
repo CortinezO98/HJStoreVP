@@ -138,8 +138,14 @@ export default function InventoryAuditPanel({ locations }) {
       ) : (
         <>
           <p className="text-sm text-gray-600 mb-3">
-            {number(total)} registros · Página {page} de {lastPage}
+            {number(total)} {tab === 'reservations' ? 'posibles diferencias detectadas' : 'registros'} · Página {page} de {lastPage}
           </p>
+          {tab === 'reservations' && (
+            <p className="text-xs text-amber-800 mb-3">
+              Diagnóstico de reservas trazables: los pedidos históricos sin reservas
+              no se incluyen. No modificar stock ni cancelar pagos por un hallazgo aislado.
+            </p>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -237,7 +243,13 @@ export default function InventoryAuditPanel({ locations }) {
               </tbody>
             </table>
           </div>
-          {items.length === 0 && <p className="text-sm text-gray-500 py-4">No se encontraron registros para este filtro.</p>}
+          {items.length === 0 && (
+            <p className="text-sm text-gray-500 py-4" role="status">
+              {tab === 'reservations'
+                ? 'No se detectaron diferencias en las reservas trazables para esta selección.'
+                : 'No se encontraron registros para este filtro.'}
+            </p>
+          )}
           <div className="flex items-center justify-between mt-4">
             <button type="button" className="btn btn-outline-secondary" disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}>Anterior</button>
