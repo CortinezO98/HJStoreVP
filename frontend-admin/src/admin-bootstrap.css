@@ -714,3 +714,31 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-command-overlay { backdrop-filter: none; }
 }
+
+.admin-app-shell .admin-dashboard-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 37px;
+  padding: 7px 12px;
+  border: 1px solid #dce2ed;
+  border-radius: 9px;
+  background: #fff;
+  color: #38455a;
+  font-size: 12px;
+  font-weight: 700;
+}
+.admin-app-shell .admin-dashboard-refresh:hover {
+  background: #f0f2fa;
+  border-color: #bbc4d8;
+}
+.admin-app-shell .admin-dashboard-quick-link {
+  text-decoration: none;
+}
+.admin-app-shell .admin-dashboard-quick-link:focus-visible,
+.admin-app-shell .admin-command-result:focus-visible,
+.admin-app-shell .admin-command-close:focus-visible {
+  outline: 2px solid #5551d8;
+  outline-offset: 2px;
+}
