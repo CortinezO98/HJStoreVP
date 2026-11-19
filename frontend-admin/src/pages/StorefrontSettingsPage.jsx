@@ -85,15 +85,15 @@ export default function StorefrontSettingsPage() {
       setUploading(null)
     }
   }
-  const uploadHeroImages = async (files) => {
+  const uploadGalleryImages = async (key, files) => {
     const selected = Array.from(files || [])
     if (!selected.length) return
-    const current = form?.hero_images || []
+    const current = form?.[key] || []
     if (selected.length + current.length > 8) {
       toast.error('El carrusel admite un máximo de 8 imágenes')
       return
     }
-    setUploading('hero_images')
+    setUploading(key)
     const uploaded = []
     try {
       for (const file of selected) {
@@ -105,7 +105,7 @@ export default function StorefrontSettingsPage() {
       }
       setForm((currentForm) => ({
         ...currentForm,
-        hero_images: [...(currentForm.hero_images || []), ...uploaded].slice(0, 8),
+        [key]: [...(currentForm[key] || []), ...uploaded].slice(0, 8),
       }))
       toast.success('Imágenes cargadas. Guarda y publica para actualizar la portada.')
     } catch (error) {
@@ -120,16 +120,16 @@ export default function StorefrontSettingsPage() {
       setUploading(null)
     }
   }
-  const moveHeroImage = (index, direction) => setForm((current) => {
-    const images = [...(current.hero_images || [])]
+  const moveGalleryImage = (key, index, direction) => setForm((current) => {
+    const images = [...(current[key] || [])]
     const destination = index + direction
     if (destination < 0 || destination >= images.length) return current
     ;[images[index], images[destination]] = [images[destination], images[index]]
-    return { ...current, hero_images: images }
+    return { ...current, [key]: images }
   })
-  const removeHeroImage = (index) => setForm((current) => ({
+  const removeGalleryImage = (key, index) => setForm((current) => ({
     ...current,
-    hero_images: (current.hero_images || []).filter((_, position) => position !== index),
+    [key]: (current[key] || []).filter((_, position) => position !== index),
   }))
 
   const save = async (event) => {
@@ -235,34 +235,33 @@ export default function StorefrontSettingsPage() {
                 </>}
               </div>)}
             </div>
-            {index === 1 && (
-              <div className="mt-4 border rounded-3 p-3 p-md-4 bg-light">
+            {index === 1 && (['hero_images', 'statement_images'].map((galleryKey) => (
+              <div key={galleryKey} className="mt-4 border rounded-3 p-3 p-md-4 bg-light">
                 <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
                   <div>
-                    <h3 className="h6 fw-bold mb-1">Carrusel de imágenes del inicio</h3>
+                    <h3 className="h6 fw-bold mb-1">{galleryKey === 'hero_images' ? 'Carrusel del banner principal' : 'Carrusel «Haz que tu estilo hable»'}</h3>
                     <p className="text-secondary small mb-0">
                       Agrega hasta 8 imágenes; cambiarán automáticamente cada 6 segundos.
-                      Si no hay imágenes, permanecerá el diseño ESTILO PROPIO.
-                      Las imágenes antiguas del banner no se publican automáticamente.
+                      Si no hay imágenes, se conserva el diseño editorial original de esta sección.
                     </p>
                   </div>
                   <span className="badge text-bg-light border text-dark">
-                    {(form.hero_images || []).length} / 8 imágenes
+                    {(form[galleryKey] || []).length} / 8 imágenes
                   </span>
                 </div>
-                <label className="form-label mt-3" htmlFor="settings-hero-gallery-upload">
+                <label className="form-label mt-3" htmlFor={`settings-${galleryKey}-upload`}>
                   Subir imágenes para el carrusel
                 </label>
-                <input id="settings-hero-gallery-upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-                  multiple className="form-control" disabled={!!uploading || (form.hero_images || []).length >= 8}
+                <input id={`settings-${galleryKey}-upload`} type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple className="form-control" disabled={!!uploading || (form[galleryKey] || []).length >= 8}
                   onChange={(event) => {
-                    uploadHeroImages(event.target.files)
+                    uploadGalleryImages(galleryKey, event.target.files)
                     event.target.value = ''
                   }}/>
-                {uploading === 'hero_images' && <p className="small text-secondary mt-2" role="status">Subiendo imágenes…</p>}
-                {(form.hero_images || []).length > 0 && (
+                {uploading === galleryKey && <p className="small text-secondary mt-2" role="status">Subiendo imágenes…</p>}
+                {(form[galleryKey] || []).length > 0 && (
                   <div className="row g-3 mt-1">
-                    {form.hero_images.map((image, imageIndex) => (
+                    {form[galleryKey].map((image, imageIndex) => (
                       <div key={`${image}-${imageIndex}`} className="col-6 col-md-4 col-xl-3">
                         <div className="bg-white rounded border p-2 h-100">
                           <img src={fileSrc(image)} alt={`Banner ${imageIndex + 1}`}
@@ -271,20 +270,20 @@ export default function StorefrontSettingsPage() {
                           <div className="d-flex flex-wrap gap-1">
                             <button type="button" className="btn btn-sm btn-outline-secondary"
                               disabled={imageIndex === 0 || !!uploading}
-                              onClick={() => moveHeroImage(imageIndex, -1)} aria-label={`Mover imagen ${imageIndex + 1} a la izquierda`}>←</button>
+                              onClick={() => moveGalleryImage(galleryKey, imageIndex, -1)} aria-label={`Mover imagen ${imageIndex + 1} a la izquierda`}>←</button>
                             <button type="button" className="btn btn-sm btn-outline-secondary"
-                              disabled={imageIndex === form.hero_images.length - 1 || !!uploading}
-                              onClick={() => moveHeroImage(imageIndex, 1)} aria-label={`Mover imagen ${imageIndex + 1} a la derecha`}>→</button>
+                              disabled={imageIndex === form[galleryKey].length - 1 || !!uploading}
+                              onClick={() => moveGalleryImage(galleryKey, imageIndex, 1)} aria-label={`Mover imagen ${imageIndex + 1} a la derecha`}>→</button>
                             <button type="button" className="btn btn-sm btn-outline-danger"
                               disabled={!!uploading}
-                              onClick={() => removeHeroImage(imageIndex)}
+                              onClick={() => removeGalleryImage(galleryKey, imageIndex)}
                               aria-label={`Quitar imagen ${imageIndex + 1}`}>Quitar</button>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
+                )))}
                 <p className="form-text mt-3 mb-0">Las imágenes se muestran en el orden indicado. Pulsa «Guardar y publicar» para aplicar los cambios.</p>
               </div>
             )}
