@@ -94,7 +94,7 @@ export default function HomePage() {
                 src={sourceUrl(activeHeroImage)} alt={`Imagen promocional ${carousel.index + 1} de HJStoreVP`}
                 onError={() => setFailedHeroImages((previous) =>
                   previous.includes(activeHeroImage) ? previous : [...previous, activeHeroImage])}
-                decoding="async" />
+                decoding="async" loading="eager" fetchPriority="high" />
             ) : (
               <div className="store-home-hero-fallback" aria-label="Identidad de HJStoreVP">
                 <div className="store-home-hero-orbit" aria-hidden="true" />
@@ -164,7 +164,7 @@ export default function HomePage() {
             <img className="store-home-statement-image" key={activeStatementImage}
               src={sourceUrl(activeStatementImage)}
               alt={`Imagen de campaña de estilo ${statementCarousel.index + 1}`}
-              decoding="async"
+              decoding="async" loading="lazy" fetchPriority="low"
               onError={() => setFailedStatementImages((current) =>
                 current.includes(activeStatementImage) ? current : [...current, activeStatementImage])}
             />
