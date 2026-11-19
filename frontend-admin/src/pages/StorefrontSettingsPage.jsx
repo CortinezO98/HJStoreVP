@@ -283,10 +283,10 @@ export default function StorefrontSettingsPage() {
                       </div>
                     ))}
                   </div>
-                )))}
+                )}
                 <p className="form-text mt-3 mb-0">Las imágenes se muestran en el orden indicado. Pulsa «Guardar y publicar» para aplicar los cambios.</p>
               </div>
-            )}
+            )))}
             {index === 3 && <div className="admin-settings-info mt-4">
               Revisa estos textos con el comercio antes de publicarlos. El sistema no genera políticas legales automáticamente.
             </div>}
