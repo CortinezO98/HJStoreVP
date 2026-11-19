@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   ShoppingBag,
@@ -93,6 +93,7 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState('form') // form | payment | confirmed
   const [loading, setLoading] = useState(false)
+  const submitLock = useRef(false)
   const [createdOrder, setCreatedOrder] = useState(null)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [selectedMethod, setSelectedMethod] = useState('wompi')
@@ -296,8 +297,8 @@ export default function CheckoutPage() {
           <div className="flex items-start gap-2 text-xs text-gray-400 px-1">
             <Info size={13} className="mt-0.5 flex-shrink-0" />
             <p>
-              Serás redirigido al proveedor de pago correspondiente. Cuando el pago
-              se confirme, tu pedido quedará actualizado.
+              Continuarás en la pasarela del proveedor. Crear el pedido no significa que
+              se haya cobrado: su estado cambiará únicamente tras confirmar el pago.
             </p>
           </div>
 
@@ -306,7 +307,7 @@ export default function CheckoutPage() {
             onClick={() => setStep('form')}
             className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
-            ← Volver y cambiar datos o método
+            ← Volver al resumen del pedido
           </button>
         </div>
       </div>
@@ -331,6 +332,9 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    // Prevent double-submit before React can propagate loading state.
+    // Reusing an existing pending order remains the sole retry behavior.
+    if (submitLock.current || loading || step !== 'form') return
 
     // No confiar en cantidades ni precios del carrito persistido en el navegador.
     if (!items.length || items.some(({ product, qty }) =>
@@ -363,6 +367,7 @@ export default function CheckoutPage() {
       return
     }
 
+    submitLock.current = true
     setLoading(true)
 
     try {
@@ -420,6 +425,7 @@ export default function CheckoutPage() {
         error?.response?.data?.detail || 'No fue posible procesar tu pedido'
       toast.error(message)
     } finally {
+      submitLock.current = false
       setLoading(false)
     }
   }
@@ -596,6 +602,13 @@ export default function CheckoutPage() {
             </div>
 
             {methodsError && <p role="alert" className="bg-red-50 text-red-800 text-sm p-4 mb-4">No pudimos consultar los métodos de pago. Comprueba tu conexión antes de continuar.</p>}
+            {!methodsError && methods.length > 0 && !methods.some((method) => method.enabled) &&
+              import.meta.env.VITE_ENABLE_DEMO_PAYMENTS !== 'true' && (
+              <p role="status" className="bg-amber-50 text-amber-900 text-sm p-4 mb-4">
+                Todavía no hay proveedores de pago habilitados. Puedes conservar tu carrito
+                y regresar cuando estén disponibles.
+              </p>
+            )}
             <div className="space-y-3">
               {Object.entries(PAYMENT_METHODS).map(([key, config]) => {
                 const methodStatus = getMethodStatus(key)
@@ -701,7 +714,7 @@ export default function CheckoutPage() {
         </form>
 
         <div className="min-w-0">
-          <div className="store-responsive-summary">
+          <div className="store-responsive-summary store-checkout-summary" aria-live="polite">
             <h2 className="font-black text-neutral-950 uppercase text-xl mb-2">RESUMEN DEL PEDIDO</h2>
             <p className="text-xs text-neutral-500 mb-5">Confirma artículos y valores antes de continuar. El servidor validará de nuevo la disponibilidad.</p>
 
@@ -742,6 +755,10 @@ export default function CheckoutPage() {
             </div>
 
             <div className="flex justify-between items-center py-4 border-b border-gray-100">
+              <span className="text-gray-500 text-sm">Subtotal de productos</span>
+              <strong className="text-sm">{formatCOP(total())}</strong>
+            </div>
+            <div className="flex justify-between items-center py-4 border-b border-gray-100">
               <span className="text-gray-500 text-sm">Envío</span>
               <span className="text-sm font-medium text-neutral-700">
                 {selectedShipping ? formatCOP(selectedShipping.price) : 'Selecciona una tarifa'}
@@ -761,8 +778,16 @@ export default function CheckoutPage() {
             </div>
 
             <p className="text-xs text-neutral-500 mt-4">
-              El total incluye el descuento aplicado y el envío. El servidor vuelve a validar el cupón, los productos y la tarifa antes de crear el pedido.
+              {selectedShipping
+                ? 'Este es el total estimado. Los valores se validan nuevamente en el servidor al crear el pedido.'
+                : 'Selecciona una tarifa disponible para conocer el total incluyendo envío.'}
             </p>
+            {createdOrder && (
+              <p className="store-checkout-existing-order" role="status">
+                Pedido {createdOrder.order_number}: el total definitivo y la dirección ya están fijados.
+                Volver a intentar la pasarela no volverá a crear el pedido.
+              </p>
+            )}
           </div>
         </div>
       </div>
