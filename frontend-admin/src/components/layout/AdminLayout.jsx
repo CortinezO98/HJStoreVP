@@ -33,6 +33,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuthStore } from '../../store'
 import toast from 'react-hot-toast'
+import AdminCommandPalette from './AdminCommandPalette'
 
 const NAV_ITEMS = [
   {
@@ -219,6 +220,7 @@ export default function AdminLayout() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [commandOpen, setCommandOpen] = useState(false)
   const [navSearch, setNavSearch] = useState('')
   const [expandedGroups, setExpandedGroups] = useState(() => NAV_GROUPS.map(group => group.label))
   const navSearchRef = useRef(null)
@@ -239,8 +241,8 @@ export default function AdminLayout() {
     const shortcut = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(true)
-        requestAnimationFrame(() => navSearchRef.current?.focus())
+        setSidebarOpen(false)
+        setCommandOpen(true)
       }
     }
     window.addEventListener('keydown', shortcut)
@@ -342,11 +344,9 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className="admin-topbar-actions">
-            <button type="button" className="admin-topbar-search-cta" onClick={() => {
-              if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpen(true)
-              else document.querySelector('.admin-sidebar-desktop input[type="search"]')?.focus()
-              requestAnimationFrame(() => navSearchRef.current?.focus())
-            }} aria-label="Buscar módulo en el menú">
+            <button type="button" className="admin-topbar-search-cta"
+              onClick={() => setCommandOpen(true)} aria-label="Buscar módulo administrativo"
+              aria-haspopup="dialog" aria-expanded={commandOpen}>
               <Search size={16} aria-hidden="true" />
               <span>Buscar módulo</span>
               <span className="admin-search-shortcut">Ctrl K</span>
@@ -367,6 +367,7 @@ export default function AdminLayout() {
           <div className="admin-main-inner"><Outlet /></div>
         </main>
       </div>
+      <AdminCommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} items={navItems}/>
     </div>
   )
 }
