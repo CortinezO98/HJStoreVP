@@ -19,6 +19,7 @@ import {
 import OperationalAnalytics from '../components/OperationalAnalytics'
 import CommerceOperationsPanel from '../components/CommerceOperationsPanel'
 import PaymentIntegrityPanel from '../components/PaymentIntegrityPanel'
+import PaymentRecoveryQueue from '../components/PaymentRecoveryQueue'
 import {
     analyticsApi,
     financialReportsApi,
@@ -1021,6 +1022,7 @@ export default function ReportsPage() {
         <div className="admin-reports-section border-t border-slate-200 pt-8 mt-8">
           <CommerceOperationsPanel />
           <PaymentIntegrityPanel />
+          <PaymentRecoveryQueue />
         </div>
 
         {/* Nueva sección independiente; el reporte contable original se conserva íntegro. */}
