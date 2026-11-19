@@ -184,25 +184,52 @@ def _replayed_order(db: Session, *, customer_id: int, key: str, digest: str):
 @router.post("/web", response_model=WebOrderOut, status_code=status.HTTP_201_CREATED)
 def create_web_order(
     data: WebOrderCreate,
-    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Crea una sola orden por clave; falta de clave es compatibilidad heredada."""
-    digest = None
-    if idempotency_key is not None:
-        if not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", idempotency_key):
-            raise HTTPException(status_code=400, detail="Idempotency-Key inválida")
-        canonical = json.dumps(
-            data.model_dump(mode="json"), ensure_ascii=False,
-            sort_keys=True, separators=(",", ":"),
-        )
-        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    """Exige una clave única por intención de compra; reintentos no crean stock extra."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", idempotency_key):
+        raise HTTPException(status_code=400, detail="Idempotency-Key inválida")
+    canonical = json.dumps(
+        data.model_dump(mode="json"), ensure_ascii=False,
+        sort_keys=True, separators=(",", ":"),
+    )
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    replayed = _replayed_order(
+        db, customer_id=current_user.id, key=idempotency_key, digest=digest,
+    )
+    if replayed is not None:
+        return replayed
+
+    # Tomar la clave de manera atómica antes de validar cupones y precios.
+    # Concurrencia: el INSERT único espera al primer intento y, si este
+    # confirma, el perdedor devuelve el pedido original sin reservar stock.
+    order = Order(
+        order_number=generate_order_number(),
+        customer_id=current_user.id,
+        idempotency_key=idempotency_key,
+        idempotency_hash=digest,
+        channel=OrderChannel.WEB,
+        status=OrderStatus.PENDING,
+        subtotal=Decimal("0"), discount_amount=Decimal("0"),
+        shipping_amount=Decimal("0"), total_amount=Decimal("0"),
+        total_cost=Decimal("0"),
+        shipping_address=data.shipping_address.model_dump(),
+        notes=data.notes,
+    )
+    db.add(order)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
         replayed = _replayed_order(
-            db, customer_id=current_user.id, key=idempotency_key, digest=digest,
+            db, customer_id=current_user.id,
+            key=idempotency_key, digest=digest,
         )
         if replayed is not None:
             return replayed
+        raise
 
     if not data.items:
         raise HTTPException(status_code=400, detail="El pedido debe tener al menos un producto")
@@ -285,40 +312,17 @@ def create_web_order(
         )
     total_amount = subtotal - discount + shipping_amount
 
-    # Crear orden
-    order = Order(
-        order_number=generate_order_number(),
-        customer_id=current_user.id,
-        idempotency_key=idempotency_key,
-        idempotency_hash=digest,
-        channel=OrderChannel.WEB,
-        status=OrderStatus.PENDING,
-        subtotal=subtotal,
-        discount_amount=discount,
-        shipping_amount=shipping_amount,
-        total_amount=total_amount,
-        total_cost=total_cost,
-        shipping_address={
-            **data.shipping_address.model_dump(),
-            **shipping_snapshot(shipping_rate),
-        },
-        notes=data.notes,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
-    )
-    db.add(order)
-    try:
-        # UNIQUE fuerza un solo ganador antes de reservar inventario.
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        if idempotency_key is not None:
-            replayed = _replayed_order(
-                db, customer_id=current_user.id, key=idempotency_key, digest=digest,
-            )
-            if replayed is not None:
-                return replayed
-        raise
+    # El pedido insertado al inicio de la transacción queda ahora completo.
+    # Todavía no es visible para otras conexiones hasta el commit final.
+    order.subtotal = subtotal
+    order.discount_amount = discount
+    order.shipping_amount = shipping_amount
+    order.total_amount = total_amount
+    order.total_cost = total_cost
+    order.shipping_address = {
+        **data.shipping_address.model_dump(),
+        **shipping_snapshot(shipping_rate),
+    }
     if coupon is not None:
         db.add(CouponRedemption(
             coupon_id=coupon.id, order_id=order.id, customer_id=current_user.id,
