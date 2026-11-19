@@ -78,9 +78,21 @@ def normalize_image(content: bytes) -> tuple[bytes, str]:
                 corrected.mode == "P" and "transparency" in corrected.info
             )
             corrected = corrected.convert("RGBA" if has_alpha else "RGB")
+            # Inspección sobre una miniatura: impide publicar archivos vacíos,
+            # transparentes o de color uniforme sin procesar todo de nuevo.
+            check = corrected.copy()
+            check.thumbnail((128, 128), Image.Resampling.LANCZOS)
+            extrema = check.getextrema()
+            if has_alpha and extrema[3][1] < 16:
+                raise HTTPException(status_code=422, detail="La imagen no contiene píxeles visibles")
+            variations = [top - bottom for bottom, top in extrema[:3]]
+            if max(variations) < 4:
+                raise HTTPException(status_code=422, detail="La imagen parece vacía o de un solo color. Revisa el encuadre.")
             buffer = io.BytesIO()
             corrected.save(buffer, format="WEBP", quality=88, method=5, exact=has_alpha)
             normalized = buffer.getvalue()
+            if len(normalized) < 500:
+                raise HTTPException(status_code=422, detail="El archivo de imagen generado está vacío")
             if len(normalized) > MAX_SIZE_BYTES:
                 raise HTTPException(status_code=413, detail="Imagen optimizada supera el límite")
             return normalized, "webp"
