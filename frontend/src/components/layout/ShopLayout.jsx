@@ -3,6 +3,7 @@ import { ShoppingBag, UserRound, Search, Menu, X, ArrowRight, Instagram, Heart }
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { categoriesApi, storefrontSettingsApi } from '../../services/api'
+import hjShield from '../../assets/hj-shield.svg'
 import { useCartStore, useAuthStore, useWishlistStore } from '../../store'
 
 
@@ -70,9 +71,13 @@ export default function ShopLayout() {
 
       <header className="editorial-header">
         <div className="editorial-header-inner">
-          <Link to="/" className="editorial-logo" aria-label={`${storeName}, inicio`}>
-            {logoSrc ? <img src={logoSrc} alt={storeName} className="max-h-12 max-w-40 object-contain" /> :
-              <>HJ<span>STORE</span><small>VP</small></>}
+          <Link to="/" className="editorial-logo store-brand-lockup" aria-label={`${storeName}, inicio`}>
+            {logoSrc ? <img src={logoSrc} alt={storeName} className="store-custom-header-logo" /> : (
+              <>
+                <img src={hjShield} alt="" aria-hidden="true" className="store-brand-emblem" />
+                <span className="store-brand-name">STORE<small>VP</small></span>
+              </>
+            )}
           </Link>
           <nav className="editorial-nav" aria-label="Navegación principal">
             <NavLink to="/" end>INICIO</NavLink>
@@ -136,12 +141,12 @@ export default function ShopLayout() {
       <footer className="editorial-footer store-footer-compact">
         <div className="store-footer-main">
           <div className="store-footer-brand">
-            <Link to="/" className="editorial-logo" aria-label={`${storeName}, volver al inicio`}>
-              {logoSrc
-                ? <img src={logoSrc} alt={storeName} className="max-h-12 max-w-40 object-contain" />
-                : <>HJ<span>STORE</span><small>VP</small></>}
+            <Link to="/" className="editorial-logo store-brand-lockup store-brand-light"
+              aria-label={`${storeName}, volver al inicio`}>
+              <img src={hjShield} alt="" aria-hidden="true" className="store-brand-emblem" />
+              <span className="store-brand-name">STORE<small>VP</small></span>
             </Link>
-            <p>{storeSettings.tagline || 'ESTILO PROPIO'}</p>
+            <p>GORRAS Y ALGO MÁS</p>
           </div>
           <nav className="store-footer-primary-links" aria-label="Enlaces rápidos">
             <Link to="/catalogo">Catálogo</Link>
