@@ -13,6 +13,8 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
   const [y, setY] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [prepared, setPrepared] = useState(null)
+  const [preparedUrl, setPreparedUrl] = useState('')
 
   useEffect(() => {
     if (!file) return undefined
@@ -23,8 +25,19 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
     setX(0)
     setY(0)
     setError('')
+    setPrepared(null)
     return () => URL.revokeObjectURL(nextUrl)
   }, [file])
+
+  useEffect(() => {
+    if (!prepared) {
+      setPreparedUrl('')
+      return undefined
+    }
+    const preview = URL.createObjectURL(prepared)
+    setPreparedUrl(preview)
+    return () => URL.revokeObjectURL(preview)
+  }, [prepared])
 
   const frameHeight = Math.round(width / ratio)
   const imageMetrics = useMemo(() => {
@@ -39,7 +52,7 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
     return { scaledWidth, scaledHeight, left, top }
   }, [dimensions, zoom, x, y, width, frameHeight])
 
-  const confirm = async () => {
+  const prepare = async () => {
     const img = imageRef.current
     if (!img?.complete || !img.naturalWidth || !imageMetrics || saving) return
     setSaving(true)
@@ -48,17 +61,41 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
       const canvas = document.createElement('canvas')
       canvas.width = width
       canvas.height = frameHeight
-      const ctx = canvas.getContext('2d')
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
       if (!ctx) throw new Error('No fue posible preparar la imagen')
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
+      if (!img.complete || !img.naturalWidth) throw new Error('La fotografía no terminó de cargar')
       ctx.drawImage(img, imageMetrics.left, imageMetrics.top,
         imageMetrics.scaledWidth, imageMetrics.scaledHeight)
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      let visible = 0
+      let min = 255, max = 0
+      for (let i = 0; i < pixels.length; i += 64) {
+        if (pixels[i + 3] > 12) {
+          visible++
+          min = Math.min(min, pixels[i], pixels[i + 1], pixels[i + 2])
+          max = Math.max(max, pixels[i], pixels[i + 1], pixels[i + 2])
+        }
+      }
+      if (!visible || max - min < 5) {
+        throw new Error('El recorte parece vacío o de un solo color. Revisa el encuadre.')
+      }
       const blob = await new Promise((resolve, reject) =>
         canvas.toBlob((result) => result ? resolve(result) : reject(new Error('No se pudo comprimir la imagen')),
           'image/webp', 0.9))
       const base = (file.name || 'imagen').replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 70)
-      await onConfirm(new File([blob], `${base}-optimizada.webp`, { type: 'image/webp' }))
+      if (blob.size < 500) throw new Error('El archivo generado está vacío')
+      const output = new File([blob], `${base}-optimizada.webp`, { type: 'image/webp' })
+      const decoded = await createImageBitmap(output)
+      try {
+        if (decoded.width !== width || decoded.height !== frameHeight) {
+          throw new Error('El archivo final no tiene las dimensiones esperadas')
+        }
+      } finally {
+        decoded.close()
+      }
+      setPrepared(output)
     } catch (err) {
       setError(err.message || 'Error preparando la fotografía')
     } finally {
@@ -66,9 +103,20 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
     }
   }
 
+  const uploadPrepared = async () => {
+    if (!prepared || saving) return
+    setSaving(true)
+    setError('')
+    try {
+      await onConfirm(prepared)
+    } catch (err) {
+      setError(err?.message || 'No se pudo subir la imagen.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (!file) return null
-  const previewWidth = 100
-  const previewHeight = 100 / ratio
   return (
     <div className="fixed inset-0 z-[1100] bg-black/80 flex items-center justify-center p-3 sm:p-5"
       role="dialog" aria-modal="true" aria-label={title}>
@@ -89,7 +137,7 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
               onError={() => setError('No se pudo abrir la imagen en este navegador')}
               style={imageMetrics ? {
                 position: 'absolute',
-                width: `${imageMetrics.scaledWidth / width * previewWidth}%`,
+                width: `${imageMetrics.scaledWidth / width * 100}%`,
                 height: `${imageMetrics.scaledHeight / frameHeight * 100}%`,
                 left: `${imageMetrics.left / width * 100}%`,
                 top: `${imageMetrics.top / frameHeight * 100}%`,
@@ -98,6 +146,17 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
             <div className="absolute inset-0 border-2 border-white/80 pointer-events-none"/>
           </div>
         </div>
+        {preparedUrl && (
+          <div className="mt-4 rounded-lg border border-neutral-300 bg-neutral-50 p-3">
+            <p className="text-sm font-semibold mb-2">Vista previa del WEBP final</p>
+            <img src={preparedUrl} alt="Fotografía procesada antes de subir"
+              style={{ maxHeight: 250, maxWidth: '100%', objectFit: 'contain', margin: 'auto' }}
+              onError={() => { setPrepared(null); setError('El archivo final no se puede visualizar.') }}/>
+            <p className="text-xs text-gray-600 mt-2">
+              Tamaño: {(prepared?.size / 1024).toFixed(0)} KB. Confirma únicamente si se ve correctamente.
+            </p>
+          </div>
+        )}
         <div className="grid sm:grid-cols-3 gap-4 my-5">
           {[
             ['Zoom', zoom, setZoom, 1, 3, 0.05],
@@ -107,7 +166,7 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
             <label key={label} className="text-sm font-semibold">
               {label}
               <input type="range" className="w-full mt-3" min={min} max={max} step={step}
-                value={value} onChange={(e) => setter(Number(e.target.value))}/>
+                value={value} onChange={(e) => { setter(Number(e.target.value)); setPrepared(null) }}/>
             </label>
           ))}
         </div>
@@ -118,9 +177,10 @@ export default function ImageCropModal({ file, ratio = 1, width = 1800, title = 
         {error && <p role="alert" className="text-red-700 text-sm mb-3">{error}</p>}
         <div className="flex gap-3 justify-end">
           <button type="button" className="btn btn-outline-secondary" disabled={saving} onClick={onCancel}>Cancelar</button>
-          <button type="button" className="btn btn-primary" disabled={!dimensions || saving} onClick={confirm}>
-            {saving ? 'Preparando…' : 'Aplicar encuadre'}
-          </button>
+          <button type="button" className="btn btn-outline-secondary" disabled={!dimensions || saving}
+            onClick={prepare}>{saving ? 'Procesando…' : 'Generar vista previa'}</button>
+          <button type="button" className="btn btn-primary" disabled={!prepared || saving}
+            onClick={uploadPrepared}>{saving ? 'Subiendo…' : 'Confirmar imagen'}</button>
         </div>
       </div>
     </div>
