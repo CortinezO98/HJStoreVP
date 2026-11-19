@@ -5,7 +5,8 @@ automáticamente ante falta de respuesta de una pasarela.
 """
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+import httpx
 from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,7 @@ from app.models.models import (
     Order, OrderChannel, OrderStatus, OrderStockReservation, Shipment,
     CustomerNotification,
 )
+from app.services.wompi import get_transaction as get_wompi_transaction, wompi_enabled
 
 router = APIRouter(prefix="/commerce-operations", tags=["Operación comercial"])
 
@@ -233,5 +235,83 @@ def payment_integrity(
             "Auditoría interna de solo lectura, no confirmación del proveedor. "
             "Pedidos antiguos o integraciones históricas pueden carecer de referencia. "
             "Nunca liberar stock ni cambiar un pago con base únicamente en estos hallazgos."
+        ),
+    }
+
+
+@router.get("/wompi-verify/{order_id}")
+async def verify_wompi_order_read_only(
+    order_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Consulta Wompi sin cambiar el estado ni la reserva del pedido.
+
+    Solo aplica si la referencia de transacción ya es conocida. No se
+    confía en parámetros del navegador para determinar una transacción.
+    """
+    order = db.query(Order).filter(
+        Order.id == order_id, Order.channel == OrderChannel.WEB,
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Pedido web no encontrado")
+    if order.payment_method != "wompi" or not order.payment_ref:
+        raise HTTPException(
+            status_code=409,
+            detail="Este pedido no tiene una transacción Wompi vinculada para verificar",
+        )
+    if not wompi_enabled():
+        raise HTTPException(status_code=503, detail="Wompi no está configurado")
+
+    try:
+        tx = await get_wompi_transaction(str(order.payment_ref))
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        raise HTTPException(status_code=503, detail="No fue posible consultar el proveedor")
+    if not isinstance(tx, dict):
+        raise HTTPException(status_code=502, detail="Respuesta del proveedor no válida")
+
+    reference_matches = str(tx.get("reference") or "") == order.order_number
+    amount = tx.get("amount_in_cents")
+    amount_matches = type(amount) is int and amount == int(order.total_amount * 100)
+    currency_matches = tx.get("currency") == "COP"
+    transaction_matches = str(tx.get("id") or "") == str(order.payment_ref)
+    checks = {
+        "reference_matches": reference_matches,
+        "amount_matches": amount_matches,
+        "currency_matches": currency_matches,
+        "transaction_matches": transaction_matches,
+    }
+    provider_status = str(tx.get("status") or "").upper()
+    locally_paid = order.status in (
+        OrderStatus.PAID, OrderStatus.PREPARING,
+        OrderStatus.SHIPPED, OrderStatus.DELIVERED,
+    )
+    status_conflict = (
+        (provider_status == "APPROVED" and not locally_paid) or
+        (provider_status in ("DECLINED", "ERROR", "VOIDED") and locally_paid)
+    )
+    if not all(checks.values()):
+        finding = "identity_mismatch"
+    elif status_conflict:
+        finding = "status_conflict"
+    elif provider_status in ("APPROVED", "DECLINED", "ERROR", "VOIDED"):
+        finding = "consistent"
+    else:
+        finding = "non_final_or_unknown"
+
+    return {
+        "order_id": order.id,
+        "order_number": order.order_number,
+        "local_status": order.status.value,
+        "provider": "wompi",
+        "provider_status": provider_status or "UNKNOWN",
+        "identity_checks": checks,
+        "finding": finding,
+        "verified_at_utc": datetime.utcnow().isoformat(),
+        "read_only": True,
+        "note": (
+            "Consulta informativa del proveedor. No confirma ni revierte pagos "
+            "automáticamente, no crea cobros y no modifica inventario. "
+            "Ante discrepancias, investigar con soporte de la pasarela."
         ),
     }
