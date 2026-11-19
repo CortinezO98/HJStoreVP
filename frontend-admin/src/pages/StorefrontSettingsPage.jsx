@@ -113,7 +113,7 @@ export default function StorefrontSettingsPage() {
       if (uploaded.length) {
         setForm((currentForm) => ({
           ...currentForm,
-          hero_images: [...(currentForm.hero_images || []), ...uploaded].slice(0, 8),
+          [key]: [...(currentForm[key] || []), ...uploaded].slice(0, 8),
         }))
       }
     } finally {
