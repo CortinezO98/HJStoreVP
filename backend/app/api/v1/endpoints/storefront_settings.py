@@ -73,6 +73,8 @@ DEFAULTS = {
     "homepage_banners": [],
     "homepage_visual_blocks": [],
     "homepage_category_tiles": [],
+    "hero_presentation": {"text_align": "left", "text_position": "center", "overlay_opacity": 65},
+    "statement_presentation": {"text_align": "left", "text_position": "center", "overlay_opacity": 65},
     "hero_carousel_settings": {"autoplay": True, "interval_ms": 6000, "show_navigation": True},
     "statement_carousel_settings": {"autoplay": True, "interval_ms": 6000, "show_navigation": True},
     "homepage_loyalty_banner": None,
@@ -248,6 +250,12 @@ class CarouselPresentation(BaseModel):
     show_navigation: bool = True
 
 
+class BannerPresentation(BaseModel):
+    text_align: str = Field(default="left", pattern=r"^(left|center|right)$")
+    text_position: str = Field(default="center", pattern=r"^(top|center|bottom)$")
+    overlay_opacity: int = Field(default=65, ge=0, le=90)
+
+
 class SettingsPayload(BaseModel):
     store_name: str = Field(min_length=1, max_length=100)
     tagline: str = Field(max_length=180)
@@ -263,6 +271,8 @@ class SettingsPayload(BaseModel):
     homepage_visual_blocks: list[HomepageVisualBlock] = Field(default_factory=list, max_length=6)
     homepage_category_tiles: list[HomepageCategoryTile] = Field(default_factory=list, max_length=10)
     homepage_loyalty_banner: Optional[HomepageLoyaltyBanner] = None
+    hero_presentation: BannerPresentation = Field(default_factory=BannerPresentation)
+    statement_presentation: BannerPresentation = Field(default_factory=BannerPresentation)
     hero_carousel_settings: CarouselPresentation = Field(default_factory=CarouselPresentation)
     statement_carousel_settings: CarouselPresentation = Field(default_factory=CarouselPresentation)
 
@@ -439,6 +449,7 @@ HOMEPAGE_EDIT_FIELDS = (
     "hero_images", "statement_images", "homepage_banners", "homepage_visual_blocks",
     "homepage_category_tiles", "homepage_loyalty_banner",
     "hero_carousel_settings", "statement_carousel_settings",
+    "hero_presentation", "statement_presentation",
     "homepage_section_order", "homepage_hidden_sections",
 )
 DRAFT_KEY = "_homepage_draft"
