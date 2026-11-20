@@ -94,6 +94,13 @@ export const authApi = {
   login: (data) => apiClient.post('/auth/login', data),
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
   me: () => apiClient.get('/auth/me'),
+  updateProfile: (data) => apiClient.patch('/auth/me', data),
+  changeEmail: (data) => apiClient.put('/auth/me/email', data),
+  changePassword: (data) => apiClient.put('/auth/me/password', data),
+  mfaStatus: () => apiClient.get('/auth/me/mfa'),
+  mfaSetup: (data) => apiClient.post('/auth/me/mfa/setup', data),
+  mfaConfirm: (data) => apiClient.post('/auth/me/mfa/confirm', data),
+  mfaVerify: (data) => apiClient.post('/auth/mfa/verify', data),
 }
 
 // ─────────────────────────────────────────────────────────
