@@ -38,6 +38,10 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    # Cada prueba reinstala su dependencia, incluso si otro archivo creó
+    # clientes FastAPI con overrides propios. No dejar sesiones reales activas.
+    previous_overrides = dict(app.dependency_overrides)
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=engine_test)
     db = TestingSession()
 
@@ -68,6 +72,8 @@ def setup_db():
     yield
 
     Base.metadata.drop_all(bind=engine_test)
+    app.dependency_overrides.clear()
+    app.dependency_overrides.update(previous_overrides)
 
 
 class LegacyCheckoutTestClient(TestClient):
