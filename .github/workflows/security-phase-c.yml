@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - 'backend/app/api/v1/endpoints/security_audit.py'
+      - 'backend/app/api/v1/endpoints/commercial_audit.py'
+      - 'backend/app/api/v1/router.py'
+      - 'backend/scripts/export_audit_snapshot.py'
+      - 'backend/tests/test_commercial_audit.py'
+      - 'frontend-admin/src/**'
       - 'backend/app/services/security_audit.py'
       - 'backend/tests/test_security_audit.py'
       - '.github/workflows/security-phase-c.yml'
@@ -26,7 +31,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - name: Security audit isolated tests
-        run: python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py tests/test_security_audit.py -q
+        run: python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py tests/test_security_audit.py tests/test_commercial_audit.py -q
   admin-build:
     runs-on: ubuntu-latest
     defaults:
