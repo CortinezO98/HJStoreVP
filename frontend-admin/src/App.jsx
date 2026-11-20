@@ -22,6 +22,7 @@ import EngagementPage from './pages/EngagementPage'
 import IntegrationsPage from './pages/IntegrationsPage'
 import CashPage from './pages/CashPage'
 import StorefrontSettingsPage from './pages/StorefrontSettingsPage'
+import HomeStudioPage from './pages/HomeStudioPage'
 
 function ProtectedAdmin({ roles }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -173,6 +174,10 @@ export default function App() {
 
           <Route path="integraciones" element={<ProtectedAdmin roles={['super_admin', 'admin']} />}>
             <Route index element={<IntegrationsPage />} />
+          </Route>
+
+          <Route path="estudio-inicio" element={<ProtectedAdmin roles={['super_admin']} />}>
+            <Route index element={<HomeStudioPage />} />
           </Route>
 
           <Route path="configuracion-tienda" element={<ProtectedAdmin roles={['super_admin']} />}>
