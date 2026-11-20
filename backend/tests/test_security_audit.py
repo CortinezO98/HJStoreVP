@@ -54,7 +54,7 @@ def test_filtering_pagination_and_summary(audit_db):
         append_audit(db, actor_id=user.id, action=action, resource="users", target_id=user.id)
     db.commit()
     result = list_security_events(
-        actor_id=user.id, action="users.updated", resource=None, outcome=None,
+        actor_id=user.id, action="users.updated", resource=None, target_id=None, outcome=None,
         from_date=None, to_date=None, page=1, per_page=1, db=db, _=user
     )
     assert result["total"] == 2
@@ -69,7 +69,7 @@ def test_audit_api_never_exposes_sensitive_columns(audit_db):
     append_audit(db, actor_id=user.id, action="auth.password.changed", target_id=user.id)
     db.commit()
     result = list_security_events(
-        actor_id=None, action=None, resource=None, outcome=None,
+        actor_id=None, action=None, resource=None, target_id=None, outcome=None,
         from_date=None, to_date=None, page=1, per_page=30, db=db, _=user
     )
     item = result["items"][0]
