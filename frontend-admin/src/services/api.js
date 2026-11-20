@@ -318,6 +318,7 @@ export const cashApi = {
 export const storefrontSettingsApi = {
   read: () => apiClient.get('/storefront-settings/admin'),
   readHomepageDraft: () => apiClient.get('/storefront-settings/admin/homepage-draft'),
+  homepageStorageHealth: () => apiClient.get('/storefront-settings/admin/homepage-storage-health'),
   saveHomepageDraft: (draft) => apiClient.put('/storefront-settings/admin/homepage-draft', { draft }),
   publishHomepageDraft: () => apiClient.post('/storefront-settings/admin/homepage-publish'),
   discardHomepageDraft: () => apiClient.delete('/storefront-settings/admin/homepage-draft'),
