@@ -14,6 +14,9 @@ export default function MyProfilePage() {
   const { user, logout } = useAuthStore()
   const [profile, setProfile] = useState({ full_name: '', phone: '', email: '' })
   const [emailPassword, setEmailPassword] = useState('')
+  const [emailMfaCode, setEmailMfaCode] = useState('')
+  const [passwordMfaCode, setPasswordMfaCode] = useState('')
+  const [securityAction, setSecurityAction] = useState({ current_password: '', code: '' })
   const [passwords, setPasswords] = useState({ current_password: '', new_password: '', confirm: '' })
   const [mfa, setMfa] = useState(null)
   const [setupPassword, setSetupPassword] = useState('')
@@ -77,15 +80,24 @@ export default function MyProfilePage() {
       <h2 className="font-semibold text-lg">Cambiar correo electrónico</h2>
       <p className="text-sm text-gray-600">Por seguridad debes confirmar tu contraseña actual.</p>
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); perform(async () => {
-        await authApi.changeEmail({ email: profile.email, current_password: emailPassword })
+        await authApi.changeEmail({ email: profile.email, current_password: emailPassword,
+          mfa_code: mfa?.enabled ? emailMfaCode : null })
         setEmailPassword('')
-      }, 'Correo actualizado') }}>
+        setEmailMfaCode('')
+        closeSession()
+        toast.success('Correo actualizado. Inicia sesión nuevamente.')
+      }) }}>
         <label className="block text-sm" htmlFor="profile-email">Correo</label>
         <input id="profile-email" className="input" type="email" required value={profile.email}
           onChange={(e) => setProfile(p => ({ ...p, email: e.target.value }))}/>
         <label className="block text-sm" htmlFor="profile-email-pass">Contraseña actual</label>
         <input id="profile-email-pass" className="input" type="password" autoComplete="current-password"
           required value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)}/>
+        {mfa?.enabled && <>
+          <label className="block text-sm" htmlFor="profile-email-mfa">Código 2FA o recuperación</label>
+          <input id="profile-email-mfa" className="input" required autoComplete="one-time-code"
+            value={emailMfaCode} onChange={(e) => setEmailMfaCode(e.target.value.trim())}/>
+        </>}
         <button className="btn-primary" type="submit" disabled={busy}>Actualizar correo</button>
       </form>
     </section>
@@ -96,7 +108,8 @@ export default function MyProfilePage() {
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault()
         if (passwords.new_password !== passwords.confirm) { toast.error('Las contraseñas no coinciden'); return }
         perform(async () => {
-          await authApi.changePassword({ current_password: passwords.current_password, new_password: passwords.new_password })
+          await authApi.changePassword({ current_password: passwords.current_password,
+            new_password: passwords.new_password, mfa_code: mfa?.enabled ? passwordMfaCode : null })
           closeSession()
           toast.success('Contraseña cambiada. Inicia sesión nuevamente.')
         })
@@ -112,6 +125,11 @@ export default function MyProfilePage() {
         <input id="profile-confirm-pass" className="input" type="password" autoComplete="new-password" required
           minLength={12} maxLength={72} value={passwords.confirm}
           onChange={(e) => setPasswords(p => ({ ...p, confirm: e.target.value }))}/>
+        {mfa?.enabled && <>
+          <label className="block text-sm" htmlFor="profile-password-mfa">Código 2FA o recuperación</label>
+          <input id="profile-password-mfa" className="input" required autoComplete="one-time-code"
+            value={passwordMfaCode} onChange={(e) => setPasswordMfaCode(e.target.value.trim())}/>
+        </>}
         <button className="btn-primary" type="submit" disabled={busy}>Cambiar contraseña</button>
       </form>
     </section>
@@ -149,6 +167,30 @@ export default function MyProfilePage() {
           <button className="btn-primary" disabled={busy} type="submit">Confirmar y activar 2FA</button>
         </form>
       </div>}
+      {mfa?.enabled && !recoveryCodes && <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+        <p className="font-medium">Administrar seguridad y sesiones</p>
+        <p className="text-xs text-gray-600">Para acciones sensibles verifica tu contraseña y un código TOTP o de recuperación. Los códigos de recuperación se mostrarán una sola vez al regenerarlos.</p>
+        <label className="block text-sm" htmlFor="security-pass">Contraseña actual</label>
+        <input id="security-pass" type="password" className="input" autoComplete="current-password"
+          value={securityAction.current_password} onChange={(e) => setSecurityAction(v => ({ ...v, current_password: e.target.value }))}/>
+        <label className="block text-sm" htmlFor="security-code">Código 2FA</label>
+        <input id="security-code" className="input" autoComplete="one-time-code"
+          value={securityAction.code} onChange={(e) => setSecurityAction(v => ({ ...v, code: e.target.value.trim() }))}/>
+        <div className="flex flex-wrap gap-3">
+          <button className="btn-primary" disabled={busy || !securityAction.current_password || !securityAction.code}
+            onClick={() => perform(async () => {
+              const { data } = await authApi.rotateRecovery(securityAction)
+              setRecoveryCodes(data.recovery_codes)
+              setSecurityAction({ current_password: '', code: '' })
+              setMfa(v => ({ ...v, recovery_codes_remaining: data.recovery_codes.length }))
+            })}>Regenerar códigos</button>
+          <button className="rounded-lg border px-4 py-2 text-sm" disabled={busy || !securityAction.current_password || !securityAction.code}
+            onClick={() => {
+              if (!window.confirm('¿Desactivar 2FA? Tus sesiones anteriores se cerrarán.')) return
+              perform(async () => { await authApi.disableMfa(securityAction); closeSession() })
+            }}>Desactivar 2FA</button>
+        </div>
+      </div>}
       {recoveryCodes && <div className="space-y-3 border border-amber-300 rounded-xl p-4">
         <p className="font-semibold">Códigos de recuperación (se muestran una sola vez)</p>
         <p className="text-sm">Guárdalos fuera del navegador. Cada uno solo funciona una vez.</p>
@@ -159,5 +201,24 @@ export default function MyProfilePage() {
         </button>
       </div>}
     </section>}
+    <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+      <h2 className="font-semibold text-lg">Cerrar todas mis sesiones</h2>
+      <p className="text-sm text-gray-600">Invalida los tokens actuales de todas las pestañas y dispositivos. Debes iniciar sesión de nuevo.</p>
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); perform(async () => {
+        await authApi.revokeSessions(securityAction)
+        closeSession()
+        toast.success('Todas las sesiones anteriores fueron revocadas')
+      }) }}>
+        <label htmlFor="revoke-current-pass" className="block text-sm">Contraseña actual</label>
+        <input id="revoke-current-pass" className="input" required type="password" autoComplete="current-password"
+          value={securityAction.current_password} onChange={(e) => setSecurityAction(v => ({ ...v, current_password: e.target.value }))}/>
+        {mfa?.enabled && <>
+          <label htmlFor="revoke-code" className="block text-sm">Código 2FA o recuperación</label>
+          <input id="revoke-code" className="input" required autoComplete="one-time-code"
+            value={securityAction.code} onChange={(e) => setSecurityAction(v => ({ ...v, code: e.target.value.trim() }))}/>
+        </>}
+        <button disabled={busy} className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white" type="submit">Cerrar todas mis sesiones</button>
+      </form>
+    </section>
   </div>
 }
