@@ -48,29 +48,32 @@ def upgrade():
         raise RuntimeError("Esquema visual incompleto; se requiere inspección antes de migrar")
     if not has_blocks:
         op.create_table(
-        "storefront_visual_blocks",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("storefront_id", sa.Integer(), sa.ForeignKey("storefront_settings.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("scope", sa.String(70), nullable=False),
-        sa.Column("block_key", sa.String(110), nullable=False),
-        sa.Column("block_type", sa.String(40), nullable=False),
-        sa.Column("position", sa.Integer(), nullable=False),
-        sa.Column("configuration", sa.JSON(), nullable=False),
-        sa.UniqueConstraint("storefront_id", "scope", "block_key", name="uq_visual_block_scope_key"),
-    )
+            "storefront_visual_blocks",
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("storefront_id", sa.Integer(),
+                      sa.ForeignKey("storefront_settings.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("scope", sa.String(70), nullable=False),
+            sa.Column("block_key", sa.String(110), nullable=False),
+            sa.Column("block_type", sa.String(40), nullable=False),
+            sa.Column("position", sa.Integer(), nullable=False),
+            sa.Column("configuration", sa.JSON(), nullable=False),
+            sa.UniqueConstraint("storefront_id", "scope", "block_key",
+                                name="uq_visual_block_scope_key"),
+        )
         op.create_index("ix_visual_block_scope_position", "storefront_visual_blocks",
                         ["storefront_id", "scope", "position"])
         op.create_table(
-        "storefront_visual_slides",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("block_id", sa.Integer(), sa.ForeignKey("storefront_visual_blocks.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("position", sa.Integer(), nullable=False),
-        sa.Column("image_url", sa.String(500), nullable=False, server_default=""),
-        sa.Column("mobile_image_url", sa.String(500), nullable=False, server_default=""),
-        sa.Column("title", sa.String(160), nullable=False, server_default=""),
-        sa.Column("link", sa.String(300), nullable=False, server_default="/catalogo"),
-        sa.Column("configuration", sa.JSON(), nullable=False),
-        sa.UniqueConstraint("block_id", "position", name="uq_visual_slide_position"),
+            "storefront_visual_slides",
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("block_id", sa.Integer(),
+                      sa.ForeignKey("storefront_visual_blocks.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("position", sa.Integer(), nullable=False),
+            sa.Column("image_url", sa.String(500), nullable=False, server_default=""),
+            sa.Column("mobile_image_url", sa.String(500), nullable=False, server_default=""),
+            sa.Column("title", sa.String(160), nullable=False, server_default=""),
+            sa.Column("link", sa.String(300), nullable=False, server_default="/catalogo"),
+            sa.Column("configuration", sa.JSON(), nullable=False),
+            sa.UniqueConstraint("block_id", "position", name="uq_visual_slide_position"),
         )
 
     bind = op.get_bind()
