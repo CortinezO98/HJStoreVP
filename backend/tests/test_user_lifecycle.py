@@ -10,8 +10,9 @@ from app.db.session import Base
 from app.models.models import User, UserRole
 from app.core.security import hash_password, credential_version, credential_version_matches
 from app.api.v1.endpoints.users import (
-    PasswordResetAdmin, UserStatusAdmin, change_user_status,
-    reset_user_password, delete_user, list_users,
+    PasswordResetAdmin, UserStatusAdmin, UserCreateAdmin, UserUpdateAdmin,
+    change_user_status, reset_user_password, delete_user, list_users,
+    create_user, update_user,
 )
 
 
@@ -80,3 +81,58 @@ def test_last_superadmin_cannot_be_removed(lifecycle_db):
     with pytest.raises(HTTPException) as exc:
         delete_user(admin.id, db, admin)
     assert exc.value.status_code == 400
+
+
+def test_admin_cannot_escalate_seller_or_customer_roles(lifecycle_db):
+    db, super_admin, seller = lifecycle_db
+    admin = User(
+        email="admin@example.org", full_name="Administrador",
+        role=UserRole.ADMIN, active=True, hashed_password=hash_password("AdminStrongPass123!"),
+    )
+    customer = User(
+        email="customer@example.org", full_name="Cliente",
+        role=UserRole.CUSTOMER, active=True, hashed_password=hash_password("CustomerStrongPass123!"),
+    )
+    db.add_all([admin, customer])
+    db.commit()
+    for target in (seller, customer):
+        for role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+            with pytest.raises(HTTPException) as exc:
+                update_user(target.id, UserUpdateAdmin(role=role), db, admin)
+            assert exc.value.status_code == 403
+            db.refresh(target)
+            assert target.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+
+
+def test_superadmin_can_promote_other_user_but_not_demote_last_superadmin(lifecycle_db):
+    db, super_admin, seller = lifecycle_db
+    result = update_user(seller.id, UserUpdateAdmin(role=UserRole.ADMIN), db, super_admin)
+    assert result.role == UserRole.ADMIN
+    with pytest.raises(HTTPException) as exc:
+        update_user(super_admin.id, UserUpdateAdmin(role=UserRole.SELLER), db, super_admin)
+    assert exc.value.status_code in (400, 409)
+
+
+def test_self_email_and_password_changes_require_profile_flow(lifecycle_db):
+    db, super_admin, seller = lifecycle_db
+    for changes in (
+        {"email": "new-root@example.org"},
+        {"password": "AnotherStrongPassword123!"},
+    ):
+        with pytest.raises(HTTPException) as exc:
+            update_user(super_admin.id, UserUpdateAdmin(**changes), db, super_admin)
+        assert exc.value.status_code == 403
+    db.refresh(super_admin)
+    assert super_admin.email == "root@example.org"
+
+
+def test_admin_user_creation_requires_twelve_char_password(lifecycle_db):
+    db, super_admin, seller = lifecycle_db
+    data = UserCreateAdmin(
+        email="newperson@example.org", full_name="Persona Nueva",
+        role=UserRole.CUSTOMER, password="Short123!",
+    )
+    with pytest.raises(HTTPException) as exc:
+        create_user(data, db, super_admin)
+    assert exc.value.status_code == 400
+    assert db.query(User).filter_by(email="newperson@example.org").first() is None
