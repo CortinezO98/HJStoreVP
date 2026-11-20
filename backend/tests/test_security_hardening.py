@@ -26,12 +26,27 @@ def test_image_rejects_malicious_content():
 
 def test_image_normalizes_type_using_real_content_not_filename():
     source = io.BytesIO()
-    Image.new("RGB", (20, 20), color="red").save(source, format="PNG")
+    # Fotografía sintética con detalle real: se optimiza a WEBP.
+    # Una imagen monocromática debe seguir siendo rechazada.
+    image = Image.new("RGB", (128, 128))
+    for y in range(128):
+        for x in range(128):
+            image.putpixel((x, y), ((x * 5 + y * 3) % 256,
+                                     (x * 2 + y * 7) % 256, (x * 11 + y) % 256))
+    image.save(source, format="PNG")
     normalized, extension = normalize_image(source.getvalue())
-    assert extension == "png"
+    assert extension == "webp"
     with Image.open(io.BytesIO(normalized)) as img:
-        assert img.format == "PNG"
-        assert img.size == (20, 20)
+        assert img.format == "WEBP"
+        assert img.size == (128, 128)
+
+
+def test_image_rejects_flat_color_even_when_valid_png():
+    source = io.BytesIO()
+    Image.new("RGB", (128, 128), color="red").save(source, format="PNG")
+    with pytest.raises(HTTPException) as exc:
+        normalize_image(source.getvalue())
+    assert exc.value.status_code == 422
 
 
 def test_image_rejects_oversized_payload():
