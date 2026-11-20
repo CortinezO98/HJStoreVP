@@ -27,6 +27,26 @@ export default function SecurityAuditPage() {
 
   const change = (key, value) => { setPage(1); setFilters(f => ({ ...f, [key]: value })) }
   const hasNext = page * 30 < data.total
+  const exportCsv = async () => {
+    setBusy(true)
+    try {
+      const params = {}
+      for (const [key, value] of Object.entries(filters)) if (value) params[key] = value
+      const response = await securityAuditApi.exportCsv(params)
+      const url = URL.createObjectURL(response.data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'hjstore-security-audit.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      toast.error('No se pudo exportar la auditoría')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return <div className="space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -34,9 +54,12 @@ export default function SecurityAuditPage() {
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ShieldCheck size={24} /> Centro de auditoría</h1>
         <p className="text-sm text-gray-600">Historial de seguridad y administración. Acceso exclusivo Superadministrador.</p>
       </div>
-      <button type="button" className="btn-primary flex items-center gap-2" onClick={() => setNonce(n => n + 1)} disabled={busy}>
-        <RefreshCw size={16} /> Actualizar
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="rounded-lg border px-4 py-2" onClick={exportCsv} disabled={busy}>Exportar CSV (máx. 500)</button>
+        <button type="button" className="btn-primary flex items-center gap-2" onClick={() => setNonce(n => n + 1)} disabled={busy}>
+          <RefreshCw size={16} /> Actualizar
+        </button>
+      </div>
     </div>
 
     <section className="bg-white border border-gray-200 rounded-xl p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
