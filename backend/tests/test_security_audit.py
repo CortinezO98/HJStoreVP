@@ -82,3 +82,28 @@ def test_security_audit_requires_superadmin_dependency():
     from app.core.deps import require_super_admin
     # La política server-side debe permanecer fijada al rol SUPER_ADMIN.
     assert callable(require_super_admin)
+
+
+def test_api_refuses_admin_and_seller(audit_db):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.db.session import get_db
+    from app.core.deps import get_current_user
+    db, user = audit_db
+    def db_override():
+        yield db
+    def admin_override():
+        user.role = UserRole.ADMIN
+        return user
+    app.dependency_overrides[get_db] = db_override
+    app.dependency_overrides[get_current_user] = admin_override
+    try:
+        with TestClient(app) as client:
+            denied = client.get("/api/v1/security-audit", headers={"Authorization": "Bearer fixture"})
+            assert denied.status_code == 403
+            user.role = UserRole.SELLER
+            denied = client.get("/api/v1/security-audit", headers={"Authorization": "Bearer fixture"})
+            assert denied.status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
