@@ -2,6 +2,7 @@
 Tests básicos — HJStoreVP
 Ejecutar: pytest tests/ -v
 """
+import os
 import pytest
 from uuid import uuid4
 from fastapi.testclient import TestClient
@@ -17,7 +18,9 @@ from app.models.models import (
 from app.core.security import hash_password
 
 # ── Setup BD de prueba en memoria ─────────────────────────────────────────────
-SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
+SQLALCHEMY_TEST_URL = os.environ["DATABASE_URL"]
+if not SQLALCHEMY_TEST_URL.startswith("sqlite:///"):
+    raise RuntimeError("Las pruebas legadas requieren SQLite aislada")
 
 engine_test = create_engine(
     SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False}
