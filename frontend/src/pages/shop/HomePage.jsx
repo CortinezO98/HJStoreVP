@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, ChevronDown, ChevronLeft, ChevronRight, Packa
 import { productsApi, categoriesApi, storefrontSettingsApi } from '../../services/api'
 import ProductCard from '../../components/shop/ProductCard'
 import PersonalizedShowcase from '../../components/shop/PersonalizedShowcase'
+import HomeVisualBlocks from '../../components/shop/HomeVisualBlocks'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 import { useState } from 'react'
 import useAutoCarousel from '../../hooks/useAutoCarousel'
@@ -65,8 +66,11 @@ export default function HomePage() {
   const showcase = newest.slice(0, 8)
   const featuredShowcase = featured.slice(0, 4)
   const DEFAULT_ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
-    'categories', 'services', 'faq', 'closing']
-  const savedOrder = storeSettings.homepage_section_order
+    'visual', 'categories', 'services', 'faq', 'closing']
+  const rawOrder = storeSettings.homepage_section_order
+  const savedOrder = Array.isArray(rawOrder) && !rawOrder.includes('visual')
+    ? [...rawOrder.slice(0, rawOrder.indexOf('campaigns') + 1), 'visual',
+       ...rawOrder.slice(rawOrder.indexOf('campaigns') + 1)] : rawOrder
   const sectionOrder = Array.isArray(savedOrder) && savedOrder.length === DEFAULT_ORDER.length &&
     new Set(savedOrder).size === DEFAULT_ORDER.length && DEFAULT_ORDER.every(id => savedOrder.includes(id))
     ? savedOrder : DEFAULT_ORDER
@@ -240,6 +244,8 @@ export default function HomePage() {
       )}
 
       <div style={sectionStyle("personalized")}><PersonalizedShowcase /></div>
+      <HomeVisualBlocks blocks={Array.isArray(storeSettings.homepage_visual_blocks)
+        ? storeSettings.homepage_visual_blocks : []} style={sectionStyle("visual")} />
 
       <section className="editorial-category-section store-home-categories" style={sectionStyle("categories")}>
         <div className="editorial-section-heading">
