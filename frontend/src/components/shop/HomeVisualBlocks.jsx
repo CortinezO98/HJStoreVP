@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react'
-import useAutoCarousel from '../../hooks/useAutoCarousel'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const sourceUrl = value => value?.startsWith('/') ? `${API_URL}${value}` : value
@@ -25,18 +24,24 @@ function VisualTile({ item, priority = false }) {
 }
 
 function CarouselBlock({ block }) {
-  const items = block.items
-  const carousel = useAutoCarousel(items.length, 6000, block.id + ':' + items.map(i => i.image_url).join('|'))
+  const track = useRef(null)
+  const move = (direction) => {
+    const el = track.current
+    if (!el) return
+    el.scrollBy({ left: direction * el.clientWidth * 0.85, behavior:
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+  }
   return (
-    <div className="home-visual-carousel" onMouseEnter={() => carousel.setPaused(true)}
-      onMouseLeave={() => carousel.setPaused(false)}
-      onFocusCapture={() => carousel.setPaused(true)}
-      onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) carousel.setPaused(false) }}>
-      <VisualTile item={items[carousel.index]} />
-      {items.length > 1 && <div className="home-visual-carousel-controls">
-        <button type="button" aria-label="Imagen anterior" onClick={() => carousel.goTo(carousel.index - 1)}><ChevronLeft size={22}/></button>
-        <span aria-live="off">{carousel.index + 1} / {items.length}</span>
-        <button type="button" aria-label="Imagen siguiente" onClick={() => carousel.goTo(carousel.index + 1)}><ChevronRight size={22}/></button>
+    <div className="home-visual-carousel">
+      <div className="home-visual-carousel-track" ref={track}
+        role="region" tabIndex={0} aria-label={block.title || 'Carrusel de campañas'}>
+        {block.items.map((item, index) => <div className="home-visual-carousel-slide" key={index}>
+          <VisualTile item={item} />
+        </div>)}
+      </div>
+      {block.items.length > 1 && <div className="home-visual-carousel-controls">
+        <button type="button" aria-label="Desplazar a la izquierda" onClick={() => move(-1)}><ChevronLeft size={22}/></button>
+        <button type="button" aria-label="Desplazar a la derecha" onClick={() => move(1)}><ChevronRight size={22}/></button>
       </div>}
     </div>
   )
