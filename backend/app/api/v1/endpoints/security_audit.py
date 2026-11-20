@@ -111,3 +111,32 @@ def export_security_events(
         headers={"Content-Disposition": "attachment; filename=hjstore-security-audit.csv",
                  "Cache-Control": "no-store"},
     )
+
+
+@router.get("/integrity")
+def verify_security_integrity(
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
+    limit: int = Query(1000, ge=1, le=5000),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    """Verifica una ventana acotada de firmas sin modificar datos.
+
+    Es comprobación de filas existentes, no prueba de completitud: la
+    eliminación maliciosa de filas exige un ancla externa de integridad.
+    """
+    q = db.query(SecurityAuditEvent)
+    if from_date:
+        q = q.filter(SecurityAuditEvent.created_at >= from_date)
+    if to_date:
+        q = q.filter(SecurityAuditEvent.created_at <= to_date)
+    total = q.order_by(None).count()
+    rows = q.order_by(SecurityAuditEvent.id.desc()).limit(limit).all()
+    invalid = [row.id for row in rows if not is_signature_valid(row)]
+    return {
+        "checked": len(rows), "total_matching": total, "truncated": total > len(rows),
+        "invalid_count": len(invalid), "invalid_ids": invalid,
+        "all_checked_valid": len(invalid) == 0,
+        "limitation": "La comprobación no detecta eliminación de filas sin un ancla externa.",
+    }
