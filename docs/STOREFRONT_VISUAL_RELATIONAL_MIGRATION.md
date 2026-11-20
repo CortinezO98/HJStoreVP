@@ -85,3 +85,44 @@ La transición final para que las tablas relacionales sean la fuente primaria
 requiere más pruebas de consistencia, una lectura relacional completa,
 observabilidad y una migración controlada de los consumidores existentes.
 Esto se hará en una fase posterior, no automáticamente durante esta revisión.
+
+
+## Diagnóstico de tablas vacías (fase 11)
+
+La migración Alembic `20261120_15` puede ejecutarse correctamente con
+**cero bloques y cero diapositivas** si `storefront_settings` aún no contiene
+una fila para la tienda. No crear esa fila ni publicar una portada para llenar
+artificialmente las tablas.
+
+Verificación de solo lectura:
+
+```bat
+docker compose exec db mariadb -u hjstore -phjstore123 hjstorevp -e "SELECT id, updated_at, JSON_LENGTH(settings_data) AS campos FROM storefront_settings; SELECT scope, COUNT(*) AS bloques FROM storefront_visual_blocks GROUP BY scope;"
+docker compose exec backend python -m app.services.storefront_visual_reconcile --check
+```
+
+El primer comando usa únicamente las credenciales predeterminadas de desarrollo:
+ajusta el usuario y la contraseña a tu entorno sin compartir secretos.
+El segundo comando no escribe en la base.
+
+Si `source_exists` es `false`, no hay una configuración JSON que migrar.
+El comportamiento correcto es mantener las tablas vacías hasta que el
+superadministrador configure y guarde la portada.
+
+Si existe configuración (`source_exists=true`) y `in_sync=false`,
+verifica primero un respaldo de la BD e imágenes. Con respaldo confirmado,
+la reconciliación explícita y transaccional es:
+
+```bat
+docker compose exec backend python -m app.services.storefront_visual_reconcile --apply --backup-confirmed
+docker compose exec backend python -m app.services.storefront_visual_reconcile --check
+```
+
+`--apply` no crea la configuración original ni modifica el JSON publicado:
+solo reconstruye su espejo relacional, después de revalidar bajo bloqueo de fila.
+Nunca se ejecuta automáticamente durante una consulta pública.
+
+El Diseñador consulta `/admin/homepage-storage-health` y compara las
+configuraciones completas y las diapositivas, no solamente los recuentos.
+No cambiar las lecturas públicas al almacenamiento relacional hasta tener
+`in_sync=true` y validar el comportamiento del editor y la tienda.
