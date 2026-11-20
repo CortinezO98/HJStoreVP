@@ -78,13 +78,12 @@ function MosaicBlock({ block }) {
 }
 
 export default function HomeVisualBlocks({ blocks = [], style }) {
-  if (!blocks.length) return null
+  const visible = blocks.filter(block => block.active && block.items?.some(item => item.image_url))
+  if (!visible.length) return null
   return (
     <section className="home-visual-blocks" style={style} aria-label="Galerías y campañas especiales">
-      {blocks.map(block => {
-        if (!block.active || !block.items?.length) return null
+      {visible.map(block => {
         const valid = block.items.filter(item => item.image_url)
-        if (!valid.length) return null
         const visibleBlock = { ...block, items: valid }
         return <div className="home-visual-block" key={block.id}>
           {block.title && <h2 className="home-visual-block-title">{block.title}</h2>}
