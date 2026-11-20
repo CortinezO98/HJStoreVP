@@ -60,6 +60,7 @@ export default function HomeStudioPage() {
   const [showPreview, setShowPreview] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [versions, setVersions] = useState([])
+  const [storageHealth, setStorageHealth] = useState(null)
   const changed = draft && savedDraft && JSON.stringify(draft) !== JSON.stringify(savedDraft)
   const order = useMemo(() => normalizeOrder(draft?.homepage_section_order), [draft?.homepage_section_order])
   const hidden = useMemo(() => draft?.homepage_hidden_sections || [], [draft?.homepage_hidden_sections])
@@ -76,6 +77,8 @@ export default function HomeStudioPage() {
       setConflict(data.has_saved_draft && data.draft_base_hash !== data.published_hash)
       const history = await storefrontSettingsApi.homepageVersions()
       setVersions(Array.isArray(history.data) ? history.data : [])
+      const health = await storefrontSettingsApi.homepageStorageHealth()
+      setStorageHealth(health.data)
     } catch (err) {
       setLoadError(errorMessage(err))
     } finally {
@@ -211,6 +214,17 @@ export default function HomeStudioPage() {
       </div>
       <Link to="/configuracion-tienda" className="btn btn-outline-secondary">Configuración general</Link>
     </header>
+    {storageHealth && <div className={storageHealth.in_sync
+      ? 'alert alert-light border small' : 'alert alert-warning small'} role="status">
+      <strong>Almacenamiento visual:</strong> {storageHealth.schema_ready
+        ? storageHealth.in_sync ? 'Estructura relacional sincronizada con la configuración publicada y el borrador.'
+          : 'Las tablas existen, pero se necesita revisar la sincronización.'
+        : 'Migración relacional pendiente; la configuración existente sigue funcionando.'}
+      {storageHealth.schema_ready && <span className="ms-2 text-secondary">
+        {storageHealth.published_blocks} bloques publicados registrados ·
+        {storageHealth.draft_blocks} bloques de borrador registrados
+      </span>}
+    </div>}
     {conflict && <div className="alert alert-warning" role="alert">
       La portada publicada se modificó después de crear este borrador. Puedes revisarlo,
       pero para publicar debes descartar el borrador y comenzar desde la versión actual.
