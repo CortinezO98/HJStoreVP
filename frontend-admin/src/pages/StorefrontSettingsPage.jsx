@@ -132,6 +132,7 @@ export default function StorefrontSettingsPage() {
       toast.success('Imagen optimizada. Guarda y publica para mostrarla.')
     } catch (error) {
       toast.error(errorText(error))
+      throw error
     } finally {
       setCampaignImageBusy(null)
     }
@@ -388,6 +389,21 @@ export default function StorefrontSettingsPage() {
               Organiza las secciones por prioridad. El banner principal permanece primero;
               puedes ocultar secciones sin eliminar sus datos.
             </p>
+            <div className="border rounded-3 p-3 bg-light mt-3" aria-label="Resumen de la portada antes de publicar">
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <strong className="small">Resumen del diseño actual (sin publicar)</strong>
+                <span className="small text-secondary">{homeOrder.length - hiddenHomeSections.length + 1} secciones visibles</span>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                <span className="badge text-bg-dark">Banner principal</span>
+                {homeOrder.filter(id => !hiddenHomeSections.includes(id)).map(id =>
+                  <span className="badge text-bg-light border text-dark" key={id}>
+                    {HOME_SECTIONS.find(([key]) => key === id)?.[1] || id}
+                  </span>)}
+              </div>
+              <p className="form-text mb-0 mt-2">Esta vista resume el orden y la visibilidad configurados;
+                no sustituye la previsualización visual de la tienda.</p>
+            </div>
             <div className="d-flex flex-column gap-2 mt-3">
               <div className="border rounded-3 p-3 d-flex justify-content-between align-items-center bg-light">
                 <strong>00 · Banner principal</strong><span className="small text-secondary">Siempre visible</span>
