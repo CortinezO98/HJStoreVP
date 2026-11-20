@@ -183,7 +183,7 @@ class HomepageVisualBlock(BaseModel):
 
 class HomepageCategoryTile(BaseModel):
     category_slug: str = Field(min_length=1, max_length=120, pattern=r"^[a-zA-Z0-9_-]+$")
-    image_url: str = Field(min_length=1, max_length=500)
+    image_url: str = Field(default="", max_length=500)
     mobile_image_url: str = Field(default="", max_length=500)
     title: str = Field(default="", max_length=80)
 
