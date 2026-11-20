@@ -21,8 +21,17 @@ const SECTIONS = [
 const normalizeOrder = value => {
   const ids = SECTIONS.map(([id]) => id)
   if (!Array.isArray(value)) return ids
-  const normalized = value.filter(id => ids.includes(id))
-  return [...new Set([...normalized, ...ids])]
+  const normalized = [...new Set(value.filter(id => ids.includes(id)))]
+  for (const [id, after] of [['visual', 'campaigns'], ['loyalty', 'categories']]) {
+    if (!normalized.includes(id)) {
+      const position = normalized.indexOf(after)
+      normalized.splice(position >= 0 ? position + 1 : normalized.length, 0, id)
+    }
+  }
+  for (const id of ids) {
+    if (!normalized.includes(id)) normalized.push(id)
+  }
+  return normalized
 }
 const blankBanner = () => ({
   image_url: '', mobile_image_url: '', title: 'NUEVA CAMPAÑA',
