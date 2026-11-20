@@ -60,6 +60,8 @@ export default function HomePage() {
     .filter((url) => typeof url === 'string' && url.trim() && !failedStatementImages.includes(url))
   const statementCarousel = useAutoCarousel(statementImages.length, 6000, statementImages.join('|'))
   const activeStatementImage = statementImages[statementCarousel.index]
+  const campaignBanners = (Array.isArray(storeSettings.homepage_banners) ? storeSettings.homepage_banners : [])
+    .filter((banner) => banner?.active && banner?.image_url && banner?.title)
   const showcase = newest.slice(0, 8)
   const featuredShowcase = featured.slice(0, 4)
 
@@ -195,6 +197,32 @@ export default function HomePage() {
           </div>
         ) : <div className="editorial-empty-state">Explora todas nuestras referencias. <Link to="/catalogo">Ir al catálogo</Link></div>}
       </section>
+
+      {campaignBanners.length > 0 && (
+        <section className="w-full bg-white" aria-label="Campañas destacadas">
+          <div className="editorial-section-heading px-5 sm:px-8">
+            <div><span className="editorial-eyebrow">DESCUBRE MÁS</span><h2>COLECCIONES Y CAMPAÑAS</h2></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+            {campaignBanners.map((banner, index) => (
+              <Link key={`${banner.image_url}-${index}`} to={banner.link || '/catalogo'}
+                className="relative block overflow-hidden bg-neutral-900 text-white group min-h-[380px] sm:min-h-[480px]">
+                <img src={sourceUrl(banner.image_url)} alt={banner.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy" decoding="async" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" aria-hidden="true" />
+                <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10">
+                  {banner.subtitle && <p className="text-xs font-bold tracking-[.16em] uppercase mb-2">{banner.subtitle}</p>}
+                  <h3 className="text-3xl sm:text-5xl font-black uppercase leading-tight">{banner.title}</h3>
+                  <span className="inline-flex mt-5 bg-white text-black px-5 py-3 text-xs font-black uppercase items-center gap-2">
+                    {banner.button_text || 'DESCUBRIR'} <ArrowUpRight size={16} />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <PersonalizedShowcase />
 
