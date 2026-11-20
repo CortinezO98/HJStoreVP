@@ -2,6 +2,8 @@
 from typing import Optional
 from urllib.parse import urlsplit
 from datetime import datetime
+import hashlib
+import json
 from zoneinfo import ZoneInfo
 from pathlib import Path
 from uuid import uuid4
@@ -283,7 +285,7 @@ class SettingsPayload(BaseModel):
 
 def public_settings(db: Session) -> dict:
     row = db.get(StorefrontSettings, ROW_ID)
-    return {**DEFAULTS, **(row.settings_data or {})} if row else dict(DEFAULTS)
+    return {**DEFAULTS, **{key: value for key, value in (row.settings_data or {}).items() if not key.startswith('_')}} if row else dict(DEFAULTS)
 
 
 @router.get("/public")
@@ -325,7 +327,7 @@ def update_admin_settings(
         row = StorefrontSettings(id=ROW_ID, settings_data=payload.model_dump(), updated_by=current_user.id)
         db.add(row)
     else:
-        row.settings_data = payload.model_dump()
+        row.settings_data = {**payload.model_dump(), **{key: value for key, value in (row.settings_data or {}).items() if key.startswith('_')}}
         row.updated_by = current_user.id
         row.updated_at = datetime.utcnow()
     try:
@@ -334,6 +336,119 @@ def update_admin_settings(
         db.rollback()
         raise HTTPException(status_code=409, detail="La configuración fue modificada simultáneamente, vuelve a cargar")
     return public_settings(db)
+
+
+
+# El borrador reside en la misma fila JSON; las claves privadas nunca salen
+# por /public ni por /admin. No requiere modificar el esquema de base de datos.
+HOMEPAGE_EDIT_FIELDS = (
+    "hero_eyebrow", "hero_title", "hero_description", "hero_button",
+    "hero_images", "statement_images", "homepage_banners", "homepage_visual_blocks",
+    "homepage_section_order", "homepage_hidden_sections",
+)
+DRAFT_KEY = "_homepage_draft"
+
+
+def published_homepage(settings_data: dict) -> dict:
+    source = {**DEFAULTS, **{key: value for key, value in settings_data.items() if not key.startswith("_")}}
+    return {key: source[key] for key in HOMEPAGE_EDIT_FIELDS}
+
+
+def homepage_fingerprint(homepage: dict) -> str:
+    serialized = json.dumps(homepage, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def validated_homepage(data: dict, base: dict) -> dict:
+    if set(data) != set(HOMEPAGE_EDIT_FIELDS):
+        raise HTTPException(status_code=422, detail="El borrador debe contener exactamente los campos visuales permitidos")
+    merged = SettingsPayload.model_validate({**DEFAULTS, **{k: v for k, v in base.items() if not k.startswith("_")}, **data})
+    dump = merged.model_dump()
+    return {key: dump[key] for key in HOMEPAGE_EDIT_FIELDS}
+
+
+class HomepageDraftSave(BaseModel):
+    draft: dict
+
+
+@router.get("/admin/homepage-draft")
+def get_homepage_draft(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    row = db.get(StorefrontSettings, ROW_ID)
+    stored = dict(row.settings_data or {}) if row else {}
+    published = published_homepage(stored)
+    saved = stored.get(DRAFT_KEY)
+    return {
+        "draft": saved["data"] if isinstance(saved, dict) and isinstance(saved.get("data"), dict) else published,
+        "has_saved_draft": isinstance(saved, dict),
+        "published_hash": homepage_fingerprint(published),
+        "draft_base_hash": saved.get("base_hash") if isinstance(saved, dict) else homepage_fingerprint(published),
+    }
+
+
+@router.put("/admin/homepage-draft")
+def save_homepage_draft(
+    payload: HomepageDraftSave,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    row = db.query(StorefrontSettings).filter(StorefrontSettings.id == ROW_ID).with_for_update().first()
+    stored = dict(row.settings_data or {}) if row else {}
+    published = published_homepage(stored)
+    draft = validated_homepage(payload.draft, stored)
+    existing = stored.get(DRAFT_KEY)
+    base_hash = existing.get("base_hash") if isinstance(existing, dict) else homepage_fingerprint(published)
+    stored[DRAFT_KEY] = {"data": draft, "base_hash": base_hash}
+    if row is None:
+        row = StorefrontSettings(id=ROW_ID, settings_data=stored, updated_by=current_user.id)
+        db.add(row)
+    else:
+        row.settings_data = stored
+        row.updated_by = current_user.id
+        row.updated_at = datetime.utcnow()
+    db.commit()
+    return {"saved": True, "draft_base_hash": base_hash, "published_hash": homepage_fingerprint(published)}
+
+
+@router.post("/admin/homepage-publish")
+def publish_homepage_draft(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    row = db.query(StorefrontSettings).filter(StorefrontSettings.id == ROW_ID).with_for_update().first()
+    if row is None or not isinstance((row.settings_data or {}).get(DRAFT_KEY), dict):
+        raise HTTPException(status_code=404, detail="No hay un borrador guardado para publicar")
+    stored = dict(row.settings_data)
+    saved = stored[DRAFT_KEY]
+    published = published_homepage(stored)
+    if saved.get("base_hash") != homepage_fingerprint(published):
+        raise HTTPException(status_code=409, detail="La portada publicada cambió desde que inició este borrador. Revise los cambios antes de publicarlo.")
+    draft = validated_homepage(saved.get("data", {}), stored)
+    stored.update(draft)
+    stored.pop(DRAFT_KEY, None)
+    row.settings_data = stored
+    row.updated_by = current_user.id
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    return {"published": True, "published_hash": homepage_fingerprint(published_homepage(stored))}
+
+
+@router.delete("/admin/homepage-draft")
+def discard_homepage_draft(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    row = db.query(StorefrontSettings).filter(StorefrontSettings.id == ROW_ID).with_for_update().first()
+    if row and DRAFT_KEY in (row.settings_data or {}):
+        stored = dict(row.settings_data)
+        stored.pop(DRAFT_KEY)
+        row.settings_data = stored
+        row.updated_by = current_user.id
+        row.updated_at = datetime.utcnow()
+        db.commit()
+    return {"discarded": True}
 
 
 @router.post("/admin/upload-image", status_code=201)
