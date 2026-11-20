@@ -10,6 +10,9 @@ on:
       - 'frontend-admin/**'
       - '.github/workflows/frontend-admin-ci.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,7 +25,13 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies
-        run: npm install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit
+          else
+            echo "::warning::No hay lockfile versionado del panel; no se garantiza instalación reproducible."
+            npm install --no-audit
+          fi
       - name: Verify administrative functionality contract
         run: node scripts/verify-admin-modules.mjs
       - name: Build admin
