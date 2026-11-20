@@ -4,6 +4,7 @@ from urllib.parse import urlsplit, urlencode
 from datetime import datetime
 import hashlib
 import json
+from copy import deepcopy
 from zoneinfo import ZoneInfo
 from pathlib import Path
 from uuid import uuid4
@@ -459,7 +460,7 @@ def public_settings(db: Session) -> dict:
 
 @router.get("/public")
 def get_public_settings(db: Session = Depends(get_db)):
-    data = public_settings(db)
+    data = deepcopy(public_settings(db))
     now = datetime.now(BOGOTA_TZ)
     data["homepage_banners"] = [
         banner for banner in data.get("homepage_banners", [])
