@@ -21,6 +21,28 @@ const STATUS = {
 }
 const CRITICAL = ['no_images', 'invalid_primary', 'missing_category']
 
+function ReviewHistory({ productId }) {
+  const { data = [], isLoading, isError } = useQuery({
+    queryKey: ['admin-catalog-quality-history', productId],
+    queryFn: () => productsApi.catalogQualityHistory(productId).then(({ data }) => data),
+    staleTime: 15_000,
+  })
+  if (isLoading) return <p className="small text-secondary">Consultando historial…</p>
+  if (isError) return <p className="small text-danger">No se pudo cargar el historial.</p>
+  return <div className="border-top mt-3 pt-3">
+    <strong className="small">Últimas decisiones editoriales</strong>
+    {data.length ? <ul className="list-unstyled mt-2 mb-0">
+      {data.map((event,index) => <li className="border-bottom py-2 small" key={index}>
+        <strong>{STATUS[event.status] || event.status}</strong>
+        <span className="text-secondary ms-2">
+          {new Date(event.reviewed_at + 'Z').toLocaleString('es-CO')}
+        </span>
+        {event.note && <div className="mt-1">{event.note}</div>}
+      </li>)}
+    </ul> : <p className="small text-secondary mt-2 mb-0">Todavía no hay revisiones registradas.</p>}
+  </div>
+}
+
 function ReviewEditor({ item, onSubmitted, disabled }) {
   const [decision, setDecision] = useState(item.review_status === 'approved' ? 'approved' : 'needs_changes')
   const [note, setNote] = useState(item.review_note || '')
@@ -64,6 +86,7 @@ function ReviewEditor({ item, onSubmitted, disabled }) {
     <button type="button" className="btn btn-primary btn-sm"
       disabled={disabled || (decision === 'approved' && (critical || !confirmed))}
       onClick={submit}>Guardar revisión</button>
+    <ReviewHistory productId={item.id}/>
   </div>
 }
 
