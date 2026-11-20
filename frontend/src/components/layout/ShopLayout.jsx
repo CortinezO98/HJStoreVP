@@ -23,7 +23,8 @@ export default function ShopLayout() {
   const { data: storeSettings = {} } = useQuery({
     queryKey: ['storefront-settings-public'],
     queryFn: () => storefrontSettingsApi.public().then(({ data }) => data),
-    staleTime: 60000,
+    staleTime: 15000,
+    refetchInterval: 60000, // Permite activar o retirar campañas sin recargar la página.
   })
   const logo = storeSettings.logo_url
   const logoSrc = logo?.startsWith('/') ? `${import.meta.env.VITE_API_URL || ''}${logo}` : logo
