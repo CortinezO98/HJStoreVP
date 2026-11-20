@@ -130,3 +130,61 @@ Si `current` continúa en `20261120_17` y `heads` en `20261120_18`,
 verificar primero respaldo de MariaDB y tabla `security_audit_events`;
 solo después aplicar `docker compose exec backend alembic upgrade head`.
 Es una migración aditiva que no cambia tablas comerciales.
+
+
+## Refinamiento final — cambios de precios y transiciones de pedidos
+
+La captura se ejecuta en `Session.before_flush`, en la misma transacción
+que la modificación original de modelos ORM. Se registran:
+
+- `catalog.prices.changed` para `Product.cost_price`, `margin_pct` y
+  `sale_price`, incluyendo variantes. Solo se guardan valores anteriores
+  y posteriores de los campos efectivamente cambiados, como cadenas
+  decimales (sin floats).
+- `orders.status.changed` para cambios efectivos de `Order.status`
+  (por ejemplo pago, cancelación, preparación, despacho y entrega),
+  incluidos flujos de webhooks y servicios de reservas/despachos.
+
+El listener no altera lógica comercial, estado, inventario, pago,
+referencias, notificaciones ni devoluciones. No registra operaciones
+sin cambios de valores ni nuevos pedidos/productos como si fuesen
+transiciones históricas. Un rollback descarta negocio **y** bitácora.
+`active_history` hace recuperar valores anteriores de columnas
+monetarias y estado al asignar nuevos valores a instancias expiradas.
+
+Los metadatos quedan en listas blancas, el campo `origin` diferencia
+`authenticated` de `system` y el actor se asocia mediante
+`db.info["audit_actor_id"]` solo después de validar el JWT. Webhooks
+y procesos sin usuario autenticado indican actor nulo y origen sistema;
+la ausencia de actor no demuestra qué proveedor originó el evento.
+
+La API `/api/v1/security-audit` y la exportación CSV aceptan ahora
+`target_id`, que permite investigar un ID de pedido o producto;
+el panel permite filtrar recurso `orders` o `catalog`.
+No se añaden tablas ni migraciones: **permanece Alembic
+`20261120_18`**. La auditoría solo cubre cambios a través de
+instancias SQLAlchemy ORM con seguimiento de atributos; una sentencia
+SQL nativa o `query.update()` directa no disparará este listener.
+No se recuperan eventos de modificaciones históricas anteriores
+a la instalación. El destino de evidencia externa sigue siendo
+configurable manualmente, no existe un proveedor WORM habilitado.
+
+### Comprobación de aceptación
+
+```bat
+git switch main
+git pull --ff-only origin main
+docker compose up -d --build backend frontend-admin
+docker compose exec backend python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py tests/test_security_audit.py tests/test_commercial_audit.py tests/test_commercial_change_audit.py -v
+docker compose exec frontend-admin npm run build
+docker compose exec backend alembic current
+docker compose ps
+```
+
+Comprobar que modificar un precio real desde Admin genera un evento
+`catalog.prices.changed` con valores antes/después y actor, y que
+el cambio de estado de un pedido válido genera `orders.status.changed`
+sin duplicados. Probar rollback y estado sin cambios con las pruebas
+automatizadas. No realizar transacciones monetarias reales solo para
+probar eventos. La batería general del proyecto y seguridad de
+dependencias siguen como pendientes transversales antes de producción.
