@@ -77,8 +77,12 @@ export default function HomeStudioPage() {
       setConflict(data.has_saved_draft && data.draft_base_hash !== data.published_hash)
       const history = await storefrontSettingsApi.homepageVersions()
       setVersions(Array.isArray(history.data) ? history.data : [])
-      const health = await storefrontSettingsApi.homepageStorageHealth()
-      setStorageHealth(health.data)
+      try {
+        const health = await storefrontSettingsApi.homepageStorageHealth()
+        setStorageHealth(health.data)
+      } catch {
+        setStorageHealth(null) // El diagnóstico no debe bloquear el editor visual.
+      }
     } catch (err) {
       setLoadError(errorMessage(err))
     } finally {
