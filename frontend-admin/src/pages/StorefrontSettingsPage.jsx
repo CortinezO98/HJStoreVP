@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { storefrontSettingsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../components/products/ImageCropModal'
@@ -237,10 +238,15 @@ export default function StorefrontSettingsPage() {
             Los cambios se publican cuando selecciones «Guardar y publicar».
           </p>
         </div>
-        <a href={import.meta.env.VITE_STORE_URL || 'http://localhost:5173/'}
-          target="_blank" rel="noopener noreferrer" className="btn btn-outline-secondary btn-sm">
-          Ver tienda pública ↗
-        </a>
+        <div className="d-flex flex-wrap gap-2">
+          <Link to="/estudio-inicio" className="btn btn-primary btn-sm">
+            Abrir estudio visual del inicio
+          </Link>
+          <a href={import.meta.env.VITE_STORE_URL || 'http://localhost:5173/'}
+            target="_blank" rel="noopener noreferrer" className="btn btn-outline-secondary btn-sm">
+            Ver tienda pública ↗
+          </a>
+        </div>
       </header>
 
       {loading && <div className="d-flex align-items-center gap-3 card p-4" role="status">
