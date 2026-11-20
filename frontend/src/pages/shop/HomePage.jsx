@@ -71,18 +71,31 @@ export default function HomePage() {
   // No dependen de campañas creadas manualmente desde el administrador.
   const latestWithPhotos = newest.filter(product => product?.primary_image)
   const featuredWithPhotos = featured.filter(product => product?.primary_image)
-  const categoriesWithPhotos = featuredCategories.map(category => ({
-    ...category,
-    sample: [...newest, ...featured].find(product =>
-      product.primary_image && (product.category_name || '').toLocaleLowerCase('es') ===
-        category.name.toLocaleLowerCase('es')),
-  })).filter(category => category.sample).slice(0, 4)
+  const savedCategoryPhotos = Array.isArray(storeSettings.homepage_category_tiles)
+    ? storeSettings.homepage_category_tiles : []
+  const categoriesWithPhotos = (
+    savedCategoryPhotos.some(tile => tile.image_url)
+      ? savedCategoryPhotos.filter(tile => tile.image_url).map(tile => {
+          const category = featuredCategories.find(item => item.slug === tile.category_slug)
+          return category ? { ...category, title: tile.title || category.name,
+            image_url: tile.image_url, mobile_image_url: tile.mobile_image_url } : null
+        }).filter(Boolean)
+      : featuredCategories.map(category => ({
+          ...category,
+          title: category.name,
+          image_url: [...newest, ...featured].find(product =>
+            product.primary_image && (product.category_name || '').toLocaleLowerCase('es') ===
+              category.name.toLocaleLowerCase('es'))?.primary_image,
+        })).filter(category => category.image_url).slice(0, 4)
+  )
+  const loyalty = storeSettings.homepage_loyalty_banner
   const DEFAULT_ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
-    'visual', 'categories', 'services', 'faq', 'closing']
+    'visual', 'categories', 'loyalty', 'services', 'faq', 'closing']
   const rawOrder = storeSettings.homepage_section_order
-  const savedOrder = Array.isArray(rawOrder) && !rawOrder.includes('visual')
-    ? [...rawOrder.slice(0, rawOrder.indexOf('campaigns') + 1), 'visual',
-       ...rawOrder.slice(rawOrder.indexOf('campaigns') + 1)] : rawOrder
+  const savedOrder = Array.isArray(rawOrder) ? [...rawOrder] : []
+  for (const [id, after] of [['visual', 'campaigns'], ['loyalty', 'categories']]) {
+    if (!savedOrder.includes(id)) savedOrder.splice(savedOrder.indexOf(after) + 1, 0, id)
+  }
   const sectionOrder = Array.isArray(savedOrder) && savedOrder.length === DEFAULT_ORDER.length &&
     new Set(savedOrder).size === DEFAULT_ORDER.length && DEFAULT_ORDER.every(id => savedOrder.includes(id))
     ? savedOrder : DEFAULT_ORDER
@@ -286,10 +299,14 @@ export default function HomePage() {
               {categoriesWithPhotos.map(category => (
                 <Link key={category.slug} className="store-photo-category-tile"
                   to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}>
-                  <img src={sourceUrl(category.sample.primary_image)} alt={category.name}
-                    loading="lazy" decoding="async"/>
+                  <picture>
+                    {category.mobile_image_url && <source media="(max-width: 767px)"
+                      srcSet={sourceUrl(category.mobile_image_url)}/>}
+                    <img src={sourceUrl(category.image_url)} alt={category.name}
+                      loading="lazy" decoding="async"/>
+                  </picture>
                   <span className="store-photo-category-label">
-                    <strong>{category.name}</strong><ArrowUpRight size={19} aria-hidden="true"/>
+                    <strong>{category.title}</strong><ArrowUpRight size={19} aria-hidden="true"/>
                   </span>
                 </Link>
               ))}
@@ -309,6 +326,27 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {loyalty?.active && loyalty?.image_url && (
+        <section className="store-loyalty-campaign" style={sectionStyle("loyalty")}
+          aria-label="Club de clientes HJStoreVP">
+          <picture className="store-loyalty-campaign-image">
+            {loyalty.mobile_image_url && <source media="(max-width: 767px)"
+              srcSet={sourceUrl(loyalty.mobile_image_url)}/>}
+            <img src={sourceUrl(loyalty.image_url)} alt="Campaña del club de clientes"
+              decoding="async" loading="lazy"/>
+          </picture>
+          <div className="store-loyalty-campaign-shade" aria-hidden="true"/>
+          <div className="store-loyalty-campaign-copy">
+            {loyalty.eyebrow && <span>{loyalty.eyebrow}</span>}
+            <h2>{loyalty.title}</h2>
+            {loyalty.description && <p>{loyalty.description}</p>}
+            <Link to={loyalty.link || '/mi-cuenta'}>
+              {loyalty.button_text || 'DESCUBRIR'} <ArrowUpRight size={18}/>
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="editorial-service-strip store-home-services" style={sectionStyle("services")}>
         <div><Truck size={25} strokeWidth={1.4}/><h3>ENVÍOS A COLOMBIA</h3><p>Compra desde donde estés</p></div>
