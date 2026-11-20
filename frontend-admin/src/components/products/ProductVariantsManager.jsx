@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient, inventoryApi, locationsApi, productsApi } from '../../services/api'
 import toast from 'react-hot-toast'
+import ImageCropModal from './ImageCropModal'
+import ProductPhotoQuality from './ProductPhotoQuality'
+import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 
 const asMoney = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(v || 0))
 const detail = (error) => error?.response?.data?.detail || error?.message || 'No se pudo completar la operación'
@@ -18,6 +21,8 @@ export default function ProductVariantsManager({ product, onClose }) {
   const [stockQty, setStockQty] = useState('')
   const [imageTarget, setImageTarget] = useState('')
   const [imageFiles, setImageFiles] = useState([])
+  const [cropQueue, setCropQueue] = useState([])
+  const [imageDescriptions, setImageDescriptions] = useState({})
   const [imageBusy, setImageBusy] = useState(false)
 
   const { data: variants = [], isLoading } = useQuery({
@@ -63,16 +68,39 @@ export default function ProductVariantsManager({ product, onClose }) {
     onError: (error) => toast.error(detail(error)),
   })
 
+  const selectVariantImages = selected => {
+    const incoming = Array.from(selected || [])
+    if (!incoming.length) return
+    if (incoming.length + imageFiles.length + cropQueue.length > 10) {
+      toast.error('Máximo diez fotografías por lote')
+      return
+    }
+    if (incoming.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) {
+      toast.error('Selecciona imágenes JPG, PNG o WebP')
+      return
+    }
+    setCropQueue(current => [...current, ...incoming])
+  }
+  const cropVariantPhoto = file => {
+    setImageFiles(current => [...current, file])
+    setCropQueue(current => current.slice(1))
+  }
+
   const uploadImages = async (variantId) => {
     if (!imageFiles.length) return toast.error('Selecciona las imágenes')
     const formData = new FormData()
     imageFiles.forEach((file) => formData.append('files', file))
     setImageBusy(true)
     try {
-      await apiClient.post(`/products/${variantId}/images`, formData, {
+      const { data } = await apiClient.post(`/products/${variantId}/images`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      toast.success('Fotos de la variante guardadas')
+      try {
+        await Promise.all((data || []).map(entry => verifyUploadedImage(entry.url)))
+        toast.success('Fotos optimizadas y verificadas')
+      } catch (error) {
+        toast.error(error?.message || 'Fotos guardadas, pero no se pudo verificar su visualización')
+      }
       setImageFiles([])
       invalidate()
     } catch (error) {
@@ -97,6 +125,40 @@ export default function ProductVariantsManager({ product, onClose }) {
     } finally {
       setImageBusy(false)
     }
+  }
+
+  const reorderVariantPhotos = async (variantId, images, index, direction) => {
+    const ordered = [...images].sort((a,b) => (a.sort_order - b.sort_order) || (a.id - b.id))
+    const target = index + direction
+    if (imageBusy || target < 0 || target >= ordered.length) return
+    ;[ordered[index], ordered[target]] = [ordered[target], ordered[index]]
+    setImageBusy(true)
+    try {
+      await apiClient.patch(`/products/${variantId}/images/order`, {
+        image_ids: ordered.map(image => image.id),
+      })
+      invalidate()
+      toast.success('Orden de imágenes de variante actualizado')
+    } catch (error) {
+      toast.error(detail(error))
+    } finally { setImageBusy(false) }
+  }
+
+  const saveVariantAlt = async (variantId, image) => {
+    const description = (imageDescriptions[image.id] ?? image.alt_text ?? '').trim()
+    if (description.length < 3 || description.length > 180) {
+      toast.error('La descripción debe tener entre 3 y 180 caracteres')
+      return
+    }
+    setImageBusy(true)
+    try {
+      await apiClient.patch(`/products/${variantId}/images/${image.id}/alt`, {
+        alt_text: description,
+      })
+      invalidate()
+      toast.success('Descripción de imagen actualizada')
+    } catch (error) { toast.error(detail(error)) }
+    finally { setImageBusy(false) }
   }
 
   const options = Object.fromEntries(
@@ -175,31 +237,70 @@ export default function ProductVariantsManager({ product, onClose }) {
               <button className="btn-secondary" type="button" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: item.id, active: !item.active })}>
                 {item.active ? 'Desactivar' : 'Activar'}</button>
               {item.active && <button type="button" className="btn-primary" onClick={() => setStockTarget(String(item.id))}>Ingresar stock</button>}
-              <button type="button" className="btn-secondary" onClick={() => { setImageTarget(imageTarget === String(item.id) ? '' : String(item.id)); setImageFiles([]) }}>
+              <button type="button" className="btn-secondary" onClick={() => { setImageTarget(imageTarget === String(item.id) ? '' : String(item.id)); setImageFiles([]); setCropQueue([]) }}>
                 {imageTarget === String(item.id) ? 'Cerrar fotos' : `Gestionar fotos (${item.images?.length || 0})`}
               </button>
             </div>
           </div>
           {imageTarget === String(item.id) && <div className="rounded-lg bg-gray-50 p-3 space-y-3">
             <p className="font-medium text-sm">Fotografías de esta variante</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {(item.images || []).map((img) => <div key={img.id} className="bg-white border rounded-lg p-2 space-y-2">
-                <img src={imageUrl(img.url)} alt={img.alt_text || item.label} className="w-full aspect-square object-cover rounded" />
-                <div className="flex flex-wrap gap-2">
-                  {img.is_primary
-                    ? <span className="text-xs text-green-700">Principal</span>
-                    : <button type="button" disabled={imageBusy} onClick={() => updateImage(item.id, img.id, 'primary')} className="text-xs text-brand-700 underline">Hacer principal</button>}
-                  <button type="button" disabled={imageBusy} onClick={() => updateImage(item.id, img.id, 'delete')} className="text-xs text-red-700 underline">Eliminar</button>
-                </div>
-              </div>)}
+            <p className="text-xs text-gray-600">
+              Selecciona la fotografía principal y organiza el orden; cada variante
+              conserva su galería independiente.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[...(item.images || [])].sort((a,b) => (a.sort_order - b.sort_order) || (a.id - b.id))
+                .map((img, index, ordered) => <div key={img.id}
+                  className="bg-white border rounded-lg p-2 space-y-2">
+                  <img src={imageUrl(img.url)} alt={img.alt_text || item.label}
+                    loading="lazy" className="w-full aspect-square object-contain p-2 rounded bg-gray-50"/>
+                  <ProductPhotoQuality src={imageUrl(img.url)}
+                    altText={img.alt_text} isPrimary={img.is_primary} compact/>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-gray-500">Foto {index + 1} de {ordered.length}</span>
+                    <button type="button" disabled={imageBusy || index === 0}
+                      className="text-xs text-brand-700 underline"
+                      onClick={() => reorderVariantPhotos(item.id, ordered, index, -1)}>←</button>
+                    <button type="button" disabled={imageBusy || index === ordered.length - 1}
+                      className="text-xs text-brand-700 underline"
+                      onClick={() => reorderVariantPhotos(item.id, ordered, index, 1)}>→</button>
+                    {img.is_primary ? <span className="text-xs text-green-700">Principal</span> :
+                      <button type="button" disabled={imageBusy}
+                        onClick={() => updateImage(item.id, img.id, 'primary')}
+                        className="text-xs text-brand-700 underline">Hacer principal</button>}
+                  </div>
+                  <label className="block text-xs text-gray-600">Descripción de fotografía
+                    <input type="text" className="input w-full mt-1" maxLength={180}
+                      value={imageDescriptions[img.id] ?? img.alt_text ?? ''}
+                      onChange={e => setImageDescriptions(current => ({
+                        ...current, [img.id]: e.target.value,
+                      }))}/>
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    <button type="button" disabled={imageBusy}
+                      onClick={() => saveVariantAlt(item.id, img)}
+                      className="text-xs text-brand-700 underline">Guardar descripción</button>
+                    <button type="button" disabled={imageBusy}
+                      onClick={() => {
+                        if (window.confirm('¿Eliminar esta fotografía de la variante?')) {
+                          updateImage(item.id, img.id, 'delete')
+                        }
+                      }} className="text-xs text-red-700 underline">Eliminar</button>
+                  </div>
+                </div>)}
             </div>
-            <label className="block text-xs">Subir hasta diez fotografías
-              <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="input w-full mt-1"
-                onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
+            <label className="block text-xs">Cargar y recortar fotografías (JPG, PNG o WebP)
+              <input type="file" multiple accept="image/jpeg,image/png,image/webp"
+                className="input w-full mt-1"
+                onChange={e => { selectVariantImages(e.target.files); e.target.value = '' }}/>
             </label>
-            <button type="button" disabled={imageBusy || imageFiles.length === 0 || imageFiles.length > 10}
+            {(imageFiles.length > 0 || cropQueue.length > 0) && <p className="text-xs text-gray-600">
+              {imageFiles.length} imágenes listas · {cropQueue.length} pendientes de recortar
+            </p>}
+            <button type="button"
+              disabled={imageBusy || imageFiles.length === 0 || cropQueue.length > 0}
               onClick={() => uploadImages(item.id)} className="btn-primary">
-              {imageBusy ? 'Guardando...' : 'Subir fotografías'}
+              {imageBusy ? 'Guardando...' : 'Subir fotografías optimizadas'}
             </button>
             <p className="text-xs text-gray-500">Si esta variante no tiene fotos, la tienda utilizará las imágenes generales del producto.</p>
           </div>}
@@ -219,6 +320,12 @@ export default function ProductVariantsManager({ product, onClose }) {
         </div>)}
         {!isLoading && variants.length === 0 && <p className="text-sm text-gray-500">Este producto todavía no tiene variantes. Su inventario actual se gestiona como referencia única.</p>}
       </div>
+      {cropQueue[0] && <ImageCropModal
+        key={cropQueue[0].name + cropQueue[0].lastModified}
+        file={cropQueue[0]} ratio={1} width={1800}
+        title="Encuadrar fotografía de variante"
+        onCancel={() => setCropQueue(current => current.slice(1))}
+        onConfirm={cropVariantPhoto}/>}
       <p className="text-xs text-gray-500">Importante: si el producto original aún tiene inventario, primero concilia sus unidades. No se convierten existencias existentes automáticamente.</p>
       </div>
     </div>
