@@ -74,7 +74,8 @@ def append_audit(db, *, action: str, actor_id: int | None = None,
             raise ValueError("Tipo de metadato no permitido")
         sanitized[key] = value
     row = SecurityAuditEvent(
-        created_at=datetime.utcnow(), actor_id=actor_id,
+        # MySQL DATETIME sin fsp descarta microsegundos; firmar exactamente el valor persistido.
+        created_at=datetime.utcnow().replace(microsecond=0), actor_id=actor_id,
         action=action, resource=resource, target_id=str(target_id) if target_id is not None else None,
         outcome=outcome, details=sanitized, signature="",
     )
