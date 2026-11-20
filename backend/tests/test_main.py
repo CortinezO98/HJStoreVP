@@ -3,6 +3,7 @@ Tests básicos — HJStoreVP
 Ejecutar: pytest tests/ -v
 """
 import pytest
+from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -69,9 +70,40 @@ def setup_db():
     Base.metadata.drop_all(bind=engine_test)
 
 
+class LegacyCheckoutTestClient(TestClient):
+    """Adapta fixtures de compra antiguas al contrato actual de idempotencia.
+
+    No cambia la API ni los encabezados de otros endpoints. Cada intención
+    de compra en los tests usa una clave distinta; se puede aportar una
+    clave explícita para probar reintentos o rechazos por reutilización.
+    """
+
+    def post(self, url, *args, **kwargs):
+        if str(url).rstrip("/") == "/api/v1/orders/web":
+            headers = dict(kwargs.get("headers") or {})
+            if not any(k.lower() == "idempotency-key" for k in headers):
+                headers["Idempotency-Key"] = uuid4().hex
+            kwargs["headers"] = headers
+        return super().post(url, *args, **kwargs)
+
+
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return LegacyCheckoutTestClient(app)
+
+
+def test_web_checkout_rejects_missing_idempotency_key(auth_headers):
+    # Cliente sin adaptador: el servidor nunca debe aceptar la cabecera ausente.
+    raw = TestClient(app)
+    result = raw.post("/api/v1/orders/web", json={
+        "items": [{"product_id": 1, "qty": 1}],
+        "shipping_address": {"full_name": "Test", "phone": "3000000000",
+                             "address_line1": "Calle 1", "city": "Bogotá",
+                             "department": "Cundinamarca"},
+        "shipping_rate_id": 1, "shipping_price_confirmed": 12000,
+    }, headers=auth_headers)
+    assert result.status_code == 422
+    assert "Idempotency-Key" in result.text
 
 
 @pytest.fixture
