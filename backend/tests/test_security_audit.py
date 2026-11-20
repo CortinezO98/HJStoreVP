@@ -98,12 +98,12 @@ def test_api_refuses_admin_and_seller(audit_db):
     app.dependency_overrides[get_db] = db_override
     app.dependency_overrides[get_current_user] = admin_override
     try:
-        with TestClient(app) as client:
-            denied = client.get("/api/v1/security-audit", headers={"Authorization": "Bearer fixture"})
-            assert denied.status_code == 403
-            user.role = UserRole.SELLER
-            denied = client.get("/api/v1/security-audit", headers={"Authorization": "Bearer fixture"})
-            assert denied.status_code == 403
+        client = TestClient(app)
+        denied = client.get("/api/v1/security-audit", headers={"Authorization": "Bearer fixture"})
+        assert denied.status_code == 403
+        user.role = UserRole.SELLER
+        denied = client.get("/api/v1/security-audit", headers={"Authorization": "Bearer fixture"})
+        assert denied.status_code == 403
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
