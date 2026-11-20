@@ -222,22 +222,24 @@ def update_user(
             detail="Para cambiar tu correo o contraseña utiliza Mi perfil con reautenticación",
         )
 
-    target_role = data.role if data.role is not None else user.role
-    target_location = data.location_id if data.location_id is not None else user.location_id
-    if target_role != UserRole.SELLER:
-        target_location = None
-    _ensure_seller_location(db, target_role, target_location)
-    _ensure_other_super_admin(db, user, (
-        (data.role is not None and data.role != UserRole.SUPER_ADMIN)
-        or data.active is False
-    ))
-
-    # No puede editarse a sí mismo el role/active
+    # Reglas de seguridad de la propia cuenta y del último Super Admin
+    # deben evaluarse ANTES de las validaciones funcionales de ubicación.
     if user.id == current_user.id and (
         (data.role is not None and data.role != user.role)
         or (data.active is not None and data.active != user.active)
     ):
         raise HTTPException(status_code=400, detail="No puedes cambiar tu propio rol o estado")
+
+    _ensure_other_super_admin(db, user, (
+        (data.role is not None and data.role != UserRole.SUPER_ADMIN)
+        or data.active is False
+    ))
+
+    target_role = data.role if data.role is not None else user.role
+    target_location = data.location_id if data.location_id is not None else user.location_id
+    if target_role != UserRole.SELLER:
+        target_location = None
+    _ensure_seller_location(db, target_role, target_location)
 
     if data.email is not None and data.email != user.email:
         if db.query(User).filter(User.email == data.email, User.id != user.id).first():
