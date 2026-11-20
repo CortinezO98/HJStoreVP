@@ -44,6 +44,18 @@ const LONG_FIELDS = new Set([
   'footer_description', 'hero_description', 'shipping_policy', 'returns_policy',
   'privacy_policy', 'terms_policy',
 ])
+const HOME_SECTIONS = [
+  ['newest', 'Recién llegados'], ['statement', 'Campaña de estilo'],
+  ['featured', 'Productos destacados'], ['campaigns', 'Campañas fotográficas'],
+  ['personalized', 'Recomendaciones'], ['categories', 'Categorías'],
+  ['services', 'Beneficios'], ['faq', 'Preguntas frecuentes'], ['closing', 'Cierre editorial'],
+]
+const DEFAULT_HOME_ORDER = HOME_SECTIONS.map(([id]) => id)
+const validHomeOrder = (value) => Array.isArray(value) &&
+  value.length === DEFAULT_HOME_ORDER.length &&
+  new Set(value).size === DEFAULT_HOME_ORDER.length &&
+  DEFAULT_HOME_ORDER.every(id => value.includes(id))
+
 const POLICY_FIELDS = new Set(['shipping_policy', 'returns_policy', 'privacy_policy', 'terms_policy'])
 const API_URL = import.meta.env.VITE_API_URL || ''
 const fileSrc = (value) => value?.startsWith('/') ? `${API_URL}${value}` : value
@@ -60,6 +72,25 @@ export default function StorefrontSettingsPage() {
   const [uploading, setUploading] = useState(null)
   const [cropQueue, setCropQueue] = useState([])
   const [campaignImageBusy, setCampaignImageBusy] = useState(null)
+  const [previewDevice, setPreviewDevice] = useState('desktop')
+  const homeOrder = validHomeOrder(form?.homepage_section_order)
+    ? form.homepage_section_order : DEFAULT_HOME_ORDER
+  const hiddenHomeSections = Array.isArray(form?.homepage_hidden_sections)
+    ? form.homepage_hidden_sections : []
+  const moveHomeSection = (index, direction) => setForm((current) => {
+    const items = [...(validHomeOrder(current.homepage_section_order)
+      ? current.homepage_section_order : DEFAULT_HOME_ORDER)]
+    const target = index + direction
+    if (target < 0 || target >= items.length) return current
+    ;[items[index], items[target]] = [items[target], items[index]]
+    return { ...current, homepage_section_order: items }
+  })
+  const toggleHomeSection = (id, checked) => setForm((current) => {
+    const hidden = new Set(current.homepage_hidden_sections || [])
+    if (checked) hidden.delete(id)
+    else hidden.add(id)
+    return { ...current, homepage_hidden_sections: [...hidden] }
+  })
   const banners = Array.isArray(form?.homepage_banners) ? form.homepage_banners : []
   const updateCampaign = (index, key, value) => setForm((current) => ({
     ...current,
@@ -73,7 +104,7 @@ export default function StorefrontSettingsPage() {
     ;[items[index], items[target]] = [items[target], items[index]]
     return { ...current, homepage_banners: items }
   })
-  const uploadCampaignImage = async (index, file) => {
+  const uploadCampaignImage = async (index, file, field = 'image_url') => {
     if (!file) return
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       toast.error('Selecciona JPG, PNG o WEBP')
@@ -83,7 +114,7 @@ export default function StorefrontSettingsPage() {
     try {
       const { data } = await storefrontSettingsApi.upload(file)
       await verifyUploadedImage(data.url)
-      updateCampaign(index, 'image_url', data.url)
+      updateCampaign(index, field, data.url)
       toast.success('Imagen lista. Guarda y publica para mostrarla.')
     } catch (error) {
       toast.error(errorText(error))
@@ -332,6 +363,34 @@ export default function StorefrontSettingsPage() {
             </div>}
           </section>)}
 
+          <section className="admin-settings-section" id="settings-home-order">
+            <h2 className="admin-settings-section-title">Diseñador de inicio · Orden y visibilidad</h2>
+            <p className="admin-settings-section-description">
+              Organiza las secciones por prioridad. El banner principal permanece primero;
+              puedes ocultar secciones sin eliminar sus datos.
+            </p>
+            <div className="d-flex flex-column gap-2 mt-3">
+              <div className="border rounded-3 p-3 d-flex justify-content-between align-items-center bg-light">
+                <strong>00 · Banner principal</strong><span className="small text-secondary">Siempre visible</span>
+              </div>
+              {homeOrder.map((id, index) => (
+                <div key={id} className="border rounded-3 p-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                  <label className="d-flex gap-2 align-items-center m-0">
+                    <input type="checkbox" checked={!hiddenHomeSections.includes(id)}
+                      onChange={(event) => toggleHomeSection(id, event.target.checked)} />
+                    <strong>{String(index + 1).padStart(2, '0')} · {HOME_SECTIONS.find(([key]) => key === id)?.[1] || id}</strong>
+                  </label>
+                  <div className="d-flex gap-2">
+                    <button type="button" aria-label={`Subir ${id}`} className="btn btn-outline-secondary btn-sm"
+                      disabled={index === 0} onClick={() => moveHomeSection(index, -1)}>↑</button>
+                    <button type="button" aria-label={`Bajar ${id}`} className="btn btn-outline-secondary btn-sm"
+                      disabled={index === homeOrder.length - 1} onClick={() => moveHomeSection(index, 1)}>↓</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="admin-settings-section" id="settings-home-campaigns">
             <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
               <div>
@@ -342,10 +401,17 @@ export default function StorefrontSettingsPage() {
                 disabled={banners.length >= 6 || campaignImageBusy !== null}
                 onClick={() => setForm((current) => ({ ...current, homepage_banners: [
                   ...(current.homepage_banners || []),
-                  { image_url: '', title: 'NUEVA CAMPAÑA', subtitle: '', button_text: 'DESCUBRIR', link: '/catalogo', active: false },
+                  { image_url: '', mobile_image_url: '', title: 'NUEVA CAMPAÑA', subtitle: '', button_text: 'DESCUBRIR', link: '/catalogo', active: false },
                 ] }))}>+ Agregar campaña</button>
             </div>
             <p className="small text-secondary">Cada campaña debe tener una imagen y un título. Usa rutas internas como /catalogo o /catalogo?categoria=gorras. Desactiva una campaña para ocultarla sin borrarla.</p>
+            <div className="d-flex align-items-center gap-2 mb-3">
+              <span className="small fw-bold">Previsualizar fotografías:</span>
+              <button type="button" className={`btn btn-sm ${previewDevice === 'desktop' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                onClick={() => setPreviewDevice('desktop')}>Escritorio</button>
+              <button type="button" className={`btn btn-sm ${previewDevice === 'mobile' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                onClick={() => setPreviewDevice('mobile')}>Celular</button>
+            </div>
             {banners.map((banner, index) => (
               <div key={index} className="border rounded-3 p-3 mb-3">
                 <div className="d-flex justify-content-between align-items-center mb-3 gap-2">
@@ -358,14 +424,41 @@ export default function StorefrontSettingsPage() {
                     }))}>Eliminar</button>
                   </div>
                 </div>
+                {banner.image_url && (
+                  <div className="d-flex justify-content-center bg-dark rounded mb-3 p-2">
+                    <div className="position-relative overflow-hidden rounded bg-black text-white"
+                      style={{ width: previewDevice === 'mobile' ? 220 : '100%', maxWidth: 780,
+                        aspectRatio: previewDevice === 'mobile' ? '9/16' : '16/7' }}>
+                      <img src={fileSrc(previewDevice === 'mobile'
+                        ? (banner.mobile_image_url || banner.image_url) : banner.image_url)}
+                        alt="Previsualización de campaña" className="w-100 h-100"
+                        style={{ objectFit: 'cover' }} />
+                      <div className="position-absolute bottom-0 start-0 w-100 p-3"
+                        style={{ background: 'linear-gradient(transparent, rgba(0,0,0,.8))' }}>
+                        <small>{banner.subtitle}</small>
+                        <div className="fw-bold text-uppercase">{banner.title}</div>
+                        <span className="badge bg-white text-dark">{banner.button_text || 'DESCUBRIR'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="row g-3">
                   <div className="col-12 col-lg-5">
                     {banner.image_url && <img src={fileSrc(banner.image_url)} alt={banner.title || 'Campaña'}
                       className="w-100 rounded mb-2" style={{ aspectRatio: '4/3', objectFit: 'cover' }} />}
-                    <label className="form-label" htmlFor={`campaign-file-${index}`}>Fotografía</label>
+                    <label className="form-label" htmlFor={`campaign-file-${index}`}>Fotografía para escritorio</label>
                     <input className="form-control" id={`campaign-file-${index}`} type="file"
                       accept="image/jpeg,image/png,image/webp" disabled={campaignImageBusy !== null}
                       onChange={(event) => { uploadCampaignImage(index, event.target.files?.[0]); event.target.value = '' }} />
+                    {banner.mobile_image_url && <img src={fileSrc(banner.mobile_image_url)}
+                      alt={`Vista móvil de ${banner.title}`} className="rounded mt-3 mb-2"
+                      style={{ width: 110, aspectRatio: '9/16', objectFit: 'cover' }} />}
+                    <label className="form-label mt-3" htmlFor={`campaign-mobile-file-${index}`}>Fotografía para celular (opcional)</label>
+                    <input className="form-control" id={`campaign-mobile-file-${index}`} type="file"
+                      accept="image/jpeg,image/png,image/webp" disabled={campaignImageBusy !== null}
+                      onChange={(event) => { uploadCampaignImage(index, event.target.files?.[0], 'mobile_image_url'); event.target.value = '' }} />
+                    {banner.mobile_image_url && <button className="btn btn-sm btn-outline-secondary mt-2"
+                      type="button" onClick={() => updateCampaign(index, 'mobile_image_url', '')}>Usar imagen de escritorio</button>
                   </div>
                   <div className="col-12 col-lg-7 row g-2 align-content-start">
                     {[
