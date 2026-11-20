@@ -17,6 +17,7 @@ import toast from 'react-hot-toast'
 import { productsApi, recommendationsApi } from '../../services/api'
 import { useCartStore, useWishlistStore, useBrowsingStore } from '../../store'
 import ProductCard from '../../components/shop/ProductCard'
+import ProductImage from '../../components/shop/ProductImage'
 import useAutoCarousel from '../../hooks/useAutoCarousel'
 import { ErrorState, QuantityStepper } from '../../components/shop/StoreUI'
 import { updateMeta, updateCanonical, updateStructuredData } from '../../components/shop/StoreMetadata'
@@ -49,6 +50,7 @@ export default function ProductPage() {
 
   const [qty, setQty] = useState(1)
   const [selectedVariantId, setSelectedVariantId] = useState('')
+  const [failedImages, setFailedImages] = useState([])
 
   const { data: product, isLoading, isError, refetch } = useQuery({
     queryKey: ['product-detail', slug],
@@ -154,10 +156,13 @@ export default function ProductPage() {
     return variantImages.length ? variantImages : productImages.length ? productImages : fallbackPrimary
   }, [product, selectedVariant])
 
+  // Omit broken/deleted assets in the gallery without editing catalog data.
+  const usableImages = useMemo(() => images.filter(img => img.url &&
+    !failedImages.includes(img.url)), [images, failedImages])
   const productCarousel = useAutoCarousel(
-    images.length, 5000, `${slug}:${selectedVariantId}`
+    usableImages.length, 5000, `${slug}:${selectedVariantId}`, false
   )
-  const mainImage = images[productCarousel.index]?.url || null
+  const mainImage = usableImages[productCarousel.index]?.url || null
 
   const hasVariants = Boolean(product?.has_variants)
   const sellableProduct = hasVariants
@@ -303,17 +308,14 @@ export default function ProductPage() {
           }}>
           <div className="bg-neutral-50 overflow-hidden store-product-main-image">
             <div className="aspect-square bg-neutral-50 flex items-center justify-center overflow-hidden">
-              {mainImage ? (
-                <img key={mainImage} src={mainImage} alt={images[productCarousel.index]?.alt || product.name}
-                  className="w-full h-full object-contain" decoding="async" loading="eager" fetchPriority="high" />
-              ) : (
-                <div className="store-product-gallery-empty" role="img" aria-label="Producto sin fotografía">
-                  <span>HJ<span>VP</span></span>
-                  <small>FOTOGRAFÍA NO DISPONIBLE</small>
-                </div>
-              )}
+              <ProductImage key={mainImage || 'no-photo'} src={mainImage}
+                alt={usableImages[productCarousel.index]?.alt || product.name}
+                category={categoryName} className="w-full h-full object-contain"
+                loading="eager" fetchPriority="high"
+                onError={() => setFailedImages(current => current.includes(mainImage)
+                  ? current : [...current, mainImage])}/>
             </div>
-            {images.length > 1 && (
+            {usableImages.length > 1 && (
               <>
                 <button type="button" className="store-product-gallery-prev"
                   aria-label="Fotografía anterior" onClick={() => productCarousel.goTo(productCarousel.index - 1)}>
@@ -324,26 +326,28 @@ export default function ProductPage() {
                   <ChevronRight size={22} />
                 </button>
                 <span className="store-product-gallery-count" aria-live="off">
-                  {productCarousel.index + 1} / {images.length}
+                  {productCarousel.index + 1} / {usableImages.length}
                 </span>
               </>
             )}
           </div>
-          {images.length > 1 && (
+          {usableImages.length > 1 && (
             <div className="store-product-gallery-thumbnails" role="group" aria-label="Elegir fotografía del producto">
-              {images.map((img, index) => (
+              {usableImages.map((img, index) => (
                 <button key={img.id ?? `${img.url}-${index}`} type="button"
                   aria-label={`Ver fotografía ${index + 1} de ${product.name}`}
                   aria-pressed={productCarousel.index === index}
                   onClick={() => productCarousel.goTo(index)}
                   className={`store-product-gallery-thumb ${productCarousel.index === index ? 'is-active' : ''}`}>
-                  <img src={img.url} alt="" loading="lazy" decoding="async" fetchPriority="low"/>
+                  <img src={img.url} alt="" loading="lazy" decoding="async" fetchPriority="low"
+                    onError={() => setFailedImages(current => current.includes(img.url)
+                      ? current : [...current, img.url])}/>
                 </button>
               ))}
             </div>
           )}
-          {images.length > 1 && (
-            <p className="store-product-gallery-hint">Las fotografías avanzan automáticamente cada 5 segundos. También puedes elegir una imagen.</p>
+          {usableImages.length > 1 && (
+            <p className="store-product-gallery-hint">Elige una fotografía con las miniaturas o las flechas. Las imágenes no cambian solas.</p>
           )}
         </div>
 
