@@ -159,7 +159,7 @@ def export_commercial_history(
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(("source", "source_id", "created_at_utc", "actor_id",
-                     "action", "resource", "target_id", "integrity", "details", "details"))
+                     "action", "resource", "target_id", "integrity", "details"))
     signed = _signed_lookup(db, rows)
     for row in rows:
         values = _row_data(row, signed.get(row.source_id) if row.source == "security_audit_events" else None)
@@ -170,7 +170,7 @@ def export_commercial_history(
             ("'" + str(values[field]) if str(values[field]).lstrip().startswith(("=", "+", "-", "@"))
              else values[field]) for field in (
                 "source", "source_id", "created_at", "actor_id",
-                "action", "resource", "target_id", "integrity",
+                "action", "resource", "target_id", "integrity", "details",
             )
         ])
     return StreamingResponse(
