@@ -285,10 +285,10 @@ class Product(Base, TimestampMixin):
     )
 
     # Precios
-    cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
-    margin_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0, active_history=True)
+    margin_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0, active_history=True)
     # Precio de venta = cost_price * (1 + margin_pct / 100) — calculado en la app
-    sale_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    sale_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0, active_history=True)
 
     # Stock global (suma de todos los puntos)
     stock_min_alert: Mapped[int] = mapped_column(Integer, default=5)
@@ -447,7 +447,7 @@ class Order(Base, TimestampMixin):
 
     # Estado
     status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING, index=True
+        Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING, index=True, active_history=True
     )
 
     # Montos
