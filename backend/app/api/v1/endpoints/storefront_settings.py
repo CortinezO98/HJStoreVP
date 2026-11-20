@@ -1,6 +1,6 @@
 """Configuración pública del comercio; identidad, contenido y políticas."""
-from typing import Optional
-from urllib.parse import urlsplit
+from typing import Optional, Literal
+from urllib.parse import urlsplit, urlencode
 from datetime import datetime
 import hashlib
 import json
@@ -17,7 +17,7 @@ from app.core.deps import require_super_admin
 from app.core.config import settings
 from app.api.v1.endpoints.images import normalize_image, MAX_SIZE_BYTES
 from app.db.session import get_db
-from app.models.models import StorefrontSettings, User
+from app.models.models import StorefrontSettings, User, Product, Category
 
 router = APIRouter(prefix="/storefront-settings", tags=["Configuración de tienda"])
 ROW_ID = 1
@@ -102,6 +102,9 @@ class HomepageBanner(BaseModel):
     subtitle: str = Field(default="", max_length=160)
     button_text: str = Field(default="DESCUBRIR", max_length=40)
     link: str = Field(default="/catalogo", max_length=300)
+    destination_type: Literal["custom", "product", "category", "collection"] = "custom"
+    destination_slug: str = Field(default="", max_length=160, pattern=r"^[a-zA-Z0-9_-]*$")
+
     active: bool = True
     starts_at: str = Field(default="", max_length=16)
     ends_at: str = Field(default="", max_length=16)
@@ -152,6 +155,9 @@ class HomepageVisualItem(BaseModel):
     subtitle: str = Field(default="", max_length=160)
     button_text: str = Field(default="VER AHORA", max_length=40)
     link: str = Field(default="/catalogo", max_length=300)
+    destination_type: Literal["custom", "product", "category", "collection"] = "custom"
+    destination_slug: str = Field(default="", max_length=160, pattern=r"^[a-zA-Z0-9_-]*$")
+
     text_align: str = Field(default="left", pattern=r"^(left|center|right)$")
     text_position: str = Field(default="bottom", pattern=r"^(top|center|bottom)$")
     overlay_opacity: int = Field(default=65, ge=0, le=90)
@@ -214,6 +220,9 @@ class HomepageLoyaltyBanner(BaseModel):
     description: str = Field(default="", max_length=260)
     button_text: str = Field(default="DESCUBRIR BENEFICIOS", max_length=45)
     link: str = Field(default="/mi-cuenta", max_length=300)
+    destination_type: Literal["custom", "product", "category", "collection"] = "custom"
+    destination_slug: str = Field(default="", max_length=160, pattern=r"^[a-zA-Z0-9_-]*$")
+
     active: bool = False
     starts_at: str = Field(default="", max_length=16)
     ends_at: str = Field(default="", max_length=16)
@@ -379,6 +388,70 @@ class SettingsPayload(BaseModel):
         return value
 
 
+
+COLLECTION_LINKS = {
+    "newest": "/catalogo?sort=newest",
+    "featured": "/catalogo?featured=true",
+    "all": "/catalogo",
+}
+
+
+def destination_link(item: dict, db: Session) -> str:
+    """Resolve only supported, active catalog destinations; never trust a raw slug as URL."""
+    kind = item.get("destination_type", "custom")
+    slug = item.get("destination_slug", "")
+    if kind == "product":
+        match = db.query(Product.id).filter(Product.slug == slug, Product.active.is_(True)).first()
+        return f"/producto/{slug}" if match else "/catalogo"
+    if kind == "category":
+        match = db.query(Category.id).filter(Category.slug == slug, Category.active.is_(True)).first()
+        return "/catalogo?" + urlencode({"categoria": slug}) if match else "/catalogo"
+    if kind == "collection":
+        return COLLECTION_LINKS.get(slug, "/catalogo")
+    return item.get("link") or "/catalogo"
+
+
+def validate_destination(item: dict, db: Session) -> None:
+    kind = item.get("destination_type", "custom")
+    if kind == "custom":
+        return
+    slug = item.get("destination_slug", "")
+    if not slug or (kind == "collection" and slug not in COLLECTION_LINKS):
+        raise HTTPException(status_code=422, detail="Selecciona un destino válido para la campaña")
+    if kind == "product" and not db.query(Product.id).filter(
+        Product.slug == slug, Product.active.is_(True)
+    ).first():
+        raise HTTPException(status_code=422, detail="El producto de la campaña no existe o está inactivo")
+    if kind == "category" and not db.query(Category.id).filter(
+        Category.slug == slug, Category.active.is_(True)
+    ).first():
+        raise HTTPException(status_code=422, detail="La categoría de la campaña no existe o está inactiva")
+
+
+def validate_published_destinations(settings_data: dict, db: Session) -> None:
+    for banner in settings_data.get("homepage_banners", []):
+        if banner.get("active") and banner.get("image_url"):
+            validate_destination(banner, db)
+    for block in settings_data.get("homepage_visual_blocks", []):
+        if block.get("active"):
+            for item in block.get("items", []):
+                validate_destination(item, db)
+    loyalty = settings_data.get("homepage_loyalty_banner")
+    if isinstance(loyalty, dict) and loyalty.get("active"):
+        validate_destination(loyalty, db)
+
+
+def resolve_public_destinations(settings_data: dict, db: Session) -> None:
+    for banner in settings_data.get("homepage_banners", []):
+        banner["link"] = destination_link(banner, db)
+    for block in settings_data.get("homepage_visual_blocks", []):
+        for item in block.get("items", []):
+            item["link"] = destination_link(item, db)
+    loyalty = settings_data.get("homepage_loyalty_banner")
+    if isinstance(loyalty, dict):
+        loyalty["link"] = destination_link(loyalty, db)
+
+
 def public_settings(db: Session) -> dict:
     row = db.get(StorefrontSettings, ROW_ID)
     return {**DEFAULTS, **{key: value for key, value in (row.settings_data or {}).items() if not key.startswith('_')}} if row else dict(DEFAULTS)
@@ -403,6 +476,7 @@ def get_public_settings(db: Session = Depends(get_db)):
         block for block in data.get("homepage_visual_blocks", [])
         if block.get("items") and campaign_in_window(block, now)
     ]
+    resolve_public_destinations(data, db)
     return data
 
 
@@ -425,6 +499,7 @@ def update_admin_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_super_admin),
 ):
+    validate_published_destinations(payload.model_dump(), db)
     row = db.query(StorefrontSettings).filter(StorefrontSettings.id == ROW_ID).with_for_update().first()
     if row is None:
         row = StorefrontSettings(id=ROW_ID, settings_data=payload.model_dump(), updated_by=current_user.id)
@@ -534,6 +609,7 @@ def publish_homepage_draft(
     if saved.get("base_hash") != homepage_fingerprint(published):
         raise HTTPException(status_code=409, detail="La portada publicada cambió desde que inició este borrador. Revise los cambios antes de publicarlo.")
     draft = validated_homepage(saved.get("data", {}), stored)
+    validate_published_destinations(draft, db)
     history = list(stored.get(HISTORY_KEY) or [])
     history.insert(0, {
         "id": uuid4().hex,
