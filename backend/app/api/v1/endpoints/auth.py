@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hmac
 from jose import jwt
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.services.auth_protection import (check_login_limit, note_login_failure, clear_login_failures, consume_refresh_token)
+from app.services.auth_protection import (check_login_limit, note_login_failure, clear_login_failures, consume_refresh_token, consume_mfa_challenge)
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, credential_version, credential_version_matches
 from app.core.deps import get_current_user
 from app.models.models import User, UserRole, UserMFASettings
@@ -26,11 +26,13 @@ class ProfileUpdate(BaseModel):
 class ProfileEmailChange(BaseModel):
     email: EmailStr
     current_password: str
+    mfa_code: str | None = Field(default=None, max_length=20)
 
 
 class ProfilePasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(min_length=12, max_length=72)
+    mfa_code: str | None = Field(default=None, max_length=20)
 
 
 class MFAStart(BaseModel):
@@ -39,6 +41,15 @@ class MFAStart(BaseModel):
 
 class MFACode(BaseModel):
     code: str = Field(min_length=6, max_length=20)
+
+
+class MFASensitiveAction(BaseModel):
+    current_password: str
+    code: str = Field(min_length=6, max_length=20)
+
+
+class MFARotateCodes(MFASensitiveAction):
+    pass
 
 
 class MFAChallenge(BaseModel):
@@ -53,6 +64,8 @@ def _mfa_record(db: Session, user_id: int, lock: bool = False):
 
 def _token_bundle(user: User, mfa: UserMFASettings | None = None):
     extra = {"ver": credential_version(user.hashed_password)}
+    if mfa and mfa.version:
+        extra["sec_v"] = mfa.version
     if mfa and mfa.enabled:
         extra["mfa_v"] = mfa.version
     return TokenResponse(
@@ -66,7 +79,7 @@ def _mfa_challenge(user: User):
     token = jwt.encode({
         "sub": str(user.id), "type": "mfa_pending",
         "ver": credential_version(user.hashed_password),
-        "exp": datetime.utcnow() + timedelta(minutes=5),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
     }, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return {"mfa_required": True, "challenge_token": token}
 
@@ -74,6 +87,26 @@ def _mfa_challenge(user: User):
 def _require_mfa_admin(user: User):
     if user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="2FA disponible para personal administrativo")
+
+
+def _require_recent_factor(db: Session, user: User, request: Request, password: str,
+                           code: str | None = None, *, mfa_required: bool = False):
+    check_login_limit(request, user.email)
+    if not verify_password(password, user.hashed_password):
+        note_login_failure(request, user.email)
+        raise HTTPException(status_code=403, detail="Credenciales de confirmación incorrectas")
+    record = _mfa_record(db, user.id, lock=True) if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN) else None
+    if record and record.enabled and (mfa_required or code is not None):
+        if not code or not _verify_mfa_code(record, code):
+            note_login_failure(request, user.email)
+            raise HTTPException(status_code=403, detail="Código de segundo factor incorrecto")
+    elif record and record.enabled and mfa_required:
+        note_login_failure(request, user.email)
+        raise HTTPException(status_code=403, detail="Se requiere un código 2FA")
+    # Las acciones sensibles de usuarios con 2FA siempre lo requieren.
+    if record and record.enabled and not code:
+        raise HTTPException(status_code=403, detail="Se requiere un código 2FA")
+    return record
 
 
 def _verify_mfa_code(record: UserMFASettings, code: str):
@@ -106,7 +139,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
             detail="Correo o contraseña incorrectos",
         )
 
-    mfa = _mfa_record(db, user.id) if user.role in (UserRole.SUPER_ADMIN, UserRole.ADMIN) else None
+    mfa = _mfa_record(db, user.id)
     if mfa and mfa.enabled:
         return _mfa_challenge(user)
     clear_login_failures(data.email)
@@ -135,7 +168,9 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
         expires_at = int(payload.get("exp", ""))
     except (TypeError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido")
-    mfa = _mfa_record(db, user.id) if user.role in (UserRole.SUPER_ADMIN, UserRole.ADMIN) else None
+    mfa = _mfa_record(db, user.id)
+    if mfa and mfa.version and payload.get("sec_v") != mfa.version:
+        raise HTTPException(status_code=401, detail="Sesión revocada; inicia sesión nuevamente")
     if mfa and mfa.enabled and payload.get("mfa_v") != mfa.version:
         raise HTTPException(status_code=401, detail="Segundo factor obligatorio; inicia sesión nuevamente")
     consume_refresh_token(data.refresh_token, expires_at)
@@ -164,15 +199,13 @@ def update_my_profile(data: ProfileUpdate, db: Session = Depends(get_db),
 def change_my_email(data: ProfileEmailChange, request: Request,
                     db: Session = Depends(get_db),
                     current_user: User = Depends(get_current_user)):
-    check_login_limit(request, current_user.email)
-    if not verify_password(data.current_password, current_user.hashed_password):
-        note_login_failure(request, current_user.email)
-        raise HTTPException(status_code=403, detail="Contraseña actual incorrecta")
+    _require_recent_factor(db, current_user, request, data.current_password, data.mfa_code)
     if db.query(User).filter(User.email == data.email, User.id != current_user.id).first():
         raise HTTPException(status_code=409, detail="Correo no disponible")
+    previous_email = current_user.email
     current_user.email = data.email
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(previous_email)
     return current_user
 
 
@@ -180,10 +213,7 @@ def change_my_email(data: ProfileEmailChange, request: Request,
 def change_my_password(data: ProfilePasswordChange, request: Request,
                        db: Session = Depends(get_db),
                        current_user: User = Depends(get_current_user)):
-    check_login_limit(request, current_user.email)
-    if not verify_password(data.current_password, current_user.hashed_password):
-        note_login_failure(request, current_user.email)
-        raise HTTPException(status_code=403, detail="Contraseña actual incorrecta")
+    _require_recent_factor(db, current_user, request, data.current_password, data.mfa_code)
     if verify_password(data.new_password, current_user.hashed_password):
         raise HTTPException(status_code=422, detail="La nueva contraseña debe ser diferente")
     current_user.hashed_password = hash_password(data.new_password)
@@ -270,6 +300,60 @@ def verify_mfa_challenge(data: MFAChallenge, request: Request, db: Session = Dep
         note_login_failure(request, user.email)
         raise HTTPException(status_code=401, detail="Código de seguridad incorrecto")
     record.updated_at = datetime.utcnow()
+    consume_mfa_challenge(data.challenge_token, int(payload["exp"]))
     db.commit()
     clear_login_failures(user.email)
     return _token_bundle(user, record)
+
+
+@router.post("/me/sessions/revoke", status_code=204)
+def revoke_my_sessions(data: MFASensitiveAction, request: Request,
+                       db: Session = Depends(get_db),
+                       current_user: User = Depends(get_current_user)):
+    """Invalidar todos los access/refresh tokens anteriores, incluido el actual."""
+    record = _require_recent_factor(db, current_user, request, data.current_password, data.code)
+    if record is None:
+        record = UserMFASettings(user_id=current_user.id, enabled=False,
+                                 recovery_hashes=[], version=0, updated_at=datetime.utcnow())
+        db.add(record)
+    record.version += 1
+    record.updated_at = datetime.utcnow()
+    db.commit()
+    clear_login_failures(current_user.email)
+
+
+@router.post("/me/mfa/recovery/rotate")
+def rotate_mfa_recovery_codes(data: MFARotateCodes, request: Request,
+                              db: Session = Depends(get_db),
+                              current_user: User = Depends(get_current_user)):
+    _require_mfa_admin(current_user)
+    record = _require_recent_factor(db, current_user, request, data.current_password,
+                                    data.code, mfa_required=True)
+    if not record or not record.enabled:
+        raise HTTPException(status_code=409, detail="El segundo factor no está activo")
+    plain, hashed = generate_recovery_codes()
+    record.recovery_hashes = hashed
+    record.updated_at = datetime.utcnow()
+    db.commit()
+    clear_login_failures(current_user.email)
+    return {"recovery_codes": plain, "message": "Sustituye los códigos anteriores; no se mostrarán de nuevo"}
+
+
+@router.post("/me/mfa/disable", status_code=204)
+def disable_mfa(data: MFASensitiveAction, request: Request,
+                db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    _require_mfa_admin(current_user)
+    record = _require_recent_factor(db, current_user, request, data.current_password,
+                                    data.code, mfa_required=True)
+    if not record or not record.enabled:
+        raise HTTPException(status_code=409, detail="El segundo factor no está activo")
+    record.enabled = False
+    record.secret_ciphertext = None
+    record.pending_secret_ciphertext = None
+    record.recovery_hashes = []
+    record.last_totp_step = None
+    record.version += 1
+    record.updated_at = datetime.utcnow()
+    db.commit()
+    clear_login_failures(current_user.email)
