@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Heart, ArrowUpRight } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '../../store'
 import toast from 'react-hot-toast'
+import ProductImage from './ProductImage'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
@@ -33,15 +34,8 @@ export default function ProductCard({ product, label }) {
     <article className="editorial-product">
       <div className="editorial-product-media">
         <Link to={`/producto/${product.slug}`} aria-label={`Ver ${product.name}`}>
-          {image ? (
-            <img src={image} loading="lazy" decoding="async" fetchPriority="low" alt={product.name} />
-          ) : (
-            <span className="editorial-product-fallback store-product-placeholder">
-              <span className="store-product-placeholder-mark" aria-hidden="true">HJ<span>VP</span></span>
-              <span className="store-product-placeholder-label">{product.category_name || 'ESTILO PROPIO'}</span>
-              <span className="sr-only">Imagen no disponible</span>
-            </span>
-          )}
+          <ProductImage src={image} alt={product.name}
+            category={product.category_name} loading="lazy" fetchPriority="low"/>
         </Link>
         {soldOut ? (
           <span className="editorial-product-label is-sold-out">AGOTADO</span>
