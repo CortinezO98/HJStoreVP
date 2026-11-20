@@ -41,7 +41,13 @@ def _entries(data):
 
 
 def upgrade():
-    op.create_table(
+    inspector = sa.inspect(op.get_bind())
+    has_blocks = inspector.has_table("storefront_visual_blocks")
+    has_slides = inspector.has_table("storefront_visual_slides")
+    if has_blocks != has_slides:
+        raise RuntimeError("Esquema visual incompleto; se requiere inspección antes de migrar")
+    if not has_blocks:
+        op.create_table(
         "storefront_visual_blocks",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("storefront_id", sa.Integer(), sa.ForeignKey("storefront_settings.id", ondelete="CASCADE"), nullable=False),
@@ -52,9 +58,9 @@ def upgrade():
         sa.Column("configuration", sa.JSON(), nullable=False),
         sa.UniqueConstraint("storefront_id", "scope", "block_key", name="uq_visual_block_scope_key"),
     )
-    op.create_index("ix_visual_block_scope_position", "storefront_visual_blocks",
-                    ["storefront_id", "scope", "position"])
-    op.create_table(
+        op.create_index("ix_visual_block_scope_position", "storefront_visual_blocks",
+                        ["storefront_id", "scope", "position"])
+        op.create_table(
         "storefront_visual_slides",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("block_id", sa.Integer(), sa.ForeignKey("storefront_visual_blocks.id", ondelete="CASCADE"), nullable=False),
@@ -65,7 +71,7 @@ def upgrade():
         sa.Column("link", sa.String(300), nullable=False, server_default="/catalogo"),
         sa.Column("configuration", sa.JSON(), nullable=False),
         sa.UniqueConstraint("block_id", "position", name="uq_visual_slide_position"),
-    )
+        )
 
     bind = op.get_bind()
     settings_rows = bind.execute(sa.text("SELECT id, settings_data FROM storefront_settings")).fetchall()
@@ -81,6 +87,12 @@ def upgrade():
         sa.column("configuration", sa.JSON))
 
     for row in settings_rows:
+        if bind.execute(sa.text(
+            "SELECT id FROM storefront_visual_blocks WHERE storefront_id = :sid LIMIT 1"
+        ), {"sid": row.id}).first():
+            # Already mirrored by development startup or a previous committed write.
+            # Do not overwrite live rows while stamping the Alembic revision.
+            continue
         value = row.settings_data
         stored = json.loads(value) if isinstance(value, str) else (value or {})
         if not isinstance(stored, dict):
