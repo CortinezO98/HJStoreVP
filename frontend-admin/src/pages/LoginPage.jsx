@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
 import { useAuthStore } from '../store'
+import { authApi } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuthStore()
+  const [challenge, setChallenge] = useState(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const { login, completeLogin } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -17,10 +20,32 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await login(form.email, form.password)
+      if (data.mfa_required) {
+        setChallenge(data.challenge_token)
+        setForm({ email: '', password: '' })
+        return
+      }
       toast.success(`Bienvenido, ${data.full_name}!`)
       navigate(location.state?.from || '/', { replace: true })
     } catch (error) {
       toast.error(error?.response?.data?.detail || error.message || 'No se pudo iniciar sesión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleMfa = async (event) => {
+    event.preventDefault()
+    setLoading(true)
+    try {
+      const { data } = await authApi.mfaVerify({ challenge_token: challenge, code: mfaCode })
+      completeLogin(data)
+      setChallenge(null)
+      setMfaCode('')
+      toast.success('Verificación completada')
+      navigate(location.state?.from || '/', { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Código inválido o vencido')
     } finally {
       setLoading(false)
     }
@@ -35,7 +60,20 @@ export default function LoginPage() {
         </div>
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h1 className="text-xl font-bold text-gray-900 mb-6">Iniciar sesión</h1>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {challenge ? (
+            <form onSubmit={handleMfa} className="space-y-4">
+              <p className="text-sm text-gray-600">Introduce el código de tu aplicación autenticadora o uno de tus códigos de recuperación.</p>
+              <label className="block text-sm font-medium" htmlFor="mfa-code">Código de seguridad</label>
+              <input id="mfa-code" className="input" autoComplete="one-time-code" autoFocus required
+                value={mfaCode} maxLength={20} onChange={(e) => setMfaCode(e.target.value.trim())}
+                placeholder="000000" />
+              <button className="btn-primary w-full" type="submit" disabled={loading}>
+                {loading ? 'Validando…' : 'Verificar e ingresar'}
+              </button>
+              <button type="button" className="text-sm text-gray-600 underline"
+                onClick={() => { setChallenge(null); setMfaCode('') }}>Volver al inicio de sesión</button>
+            </form>
+          ) : <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Correo</label>
               <input type="email" autoComplete="username" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="admin@hjstorevp.com" />
@@ -52,7 +90,7 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
               {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><LogIn size={16} /> Ingresar</>}
             </button>
-          </form>
+          </form>}
         </div>
       </div>
     </div>
