@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../products/ImageCropModal'
+import { BannerPresentationControls } from './PresentationControls'
 import { categoriesApi, storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 
@@ -149,6 +150,7 @@ export default function HomeMarketingEditor({ tiles = [], loyalty = null, onTile
           <p className="small mb-0">{banner.description}</p>
         </div>
       </div>}
+      <BannerPresentationControls value={banner} onChange={onLoyaltyChange}/>
       {photoInput('loyalty', 0, 'image_url')}
       {photoInput('loyalty', 0, 'mobile_image_url')}
       {banner.mobile_image_url && <button type="button" className="btn btn-outline-secondary btn-sm mb-3"
