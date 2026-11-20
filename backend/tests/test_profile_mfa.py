@@ -67,7 +67,7 @@ def test_mfa_enrollment_creates_challenge_and_invalidates_legacy_tokens(mfa_db, 
     assert old_token.access_token
     prepared = setup_mfa(MFAStart(current_password="RootSecurePassword123!"), request, db, user)
     monkeypatch.setattr(auth, "match_totp_step", lambda secret, code: 100 if code == "123456" else None)
-    activated = confirm_mfa(MFACode(code="123456"), db, user)
+    activated = confirm_mfa(MFACode(code="123456"), request, db, user)
     assert len(activated["recovery_codes"]) == 10
     mfa = db.query(UserMFASettings).filter_by(user_id=user.id).one()
     assert mfa.enabled and mfa.version == 1
