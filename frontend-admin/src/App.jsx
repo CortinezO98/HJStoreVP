@@ -4,6 +4,7 @@ import { useAuthStore } from './store'
 import AdminLayout from './components/layout/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import MyProfilePage from './pages/MyProfilePage'
+import SecurityAuditPage from './pages/SecurityAuditPage'
 import DashboardPage from './pages/DashboardPage'
 import ProductsPage from './pages/ProductsPage'
 import CategoriesPage from './pages/CategoriesPage'
@@ -60,6 +61,9 @@ export default function App() {
           {/* Seller sí puede ver su dashboard operativo */}
           <Route index element={<DashboardPage />} />
           <Route path="mi-perfil" element={<MyProfilePage />} />
+          <Route path="auditoria-seguridad" element={<ProtectedAdmin roles={['super_admin']} />}>
+            <Route index element={<SecurityAuditPage />} />
+          </Route>
 
           {/* Admin / Super Admin */}
           <Route
