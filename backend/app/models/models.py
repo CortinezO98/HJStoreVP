@@ -301,6 +301,22 @@ class ProductImage(Base):
     product: Mapped["Product"] = relationship("Product", back_populates="images")
 
 
+class ProductQualityReview(Base):
+    """Human merchandising decision; never changes product availability or stock."""
+    __tablename__ = "product_quality_reviews"
+
+    product_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="needs_changes")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    reviewed_by: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 # ─── INVENTORY ──────────────────────────────────────────────────────────────
 
 class Inventory(Base, TimestampMixin):
