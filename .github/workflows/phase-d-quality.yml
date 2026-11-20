@@ -59,21 +59,62 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Dependencias npm y auditoria JSON
+      - name: Preparar inventario npm reproducible
         working-directory: frontend-admin
+        shell: bash
         run: |
-          npm install --ignore-scripts --no-audit
-          npm audit --json > ../admin-dependency-audit.json || true
-      - name: Dependencias Python y auditoria JSON
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            echo "lockfile_present=true" >> "$GITHUB_ENV"
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            echo "::warning::No hay package-lock.json versionado. Inventario npm no reproducible; pendiente incorporar lockfile revisado."
+            echo "lockfile_present=false" >> "$GITHUB_ENV"
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          fi
+      - name: Auditoria npm (fallos de herramienta bloquean, vulnerabilidades se reportan)
+        working-directory: frontend-admin
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > ../admin-dependency-audit.json 2> ../npm-audit-errors.txt
+          code=$?
+          set -e
+          echo "npm_audit_exit=$code" >> "$GITHUB_ENV"
+          if [ "$code" -gt 1 ]; then
+            echo "::error::npm audit no pudo completarse (codigo $code)."
+            cat ../npm-audit-errors.txt
+            exit "$code"
+          fi
+          python ../scripts/ci/summarize_dependency_audit.py npm ../admin-dependency-audit.json
+      - name: Preparar auditoria Python
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit
+      - name: Auditoria Python (fallos de herramienta bloquean, vulnerabilidades se reportan)
         working-directory: backend
+        shell: bash
         run: |
-          python -m pip install pip-audit
-          python -m pip_audit --requirement requirements.txt --format json > ../backend-dependency-audit.json || true
-      - uses: actions/upload-artifact@v4
+          set +e
+          python -m pip_audit --requirement requirements.txt --format json > ../backend-dependency-audit.json 2> ../pip-audit-errors.txt
+          code=$?
+          set -e
+          echo "pip_audit_exit=$code" >> "$GITHUB_ENV"
+          if [ "$code" -gt 1 ]; then
+            echo "::error::pip-audit no pudo completarse (codigo $code)."
+            cat ../pip-audit-errors.txt
+            exit "$code"
+          fi
+          python ../scripts/ci/summarize_dependency_audit.py python ../backend-dependency-audit.json
+      - name: Publicar informes para revision
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: fase-d-dependency-audits
           path: |
             admin-dependency-audit.json
             backend-dependency-audit.json
+            npm-audit-errors.txt
+            pip-audit-errors.txt
           if-no-files-found: warn
           retention-days: 14
