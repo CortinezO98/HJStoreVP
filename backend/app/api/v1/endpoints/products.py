@@ -319,6 +319,80 @@ def list_products(
     return [serialize_product_list_row(row, admin=admin) for row in rows]
 
 
+@router.get("/admin/catalog-quality")
+def catalog_quality_report(
+    include_inactive: bool = Query(False),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Read-only merchandising audit. Does not edit catalog or inspect image semantics.
+
+    Same URL across distinct parent products is a *possible* duplicate;
+    intentional shared photographs are permitted and need human review.
+    """
+    from collections import defaultdict
+
+    parents = db.query(Product).filter(Product.parent_product_id.is_(None))
+    if not include_inactive:
+        parents = parents.filter(Product.active.is_(True))
+    products = parents.order_by(Product.id).all()
+    if not products:
+        return {"total": 0, "issues": [], "summary": {},
+                "checked": {"active_only": not include_inactive,
+                            "duplicate_method": "identical_image_url"}}
+
+    ids = [product.id for product in products]
+    photos = db.query(ProductImage).filter(
+        ProductImage.product_id.in_(ids)
+    ).order_by(ProductImage.product_id, ProductImage.sort_order, ProductImage.id).all()
+    grouped = defaultdict(list)
+    used_urls = defaultdict(set)
+    for photo in photos:
+        grouped[photo.product_id].append(photo)
+        if photo.url:
+            used_urls[photo.url].add(photo.product_id)
+
+    issues = []
+    totals = defaultdict(int)
+    for product in products:
+        current = grouped[product.id]
+        primary = [photo for photo in current if photo.is_primary]
+        issues_for_product = []
+        if not current:
+            issues_for_product.append("no_images")
+        elif len(primary) != 1:
+            issues_for_product.append("invalid_primary")
+        if not (product.description or "").strip() or len(product.description.strip()) < 60:
+            issues_for_product.append("short_description")
+        if product.category_id is None:
+            issues_for_product.append("missing_category")
+        if any(not (photo.alt_text or "").strip() or len(photo.alt_text.strip()) < 12
+               for photo in current):
+            issues_for_product.append("missing_image_alt")
+        if any(len(used_urls[photo.url]) > 1 for photo in current if photo.url):
+            issues_for_product.append("shared_image_url")
+        if len(current) == 1:
+            issues_for_product.append("single_photo")
+        for issue in issues_for_product:
+            totals[issue] += 1
+        if issues_for_product:
+            issues.append({
+                "id": product.id, "name": product.name, "sku": product.sku,
+                "slug": product.slug, "active": product.active,
+                "image_count": len(current),
+                "issues": issues_for_product,
+            })
+
+    return {
+        "total": len(products),
+        "affected": len(issues),
+        "summary": dict(totals),
+        "issues": issues,
+        "checked": {"active_only": not include_inactive,
+                    "duplicate_method": "identical_image_url"},
+    }
+
+
 @router.get("/{slug_or_id}")
 def get_product(
     slug_or_id: str,
