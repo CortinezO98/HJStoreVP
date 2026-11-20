@@ -5,6 +5,7 @@ import { productsApi, categoriesApi, storefrontSettingsApi } from '../../service
 import ProductCard from '../../components/shop/ProductCard'
 import PersonalizedShowcase from '../../components/shop/PersonalizedShowcase'
 import HomeVisualBlocks from '../../components/shop/HomeVisualBlocks'
+import ShopProductCarousel from '../../components/shop/ShopProductCarousel'
 import { ErrorState, LoadingGrid } from '../../components/shop/StoreUI'
 import { useState } from 'react'
 import useAutoCarousel from '../../hooks/useAutoCarousel'
@@ -66,6 +67,16 @@ export default function HomePage() {
     .filter((banner) => banner?.active && banner?.image_url && banner?.title)
   const showcase = newest.slice(0, 8)
   const featuredShowcase = featured.slice(0, 4)
+  // Nuevos carruseles vivos: muestran fotos de los productos disponibles en el catálogo.
+  // No dependen de campañas creadas manualmente desde el administrador.
+  const latestWithPhotos = newest.filter(product => product?.primary_image)
+  const featuredWithPhotos = featured.filter(product => product?.primary_image)
+  const categoriesWithPhotos = featuredCategories.map(category => ({
+    ...category,
+    sample: [...newest, ...featured].find(product =>
+      product.primary_image && (product.category_name || '').toLocaleLowerCase('es') ===
+        category.name.toLocaleLowerCase('es')),
+  })).filter(category => category.sample).slice(0, 4)
   const DEFAULT_ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
     'visual', 'categories', 'services', 'faq', 'closing']
   const rawOrder = storeSettings.homepage_section_order
@@ -148,6 +159,13 @@ export default function HomePage() {
         </div>
       </section>
 
+      <div style={sectionStyle("newest")}>
+        <ShopProductCarousel sectionId="coleccion-en-movimiento"
+          products={latestWithPhotos} eyebrow="01 / DESCUBRE LA COLECCIÓN"
+          title="ELIGE TU ESTILO." description="Una selección en movimiento: fotografías reales de nuestros productos y acceso directo a cada referencia."
+          link="/catalogo?sort=newest" />
+      </div>
+
       <section className="editorial-products-section store-home-products" style={sectionStyle("newest")}>
         <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
         {loadingNewest ? (
@@ -202,6 +220,14 @@ export default function HomePage() {
         </div>
       </section>
 
+      <div style={sectionStyle("featured")}>
+        <ShopProductCarousel sectionId="seleccion-destacada"
+          products={featuredWithPhotos.length ? featuredWithPhotos : latestWithPhotos}
+          eyebrow="02 / LO QUE NOS REPRESENTA"
+          title="PIEZAS QUE DESTACAN." description="Descubre nuestras referencias en un carrusel visual con compra y favoritos."
+          link="/catalogo?featured=true" />
+      </div>
+
       <section className="editorial-products-section" style={sectionStyle("featured")}>
         <SectionHeading eyebrow="ELEGIDOS PARA TI" title="PRODUCTOS DESTACADOS" link="/catalogo?featured=true" />
         {loadingFeatured ? (
@@ -249,6 +275,27 @@ export default function HomePage() {
         ? storeSettings.homepage_visual_blocks : []} style={sectionStyle("visual")} />
 
       <section className="editorial-category-section store-home-categories" style={sectionStyle("categories")}>
+        {categoriesWithPhotos.length > 0 && (
+          <div className="store-photo-category-feature">
+            <div className="store-photo-category-title">
+              <span>ESTILO POR CATEGORÍA / HJSTOREVP</span>
+              <h2>ENCUENTRA LO QUE TE DEFINE.</h2>
+              <p>Recorre nuestras categorías a través de las fotografías reales del catálogo.</p>
+            </div>
+            <div className="store-photo-category-tiles">
+              {categoriesWithPhotos.map(category => (
+                <Link key={category.slug} className="store-photo-category-tile"
+                  to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}>
+                  <img src={sourceUrl(category.sample.primary_image)} alt={category.name}
+                    loading="lazy" decoding="async"/>
+                  <span className="store-photo-category-label">
+                    <strong>{category.name}</strong><ArrowUpRight size={19} aria-hidden="true"/>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="editorial-section-heading">
           <div><span className="editorial-eyebrow">ENCUENTRA LO TUYO</span><h2>EXPLORA POR CATEGORÍA</h2></div>
         </div>
