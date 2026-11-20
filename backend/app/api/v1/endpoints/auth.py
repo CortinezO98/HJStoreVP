@@ -45,7 +45,7 @@ class MFACode(BaseModel):
 
 class MFASensitiveAction(BaseModel):
     current_password: str
-    code: str = Field(min_length=6, max_length=20)
+    code: str | None = Field(default=None, min_length=6, max_length=20)
 
 
 class MFARotateCodes(MFASensitiveAction):
@@ -96,16 +96,12 @@ def _require_recent_factor(db: Session, user: User, request: Request, password: 
         note_login_failure(request, user.email)
         raise HTTPException(status_code=403, detail="Credenciales de confirmación incorrectas")
     record = _mfa_record(db, user.id, lock=True) if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN) else None
-    if record and record.enabled and (mfa_required or code is not None):
+    if record and record.enabled:
         if not code or not _verify_mfa_code(record, code):
             note_login_failure(request, user.email)
             raise HTTPException(status_code=403, detail="Código de segundo factor incorrecto")
-    elif record and record.enabled and mfa_required:
-        note_login_failure(request, user.email)
-        raise HTTPException(status_code=403, detail="Se requiere un código 2FA")
-    # Las acciones sensibles de usuarios con 2FA siempre lo requieren.
-    if record and record.enabled and not code:
-        raise HTTPException(status_code=403, detail="Se requiere un código 2FA")
+    elif mfa_required:
+        raise HTTPException(status_code=409, detail="El segundo factor no está activo")
     return record
 
 
