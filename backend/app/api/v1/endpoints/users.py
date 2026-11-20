@@ -166,8 +166,8 @@ def create_user(
     if db.query(User).filter(User.email == data.email, User.deleted.is_(False)).first():
         raise HTTPException(status_code=400, detail=f"El correo '{data.email}' ya está registrado")
 
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
+    if not 12 <= len(data.password) <= 72:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener entre 12 y 72 caracteres")
 
     user = User(
         email=data.email,
@@ -205,6 +205,23 @@ def update_user(
     user = _user_or_404(db, user_id)
     _allowed_target(current_user, user)
 
+    # Comprobar el rol de DESTINO, no solo el rol actual del usuario.
+    # Sin este control ADMIN podría promover un vendedor o cliente a SUPER_ADMIN.
+    if (data.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+            and current_user.role != UserRole.SUPER_ADMIN):
+        raise HTTPException(status_code=403, detail="Solo Super Admin puede asignar roles administrativos")
+
+    # La cuenta propia nunca cambia correo o contraseña desde el CRUD de usuarios.
+    # El cambio sensible necesita reautenticación en el futuro flujo Mi perfil.
+    if user.id == current_user.id and (
+        (data.email is not None and data.email != user.email)
+        or data.password is not None
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Para cambiar tu correo o contraseña utiliza Mi perfil con reautenticación",
+        )
+
     target_role = data.role if data.role is not None else user.role
     target_location = data.location_id if data.location_id is not None else user.location_id
     if target_role != UserRole.SELLER:
@@ -236,8 +253,8 @@ def update_user(
     if data.active is not None:
         user.active = data.active
     if data.password:
-        if len(data.password) < 12:
-            raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 12 caracteres")
+        if not 12 <= len(data.password) <= 72:
+            raise HTTPException(status_code=400, detail="La contraseña debe tener entre 12 y 72 caracteres")
         user.hashed_password = hash_password(data.password)
 
     db.commit()
