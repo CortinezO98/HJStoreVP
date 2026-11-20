@@ -1649,3 +1649,58 @@
 /* Orden editorial configurable desde el superadministrador. */
 .editorial-home { display: flex; flex-direction: column; min-width: 0; }
 .editorial-home > .store-home-hero { order: 0; flex-shrink: 0; }
+
+/* Módulo visual dinámico administrado desde el panel. */
+.home-visual-blocks { width: 100%; display: flex; flex-direction: column; background: #fff; }
+.home-visual-block { width: 100%; padding-block: clamp(24px, 4vw, 68px); }
+.home-visual-block-title {
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-weight: 900; font-size: clamp(28px, 3.5vw, 48px); text-transform: uppercase;
+  padding: 0 clamp(16px, 4vw, 64px) 20px; line-height: 1.05;
+}
+.home-visual-wide { width: 100%; height: clamp(400px, 58vw, 750px); }
+.home-visual-tile { display: block; position: relative; overflow: hidden; isolation: isolate; height: 100%; background: #171717; color: #fff; }
+.home-visual-tile picture, .home-visual-tile picture img { display: block; width: 100%; height: 100%; }
+.home-visual-tile picture img { object-fit: cover; transition: transform .65s ease; }
+.home-visual-tile:hover picture img { transform: scale(1.035); }
+.home-visual-tile-shade {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(to top, rgb(0 0 0 / .78), transparent 65%);
+}
+.home-visual-tile-copy {
+  position: absolute; z-index: 2; bottom: clamp(24px, 5vw, 70px); left: clamp(20px, 5vw, 70px);
+  right: 20px; display: flex; align-items: flex-start; flex-direction: column; max-width: 800px;
+}
+.home-visual-tile-copy p { font-size: 12px; letter-spacing: .15em; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+.home-visual-tile-copy h3 {
+  font-family: Impact, 'Arial Narrow', sans-serif; font-size: clamp(34px, 5vw, 84px);
+  line-height: 1; font-weight: 900; text-transform: uppercase; margin-bottom: 20px;
+}
+.home-visual-tile-copy > span {
+  display: inline-flex; align-items: center; gap: 12px; background: #fff; color: #111;
+  padding: 12px 18px; font-size: 11px; font-weight: 850; text-transform: uppercase;
+}
+.home-visual-mosaic {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
+  padding-inline: 4px;
+}
+.home-visual-mosaic > .home-visual-tile { min-height: 470px; }
+.home-visual-carousel { position: relative; }
+.home-visual-carousel > .home-visual-tile { height: clamp(420px, 58vw, 720px); }
+.home-visual-carousel-controls {
+  position: absolute; z-index: 4; right: 20px; bottom: 20px;
+  display: flex; gap: 15px; align-items: center; color: #fff; background: rgb(0 0 0 / .72); padding: 6px;
+}
+.home-visual-carousel-controls button { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.home-visual-carousel-controls span { font-weight: 700; font-size: 12px; }
+@media (max-width: 767px) {
+  .home-visual-wide { height: min(740px, 85svh); min-height: 420px; }
+  .home-visual-mosaic { grid-template-columns: 1fr; }
+  .home-visual-mosaic > .home-visual-tile { min-height: 440px; }
+  .home-visual-tile-copy { left: 22px; right: 20px; bottom: 52px; }
+  .home-visual-tile-copy h3 { font-size: clamp(34px, 10vw, 60px); }
+  .home-visual-carousel > .home-visual-tile { height: min(700px, 85svh); min-height: 440px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-visual-tile picture img { transition: none; }
+}
