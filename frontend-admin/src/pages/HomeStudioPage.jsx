@@ -220,13 +220,17 @@ export default function HomeStudioPage() {
     </header>
     {storageHealth && <div className={storageHealth.in_sync
       ? 'alert alert-light border small' : 'alert alert-warning small'} role="status">
-      <strong>Almacenamiento visual:</strong> {storageHealth.schema_ready
-        ? storageHealth.in_sync ? 'Estructura relacional sincronizada con la configuración publicada y el borrador.'
-          : 'Las tablas existen, pero se necesita revisar la sincronización.'
-        : 'Migración relacional pendiente; la configuración existente sigue funcionando.'}
+      <strong>Almacenamiento visual:</strong> {!storageHealth.schema_ready
+        ? 'Migración relacional pendiente; la configuración existente sigue funcionando.'
+        : !storageHealth.source_exists
+          ? 'Aún no hay configuración de portada guardada. Las tablas vacías son normales.'
+          : storageHealth.in_sync
+            ? 'Los bloques y sus fotografías coinciden con la configuración JSON.'
+            : 'Se detectaron diferencias de contenido; revisa la reconciliación antes de cambiar las lecturas.'}
       {storageHealth.schema_ready && <span className="ms-2 text-secondary">
-        {storageHealth.published_blocks} bloques publicados registrados ·
-        {storageHealth.draft_blocks} bloques de borrador registrados
+        {storageHealth.actual_blocks ?? storageHealth.published_blocks ?? 0} bloques registrados
+        {storageHealth.source_exists && ` · ${storageHealth.expected_blocks ?? 0} esperados`}
+        {storageHealth.source_exists && ` · ${storageHealth.actual_slides ?? 0} imágenes/diapositivas`}
       </span>}
     </div>}
     {conflict && <div className="alert alert-warning" role="alert">
