@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.seo import router as seo_router
 from app.db.session import engine, Base
+# Register transactional price/order audit listeners before handling requests.
+from app.services import commercial_change_audit  # noqa: F401
 
 
 @asynccontextmanager
