@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from sqlalchemy import (
-    String, Text, Boolean, Integer, Numeric, DateTime,
+    String, Text, Boolean, Integer, BigInteger, Numeric, DateTime,
     ForeignKey, Enum, JSON, Index, UniqueConstraint,
     func, event
 )
