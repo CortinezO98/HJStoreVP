@@ -102,6 +102,9 @@ export const authApi = {
   mfaSetup: (data) => apiClient.post('/auth/me/mfa/setup', data),
   mfaConfirm: (data) => apiClient.post('/auth/me/mfa/confirm', data),
   mfaVerify: (data) => apiClient.post('/auth/mfa/verify', data),
+  revokeSessions: (data) => apiClient.post('/auth/me/sessions/revoke', data),
+  rotateRecovery: (data) => apiClient.post('/auth/me/mfa/recovery/rotate', data),
+  disableMfa: (data) => apiClient.post('/auth/me/mfa/disable', data),
 }
 
 // ─────────────────────────────────────────────────────────
