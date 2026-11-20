@@ -36,7 +36,8 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     const isAuthRequest = originalRequest?.url?.includes('/auth/login') ||
-      originalRequest?.url?.includes('/auth/refresh')
+      originalRequest?.url?.includes('/auth/refresh') ||
+      originalRequest?.url?.includes('/auth/mfa/verify')
 
     const status = error.response?.status
     // El catálogo es público para lecturas normales. Una credencial expirada
