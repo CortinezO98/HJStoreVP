@@ -32,10 +32,10 @@ function Tile({ item, mobile }) {
 export default function HomeStudioPreview({ draft, mobile = false, onSelect, selected }) {
   if (!draft) return null
   const saved = draft.homepage_section_order || ORDER
-  const order = saved.includes('visual') ? saved : [
-    ...saved.slice(0, saved.indexOf('campaigns') + 1), 'visual',
-    ...saved.slice(saved.indexOf('campaigns') + 1),
-  ]
+  const order = [...saved]
+  for (const [id, after] of [['visual', 'campaigns'], ['loyalty', 'categories']]) {
+    if (!order.includes(id)) order.splice(order.indexOf(after) + 1, 0, id)
+  }
   const hidden = new Set(draft.homepage_hidden_sections || [])
   const banners = (draft.homepage_banners || []).filter(item => item.active && item.image_url)
   const visuals = (draft.homepage_visual_blocks || []).filter(block => block.active && block.items?.length)
