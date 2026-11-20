@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { QRCodeSVG } from 'qrcode.react'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store'
@@ -150,6 +151,11 @@ export default function MyProfilePage() {
       </form>}
       {enrollment && !mfa?.enabled && <div className="space-y-3">
         <p className="text-sm text-gray-700">Añade manualmente esta clave a tu aplicación autenticadora. No la compartas.</p>
+        <div className="inline-flex rounded-xl border border-gray-200 bg-white p-4">
+          <QRCodeSVG value={enrollment.provisioning_uri} size={192} level="M" marginSize={1}
+            title="Código QR para configurar autenticación de dos factores" />
+        </div>
+        <p className="text-sm text-gray-600">Escanea este QR desde tu aplicación. Si no puedes escanearlo, utiliza la clave manual:</p>
         <code className="block bg-gray-100 p-3 break-all select-all" aria-label="Clave secreta TOTP">{enrollment.secret}</code>
         <p className="text-xs text-gray-500">Tipo: basado en tiempo (TOTP), SHA-1, 6 dígitos, intervalo de 30 segundos.</p>
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); perform(async () => {
