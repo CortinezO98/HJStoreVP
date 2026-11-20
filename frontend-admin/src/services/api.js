@@ -91,9 +91,15 @@ apiClient.interceptors.response.use(
 // ─────────────────────────────────────────────────────────
 // 🔐 AUTENTICACIÓN
 // ─────────────────────────────────────────────────────────
+export const commercialAuditApi = {
+  list: (params) => apiClient.get('/commercial-audit', { params }),
+  exportCsv: (params) => apiClient.get('/commercial-audit/export', { params, responseType: 'blob' }),
+}
+
 export const securityAuditApi = {
   list: (params) => apiClient.get('/security-audit', { params }),
   summary: () => apiClient.get('/security-audit/summary'),
+  verifyIntegrity: (params) => apiClient.get('/security-audit/integrity', { params }),
   exportCsv: (params) => apiClient.get('/security-audit/export', { params, responseType: 'blob' }),
 }
 
