@@ -56,6 +56,8 @@ export default function HomePage() {
   const [failedHeroImages, setFailedHeroImages] = useState([])
   const heroImages = (Array.isArray(storeSettings.hero_images) ? storeSettings.hero_images : [])
     .filter((url) => typeof url === 'string' && url.trim() && !failedHeroImages.includes(url))
+  const heroPresentation = storeSettings.hero_presentation || {}
+  const statementPresentation = storeSettings.statement_presentation || {}
   const heroPlayback = storeSettings.hero_carousel_settings || {}
   const statementPlayback = storeSettings.statement_carousel_settings || {}
   const carousel = useAutoCarousel(heroImages.length, heroPlayback.interval_ms ?? 6000,
@@ -112,7 +114,11 @@ export default function HomePage() {
 
   return (
     <div className="editorial-home">
-      <section className={`store-home-hero ${heroImages.length ? "store-home-hero--immersive" : ""}`} aria-label="Colección HJStoreVP">
+      <section className={`store-home-hero ${heroImages.length ? "store-home-hero--immersive" : ""}`}
+        style={{ '--visual-shade': String((heroPresentation.overlay_opacity ?? 65)/100),
+          '--visual-align': heroPresentation.text_align || 'left',
+          '--visual-position': heroPresentation.text_position || 'center' }}
+        aria-label="Colección HJStoreVP">
         <div className="store-home-hero-grid">
           <div className="store-home-hero-copy">
             <div className="store-home-hero-kicker"><span className="store-home-hero-dot" aria-hidden="true" />{storeSettings.hero_eyebrow || 'HJSTOREVP · ESTILO PROPIO'}</div>
@@ -198,7 +204,12 @@ export default function HomePage() {
         )}
       </section>
 
-      <section className="store-home-statement" style={sectionStyle("statement")} aria-label="Nuestra filosofía de estilo">
+      <section className="store-home-statement" style={{
+        ...sectionStyle("statement"),
+        '--visual-shade': String((statementPresentation.overlay_opacity ?? 65)/100),
+        '--visual-align': statementPresentation.text_align || 'left',
+        '--visual-position': statementPresentation.text_position || 'center',
+      }} aria-label="Nuestra filosofía de estilo">
         <div className="store-home-statement-copy">
           <span>NO ES SOLO UN ACCESORIO</span>
           <h2>HAZ QUE TU<br />ESTILO HABLE.</h2>
