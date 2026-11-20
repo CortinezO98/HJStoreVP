@@ -9,6 +9,7 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.core.deps import require_admin
 from app.core.security import hash_password
+from app.services.security_audit import append_audit
 from app.models.models import User, UserRole, Location, LocationType, UserMFASettings
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
@@ -180,6 +181,10 @@ def create_user(
         active=True,
     )
     db.add(user)
+    db.flush()
+    append_audit(db, action='users.created', actor_id=current_user.id,
+                 resource='users', target_id=user.id,
+                 details={'new_role': user.role.value})
     db.commit()
     db.refresh(user)
 
@@ -236,6 +241,9 @@ def update_user(
         or data.active is False
     ))
 
+    previous_role, previous_active = user.role.value, user.active
+    changed_fields = [key for key in ('email', 'full_name', 'phone', 'role', 'location_id', 'active', 'password')
+                      if getattr(data, key) is not None]
     target_role = data.role if data.role is not None else user.role
     target_location = data.location_id if data.location_id is not None else user.location_id
     if target_role != UserRole.SELLER:
@@ -269,6 +277,11 @@ def update_user(
             raise HTTPException(status_code=400, detail="La contraseña debe tener entre 12 y 72 caracteres")
         user.hashed_password = hash_password(data.password)
 
+    append_audit(db, action='users.updated', actor_id=current_user.id,
+                 resource='users', target_id=user.id,
+                 details={'changed_fields': changed_fields,
+                          'old_role': previous_role, 'new_role': user.role.value,
+                          'old_active': previous_active, 'new_active': user.active})
     db.commit()
     db.refresh(user)
 
@@ -298,7 +311,11 @@ def change_user_status(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="No puedes suspender o reactivar tu propia cuenta")
     _ensure_other_super_admin(db, user, not data.active)
+    old_active = user.active
     user.active = data.active
+    append_audit(db, action='users.status_changed', actor_id=current_user.id,
+                 resource='users', target_id=user.id,
+                 details={'old_active': old_active, 'new_active': user.active})
     db.commit()
     db.refresh(user)
     return _out(user, db)
@@ -317,6 +334,8 @@ def reset_user_password(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Para tu propia contraseña utiliza el flujo de perfil")
     user.hashed_password = hash_password(data.password)
+    append_audit(db, action='users.password_reset', actor_id=current_user.id,
+                 resource='users', target_id=user.id)
     db.commit()
 
 
@@ -341,4 +360,6 @@ def delete_user(
     user.phone = None
     user.location_id = None
     user.hashed_password = hash_password(token_urlsafe(48))
+    append_audit(db, action='users.deleted', actor_id=current_user.id,
+                 resource='users', target_id=user.id)
     db.commit()
