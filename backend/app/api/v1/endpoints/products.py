@@ -1,14 +1,18 @@
 from decimal import Decimal
+from datetime import datetime
+import hashlib
+import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session, joinedload, aliased
 from slugify import slugify
 
-from app.core.deps import require_admin, get_optional_user, is_catalog_admin
+from app.core.deps import require_admin, require_super_admin, get_optional_user, is_catalog_admin
 from app.db.session import get_db
-from app.models.models import Category, Inventory, Location, Product, ProductImage, User
+from app.models.models import Category, Inventory, Location, Product, ProductImage, ProductQualityReview, User
 from app.schemas.schemas import ProductCreate, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["Productos"])
@@ -319,6 +323,98 @@ def list_products(
     return [serialize_product_list_row(row, admin=admin) for row in rows]
 
 
+class CatalogQualityDecision(BaseModel):
+    decision: str = Field(pattern=r"^(approved|needs_changes|pending)$")
+    note: str = Field(default="", max_length=2000)
+    confirmed_photos: bool = False
+
+
+def quality_snapshot(product: Product, images: list[ProductImage]) -> str:
+    """Content-based snapshot; old approvals expire after edits to merchandise."""
+    serial = {
+        "name": product.name, "description": product.description or "",
+        "category_id": product.category_id,
+        "photos": [
+            [image.id, image.url, image.alt_text, image.is_primary, image.sort_order]
+            for image in sorted(images, key=lambda item: (item.sort_order, item.id))
+        ],
+    }
+    return hashlib.sha256(json.dumps(serial, ensure_ascii=False, sort_keys=True,
+                                     separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def quality_flags(product: Product, images: list[ProductImage], used_urls: dict) -> list[str]:
+    issues = []
+    primary = [image for image in images if image.is_primary]
+    if not images:
+        issues.append("no_images")
+    elif len(primary) != 1:
+        issues.append("invalid_primary")
+    if len((product.description or "").strip()) < 60:
+        issues.append("short_description")
+    if product.category_id is None:
+        issues.append("missing_category")
+    if any(len((image.alt_text or "").strip()) < 12 for image in images):
+        issues.append("missing_image_alt")
+    if any(len(used_urls[image.url]) > 1 for image in images if image.url):
+        issues.append("shared_image_url")
+    if len(images) == 1:
+        issues.append("single_photo")
+    return issues
+
+
+@router.put("/admin/catalog-quality/{product_id}/review")
+def review_catalog_product(
+    product_id: int,
+    payload: CatalogQualityDecision,
+    db: Session = Depends(get_db),
+    reviewer: User = Depends(require_super_admin),
+):
+    """Superadmin editorial approval. Not a product activation endpoint."""
+    from collections import defaultdict
+    product = db.query(Product).filter(
+        Product.id == product_id, Product.parent_product_id.is_(None)
+    ).with_for_update().first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Producto principal no encontrado")
+    photos = db.query(ProductImage).filter(
+        ProductImage.product_id == product.id
+    ).order_by(ProductImage.sort_order, ProductImage.id).all()
+    used = defaultdict(set)
+    for row in db.query(ProductImage.product_id, ProductImage.url).join(
+        Product, Product.id == ProductImage.product_id
+    ).filter(Product.parent_product_id.is_(None)).all():
+        if row.url:
+            used[row.url].add(row.product_id)
+    flags = quality_flags(product, photos, used)
+    if payload.decision == "approved":
+        critical = {"no_images", "invalid_primary", "missing_category"}
+        if critical.intersection(flags):
+            raise HTTPException(status_code=422,
+                                detail="Corrige las fotografías principales y la categoría antes de aprobar")
+        if not payload.confirmed_photos:
+            raise HTTPException(status_code=422,
+                                detail="Confirma manualmente que las fotografías corresponden al producto")
+    note = payload.note.strip()
+    if payload.decision == "needs_changes" and len(note) < 5:
+        raise HTTPException(status_code=422, detail="Indica qué debe corregirse (mínimo 5 caracteres)")
+    previous = db.get(ProductQualityReview, product_id)
+    if previous is None:
+        previous = ProductQualityReview(product_id=product_id, status=payload.decision,
+                                        note=note, snapshot_hash=quality_snapshot(product, photos),
+                                        reviewed_by=reviewer.id, reviewed_at=datetime.utcnow())
+        db.add(previous)
+    else:
+        previous.status = payload.decision
+        previous.note = note
+        previous.snapshot_hash = quality_snapshot(product, photos)
+        previous.reviewed_by = reviewer.id
+        previous.reviewed_at = datetime.utcnow()
+    db.commit()
+    return {"product_id": product_id, "status": previous.status, "issues": flags,
+            "reviewed_at": previous.reviewed_at}
+
+
 @router.get("/admin/catalog-quality")
 def catalog_quality_report(
     include_inactive: bool = Query(False),
@@ -352,44 +448,61 @@ def catalog_quality_report(
         if photo.url:
             used_urls[photo.url].add(photo.product_id)
 
+    reviews = {
+        row.product_id: row for row in db.query(ProductQualityReview).filter(
+            ProductQualityReview.product_id.in_(ids)
+        ).all()
+    }
     issues = []
     totals = defaultdict(int)
+    score_total = 0
+    approved = 0
+    awaiting_review = 0
+    stale = 0
     for product in products:
         current = grouped[product.id]
-        primary = [photo for photo in current if photo.is_primary]
-        issues_for_product = []
-        if not current:
-            issues_for_product.append("no_images")
-        elif len(primary) != 1:
-            issues_for_product.append("invalid_primary")
-        if not (product.description or "").strip() or len(product.description.strip()) < 60:
-            issues_for_product.append("short_description")
-        if product.category_id is None:
-            issues_for_product.append("missing_category")
-        if any(not (photo.alt_text or "").strip() or len(photo.alt_text.strip()) < 12
-               for photo in current):
-            issues_for_product.append("missing_image_alt")
-        if any(len(used_urls[photo.url]) > 1 for photo in current if photo.url):
-            issues_for_product.append("shared_image_url")
-        if len(current) == 1:
-            issues_for_product.append("single_photo")
+        issues_for_product = quality_flags(product, current, used_urls)
         for issue in issues_for_product:
             totals[issue] += 1
-        if issues_for_product:
-            issues.append({
-                "id": product.id, "name": product.name, "sku": product.sku,
-                "slug": product.slug, "active": product.active,
-                "image_count": len(current),
-                "issues": issues_for_product,
-            })
+        weights = {
+            "no_images": 35, "invalid_primary": 30, "missing_category": 15,
+            "short_description": 10, "missing_image_alt": 5,
+            "shared_image_url": 5, "single_photo": 5,
+        }
+        score = max(0, 100 - sum(weights.get(flag, 0) for flag in issues_for_product))
+        score_total += score
+        record = reviews.get(product.id)
+        changed = bool(record and record.snapshot_hash != quality_snapshot(product, current))
+        review_status = "stale" if changed else record.status if record else "pending"
+        if review_status == "approved":
+            approved += 1
+        if review_status == "pending":
+            awaiting_review += 1
+        if review_status == "stale":
+            stale += 1
+        issues.append({
+            "id": product.id, "name": product.name, "sku": product.sku,
+            "slug": product.slug, "active": product.active,
+            "image_count": len(current), "issues": issues_for_product,
+            "score": score,
+            "review_status": review_status,
+            "review_note": record.note if record else "",
+            "reviewed_at": record.reviewed_at.isoformat() if record else None,
+            "reviewed_by": record.reviewed_by if record else None,
+        })
 
     return {
         "total": len(products),
-        "affected": len(issues),
+        "affected": sum(bool(item["issues"]) for item in issues),
+        "average_score": round(score_total / len(products), 1),
+        "approved": approved,
+        "awaiting_review": awaiting_review,
+        "stale": stale,
         "summary": dict(totals),
         "issues": issues,
         "checked": {"active_only": not include_inactive,
-                    "duplicate_method": "identical_image_url"},
+                    "duplicate_method": "identical_image_url",
+                    "score_is_advisory": True},
     }
 
 
