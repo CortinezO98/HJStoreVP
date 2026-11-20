@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { securityAuditApi } from '../services/api'
 
 export default function SecurityAuditPage() {
-  const [filters, setFilters] = useState({ action: '', resource: '', outcome: '', actor_id: '', from_date: '', to_date: '' })
+  const [filters, setFilters] = useState({ action: '', resource: '', target_id: '', outcome: '', actor_id: '', from_date: '', to_date: '' })
   const [page, setPage] = useState(1)
   const [data, setData] = useState({ total: 0, items: [] })
   const [busy, setBusy] = useState(false)
@@ -67,7 +67,7 @@ export default function SecurityAuditPage() {
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ShieldCheck size={24} /> Centro de auditoría</h1>
-        <p className="text-sm text-gray-600">Historial de seguridad y administración. Acceso exclusivo Superadministrador.</p>
+        <p className="text-sm text-gray-600">Historial firmado de seguridad, administración, cambios de precios y transiciones de pedidos. Exclusivo Superadministrador.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="rounded-lg border px-4 py-2" onClick={checkIntegrity} disabled={busy}>Verificar integridad (1000)</button>
@@ -92,7 +92,7 @@ export default function SecurityAuditPage() {
       </label>
       <label className="text-sm">Módulo
         <select className="input mt-1" value={filters.resource} onChange={e => change('resource', e.target.value)}>
-          <option value="">Todos</option><option value="auth">Seguridad</option><option value="users">Usuarios</option>
+          <option value="">Todos</option><option value="auth">Seguridad</option><option value="users">Usuarios</option><option value="catalog">Catálogo y precios</option><option value="orders">Pedidos</option>
         </select>
       </label>
       <label className="text-sm">Resultado
@@ -102,6 +102,9 @@ export default function SecurityAuditPage() {
       </label>
       <label className="text-sm">ID del actor
         <input className="input mt-1" type="number" min={1} value={filters.actor_id} onChange={e => change('actor_id', e.target.value)} placeholder="ID usuario" />
+      </label>
+      <label className="text-sm">ID de producto o pedido
+        <input className="input mt-1" maxLength={70} value={filters.target_id} onChange={e => change('target_id', e.target.value)} placeholder="Identificador del registro" />
       </label>
       <label className="text-sm">Desde (UTC)
         <input className="input mt-1" type="datetime-local" value={filters.from_date} onChange={e => change('from_date', e.target.value)} />
