@@ -37,6 +37,8 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no encontrado o inactivo",
         )
+    if payload.get("role") is not None and payload.get("role") != user.role.value:
+        raise HTTPException(status_code=401, detail="Permisos cambiados; inicia sesión nuevamente")
     if not credential_version_matches(payload, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -90,6 +92,8 @@ def get_optional_user(
         User.id == user_id, User.active.is_(True)
     ).first()
     if not user or not credential_version_matches(payload, user.hashed_password):
+        return None
+    if payload.get("role") is not None and payload.get("role") != user.role.value:
         return None
     mfa = db.query(UserMFASettings).filter_by(user_id=user.id).first()
     if mfa and mfa.version and payload.get("sec_v") != mfa.version:
