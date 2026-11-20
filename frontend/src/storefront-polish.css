@@ -1686,7 +1686,15 @@
 }
 .home-visual-mosaic > .home-visual-tile { min-height: 470px; }
 .home-visual-carousel { position: relative; }
-.home-visual-carousel > .home-visual-tile { height: clamp(420px, 58vw, 720px); }
+.home-visual-carousel-track {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 4px;
+  padding-inline: 4px; overscroll-behavior-inline: contain; scrollbar-width: thin;
+}
+.home-visual-carousel-slide {
+  flex: 0 0 min(78vw, 680px); height: clamp(420px, 52vw, 650px);
+  min-width: 0; scroll-snap-align: start;
+}
+.home-visual-carousel-slide > .home-visual-tile { height: 100%; }
 .home-visual-carousel-controls {
   position: absolute; z-index: 4; right: 20px; bottom: 20px;
   display: flex; gap: 15px; align-items: center; color: #fff; background: rgb(0 0 0 / .72); padding: 6px;
@@ -1699,7 +1707,7 @@
   .home-visual-mosaic > .home-visual-tile { min-height: 440px; }
   .home-visual-tile-copy { left: 22px; right: 20px; bottom: 52px; }
   .home-visual-tile-copy h3 { font-size: clamp(34px, 10vw, 60px); }
-  .home-visual-carousel > .home-visual-tile { height: min(700px, 85svh); min-height: 440px; }
+  .home-visual-carousel-slide { flex-basis: 86vw; height: min(660px, 80svh); min-height: 420px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .home-visual-tile picture img { transition: none; }
