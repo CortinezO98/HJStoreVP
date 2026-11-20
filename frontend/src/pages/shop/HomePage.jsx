@@ -34,7 +34,8 @@ export default function HomePage() {
   const { data: storeSettings = {} } = useQuery({
     queryKey: ['storefront-settings-public'],
     queryFn: () => storefrontSettingsApi.public().then(({ data }) => data),
-    staleTime: 60000,
+    staleTime: 15000,
+    refetchInterval: 60000, // Permite activar o retirar campañas sin recargar la página.
   })
   const { data: categories = [] } = useQuery({
     queryKey: ['storefront-categories'],
