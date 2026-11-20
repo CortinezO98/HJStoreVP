@@ -59,6 +59,38 @@ export default function StorefrontSettingsPage() {
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(null)
   const [cropQueue, setCropQueue] = useState([])
+  const [campaignImageBusy, setCampaignImageBusy] = useState(null)
+  const banners = Array.isArray(form?.homepage_banners) ? form.homepage_banners : []
+  const updateCampaign = (index, key, value) => setForm((current) => ({
+    ...current,
+    homepage_banners: (current.homepage_banners || []).map((item, position) =>
+      position === index ? { ...item, [key]: value } : item),
+  }))
+  const moveCampaign = (index, direction) => setForm((current) => {
+    const items = [...(current.homepage_banners || [])]
+    const target = index + direction
+    if (target < 0 || target >= items.length) return current
+    ;[items[index], items[target]] = [items[target], items[index]]
+    return { ...current, homepage_banners: items }
+  })
+  const uploadCampaignImage = async (index, file) => {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Selecciona JPG, PNG o WEBP')
+      return
+    }
+    setCampaignImageBusy(index)
+    try {
+      const { data } = await storefrontSettingsApi.upload(file)
+      await verifyUploadedImage(data.url)
+      updateCampaign(index, 'image_url', data.url)
+      toast.success('Imagen lista. Guarda y publica para mostrarla.')
+    } catch (error) {
+      toast.error(errorText(error))
+    } finally {
+      setCampaignImageBusy(null)
+    }
+  }
 
   const refresh = async () => {
     setLoading(true)
@@ -300,6 +332,63 @@ export default function StorefrontSettingsPage() {
             </div>}
           </section>)}
 
+          <section className="admin-settings-section" id="settings-home-campaigns">
+            <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+              <div>
+                <h2 className="admin-settings-section-title">Campañas visuales del inicio</h2>
+                <p className="admin-settings-section-description">Hasta seis banners fotográficos interactivos. Se mostrarán después de productos destacados, en el orden indicado.</p>
+              </div>
+              <button type="button" className="btn btn-outline-primary btn-sm"
+                disabled={banners.length >= 6 || campaignImageBusy !== null}
+                onClick={() => setForm((current) => ({ ...current, homepage_banners: [
+                  ...(current.homepage_banners || []),
+                  { image_url: '', title: 'NUEVA CAMPAÑA', subtitle: '', button_text: 'DESCUBRIR', link: '/catalogo', active: false },
+                ] }))}>+ Agregar campaña</button>
+            </div>
+            <p className="small text-secondary">Cada campaña debe tener una imagen y un título. Usa rutas internas como /catalogo o /catalogo?categoria=gorras. Desactiva una campaña para ocultarla sin borrarla.</p>
+            {banners.map((banner, index) => (
+              <div key={index} className="border rounded-3 p-3 mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-3 gap-2">
+                  <strong>Campaña {index + 1}</strong>
+                  <div className="d-flex gap-2">
+                    <button type="button" className="btn btn-sm btn-outline-secondary" disabled={index === 0} onClick={() => moveCampaign(index, -1)}>↑</button>
+                    <button type="button" className="btn btn-sm btn-outline-secondary" disabled={index === banners.length - 1} onClick={() => moveCampaign(index, 1)}>↓</button>
+                    <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setForm((current) => ({
+                      ...current, homepage_banners: current.homepage_banners.filter((_, position) => position !== index),
+                    }))}>Eliminar</button>
+                  </div>
+                </div>
+                <div className="row g-3">
+                  <div className="col-12 col-lg-5">
+                    {banner.image_url && <img src={fileSrc(banner.image_url)} alt={banner.title || 'Campaña'}
+                      className="w-100 rounded mb-2" style={{ aspectRatio: '4/3', objectFit: 'cover' }} />}
+                    <label className="form-label" htmlFor={`campaign-file-${index}`}>Fotografía</label>
+                    <input className="form-control" id={`campaign-file-${index}`} type="file"
+                      accept="image/jpeg,image/png,image/webp" disabled={campaignImageBusy !== null}
+                      onChange={(event) => { uploadCampaignImage(index, event.target.files?.[0]); event.target.value = '' }} />
+                  </div>
+                  <div className="col-12 col-lg-7 row g-2 align-content-start">
+                    {[
+                      ['title', 'Título', 80], ['subtitle', 'Subtítulo', 160],
+                      ['button_text', 'Texto del botón', 40], ['link', 'Ruta de destino', 300],
+                    ].map(([key, label, maxLength]) => (
+                      <div className="col-12 col-sm-6" key={key}>
+                        <label className="form-label" htmlFor={`campaign-${index}-${key}`}>{label}</label>
+                        <input id={`campaign-${index}-${key}`} className="form-control" maxLength={maxLength}
+                          value={banner[key] || ''} onChange={(event) => updateCampaign(index, key, event.target.value)} />
+                      </div>
+                    ))}
+                    <label className="col-12 d-flex align-items-center gap-2 mt-3">
+                      <input type="checkbox" checked={!!banner.active}
+                        onChange={(event) => updateCampaign(index, 'active', event.target.checked)} />
+                      Campaña visible en la tienda
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+
           <div className="admin-settings-footer">
             <div className="d-flex align-items-center gap-2" role="status" aria-live="polite">
               <span className={dirty ? 'badge text-bg-warning' : 'badge text-bg-light border text-secondary'}>
@@ -313,7 +402,7 @@ export default function StorefrontSettingsPage() {
                 Descartar cambios
               </button>
               <button type="submit" className="btn btn-primary"
-                disabled={!dirty || busy || !!uploading}>
+                disabled={!dirty || busy || !!uploading || campaignImageBusy !== null || banners.some((banner) => !banner.image_url || !banner.title?.trim())}>
                 {busy ? 'Publicando…' : 'Guardar y publicar'}
               </button>
             </div>
