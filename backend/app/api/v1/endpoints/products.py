@@ -12,7 +12,7 @@ from slugify import slugify
 
 from app.core.deps import require_admin, require_super_admin, get_optional_user, is_catalog_admin
 from app.db.session import get_db
-from app.models.models import Category, Inventory, Location, Product, ProductImage, ProductQualityReview, User
+from app.models.models import Category, Inventory, Location, Product, ProductImage, ProductQualityReview, ProductQualityReviewEvent, User
 from app.schemas.schemas import ProductCreate, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["Productos"])
@@ -410,9 +410,36 @@ def review_catalog_product(
         previous.snapshot_hash = quality_snapshot(product, photos)
         previous.reviewed_by = reviewer.id
         previous.reviewed_at = datetime.utcnow()
+    db.add(ProductQualityReviewEvent(
+        product_id=product_id, status=payload.decision, note=note,
+        snapshot_hash=previous.snapshot_hash, reviewed_by=reviewer.id,
+        reviewed_at=previous.reviewed_at,
+    ))
     db.commit()
     return {"product_id": product_id, "status": previous.status, "issues": flags,
             "reviewed_at": previous.reviewed_at}
+
+
+@router.get("/admin/catalog-quality/{product_id}/history")
+def catalog_quality_review_history(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Read-only recent decision trail; never return product or customer secrets."""
+    if not db.query(Product.id).filter(
+        Product.id == product_id, Product.parent_product_id.is_(None)
+    ).first():
+        raise HTTPException(status_code=404, detail="Producto principal no encontrado")
+    events = db.query(ProductQualityReviewEvent).filter(
+        ProductQualityReviewEvent.product_id == product_id
+    ).order_by(ProductQualityReviewEvent.reviewed_at.desc(),
+               ProductQualityReviewEvent.id.desc()).limit(25).all()
+    return [
+        {"status": event.status, "note": event.note,
+         "reviewed_at": event.reviewed_at.isoformat(), "reviewed_by": event.reviewed_by}
+        for event in events
+    ]
 
 
 @router.get("/admin/catalog-quality")
