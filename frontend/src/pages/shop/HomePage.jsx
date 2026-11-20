@@ -56,12 +56,16 @@ export default function HomePage() {
   const [failedHeroImages, setFailedHeroImages] = useState([])
   const heroImages = (Array.isArray(storeSettings.hero_images) ? storeSettings.hero_images : [])
     .filter((url) => typeof url === 'string' && url.trim() && !failedHeroImages.includes(url))
-  const carousel = useAutoCarousel(heroImages.length, 6000, heroImages.join('|'))
+  const heroPlayback = storeSettings.hero_carousel_settings || {}
+  const statementPlayback = storeSettings.statement_carousel_settings || {}
+  const carousel = useAutoCarousel(heroImages.length, heroPlayback.interval_ms ?? 6000,
+    heroImages.join('|'), heroPlayback.autoplay ?? true)
   const activeHeroImage = heroImages[carousel.index]
   const [failedStatementImages, setFailedStatementImages] = useState([])
   const statementImages = (Array.isArray(storeSettings.statement_images) ? storeSettings.statement_images : [])
     .filter((url) => typeof url === 'string' && url.trim() && !failedStatementImages.includes(url))
-  const statementCarousel = useAutoCarousel(statementImages.length, 6000, statementImages.join('|'))
+  const statementCarousel = useAutoCarousel(statementImages.length,
+    statementPlayback.interval_ms ?? 6000, statementImages.join('|'), statementPlayback.autoplay ?? true)
   const activeStatementImage = statementImages[statementCarousel.index]
   const campaignBanners = (Array.isArray(storeSettings.homepage_banners) ? storeSettings.homepage_banners : [])
     .filter((banner) => banner?.active && banner?.image_url && banner?.title)
@@ -152,7 +156,7 @@ export default function HomePage() {
                 </div>
               </div>
             )}
-            {heroImages.length > 1 && (
+            {heroImages.length > 1 && (heroPlayback.show_navigation ?? true) && (
               <div className="store-home-hero-carousel-controls" aria-label="Controles del carrusel">
                 <button type="button" onClick={() => carousel.goTo(carousel.index - 1)}
                   aria-label="Imagen promocional anterior"><ChevronLeft size={19}/></button>
@@ -221,7 +225,7 @@ export default function HomePage() {
           ) : (
             <div className="store-home-statement-mark" aria-hidden="true">HJ<span>VP</span></div>
           )}
-          {statementImages.length > 1 && (
+          {statementImages.length > 1 && (statementPlayback.show_navigation ?? true) && (
             <div className="store-home-statement-controls" aria-label="Carrusel de campaña">
               <button type="button" aria-label="Imagen anterior"
                 onClick={() => statementCarousel.goTo(statementCarousel.index - 1)}><ChevronLeft size={18}/></button>
@@ -262,15 +266,18 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
             {campaignBanners.map((banner, index) => (
               <Link key={`${banner.image_url}-${index}`} to={banner.link || '/catalogo'}
-                className="relative block overflow-hidden bg-neutral-900 text-white group min-h-[380px] sm:min-h-[480px]">
+                style={{ '--visual-shade': String((banner.overlay_opacity ?? 65) / 100),
+                  '--visual-align': banner.text_align || 'left',
+                  '--visual-position': banner.text_position || 'bottom' }}
+                className="store-campaign-presentation relative block overflow-hidden bg-neutral-900 text-white group min-h-[380px] sm:min-h-[480px]">
                 <picture>
                   {banner.mobile_image_url && <source media="(max-width: 767px)" srcSet={sourceUrl(banner.mobile_image_url)} />}
                   <img src={sourceUrl(banner.image_url)} alt={banner.title}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     loading="lazy" decoding="async" />
                 </picture>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" aria-hidden="true" />
-                <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10">
+                <div className="store-campaign-presentation-shade absolute inset-0" aria-hidden="true" />
+                <div className="store-campaign-presentation-copy absolute left-0 right-0 p-7 sm:p-10">
                   {banner.subtitle && <p className="text-xs font-bold tracking-[.16em] uppercase mb-2">{banner.subtitle}</p>}
                   <h3 className="text-3xl sm:text-5xl font-black uppercase leading-tight">{banner.title}</h3>
                   <span className="inline-flex mt-5 bg-white text-black px-5 py-3 text-xs font-black uppercase items-center gap-2">
@@ -328,7 +335,12 @@ export default function HomePage() {
       </section>
 
       {loyalty?.active && loyalty?.image_url && (
-        <section className="store-loyalty-campaign" style={sectionStyle("loyalty")}
+        <section className="store-loyalty-campaign" style={{
+          ...sectionStyle("loyalty"),
+          '--visual-shade': String((loyalty.overlay_opacity ?? 65) / 100),
+          '--visual-align': loyalty.text_align || 'left',
+          '--visual-position': loyalty.text_position || 'bottom',
+        }}
           aria-label="Club de clientes HJStoreVP">
           <picture className="store-loyalty-campaign-image">
             {loyalty.mobile_image_url && <source media="(max-width: 767px)"
