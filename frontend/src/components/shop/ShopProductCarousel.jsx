@@ -19,7 +19,7 @@ export default function ShopProductCarousel({
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     el.scrollBy({
       left: direction * Math.max(260, el.clientWidth * 0.82),
-      behavior: reduce ? 'instant' : 'smooth',
+      behavior: reduce ? 'auto' : 'smooth',
     })
   }
   if (!products.length) return null
