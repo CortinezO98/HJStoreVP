@@ -84,3 +84,42 @@ ni reinicializa contenedores.
 
 Los problemas distintos a los corregidos de CI deben tratarse según
 los registros completos más recientes, sin asumir que han desaparecido.
+
+
+## Contención de incidente — suite local conectada a MariaDB (20/11/2026)
+
+La ejecución de `docker compose exec backend python -m pytest tests/ -q`
+reveló conexiones SQL contra la base comercial `hjstorevp`, seguidas
+de logins de pruebas HTTP 401 y 429. La suite **no estaba aislada**.
+No ejecutar nuevamente tests sin la protección de esta entrega.
+
+`backend/tests/conftest.py` establece SQLite en directorio temporal
+**antes de cargar la aplicación**, apunta Redis a un puerto inactivo
+y deshabilita las entregas de email y pagos reales en todo pytest.
+Además, `pytest_sessionstart` aborta si el motor no es SQLite.
+La fixture de `tests/test_main.py` reinstala `get_db` en cada test y
+restaura los overrides previos al terminar. Esto también protege
+consultas que usan accidentalmente `SessionLocal` en lugar de la
+dependencia de FastAPI.
+
+El aislamiento de pruebas no sustituye la revisión de permisos de
+BD Docker ni garantiza que no exista algún script externo que lea
+configuración propia; inspeccionar los logs más recientes y los
+registros de negocio si la suite previa alcanzó MariaDB.
+
+### Validación segura tras actualizar código
+
+```bat
+git pull --ff-only origin main
+docker compose up -d --build backend frontend-admin
+docker compose exec backend python -m pytest tests/ -q
+```
+
+Estos comandos de pytest solo son seguros **después de confirmar**
+que `backend/tests/conftest.py` forma parte de la imagen reconstruida.
+En caso de dudas, primero ejecutar
+`docker compose exec backend python -m pytest --collect-only tests/ -q`
+y revisar que el motor de prueba use SQLite.
+
+No ejecutar `docker compose down -v`, no eliminar ni reiniciar
+MariaDB/Redis y no limpiar claves de producción por este fallo.
