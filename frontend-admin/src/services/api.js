@@ -101,6 +101,7 @@ export const authApi = {
 // ─────────────────────────────────────────────────────────
 export const productsApi = {
   list: (params) => apiClient.get('/products', { params }),
+  catalogQuality: (params) => apiClient.get('/products/admin/catalog-quality', { params }),
   get: (id) => apiClient.get(`/products/${id}`),
   create: (data) => apiClient.post('/products', data),
   update: (id, data) => apiClient.put(`/products/${id}`, data),
