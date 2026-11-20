@@ -90,7 +90,7 @@ DEFAULTS = {
 
 class HomepageBanner(BaseModel):
     """Campaña fotográfica publicada en el inicio."""
-    image_url: str = Field(min_length=1, max_length=500)
+    image_url: str = Field(default="", max_length=500)
     mobile_image_url: str = Field(default="", max_length=500)
     title: str = Field(min_length=1, max_length=80)
     subtitle: str = Field(default="", max_length=160)
@@ -103,6 +103,8 @@ class HomepageBanner(BaseModel):
     @model_validator(mode="after")
     def validate_schedule(self):
         validate_campaign_schedule(self.starts_at, self.ends_at)
+        if self.active and (not self.image_url or not self.title.strip()):
+            raise ValueError("Una campaña activa requiere imagen y título")
         return self
 
     @field_validator("image_url", "mobile_image_url")
