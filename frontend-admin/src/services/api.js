@@ -91,6 +91,11 @@ apiClient.interceptors.response.use(
 // ─────────────────────────────────────────────────────────
 // 🔐 AUTENTICACIÓN
 // ─────────────────────────────────────────────────────────
+export const securityAuditApi = {
+  list: (params) => apiClient.get('/security-audit', { params }),
+  summary: () => apiClient.get('/security-audit/summary'),
+}
+
 export const authApi = {
   login: (data) => apiClient.post('/auth/login', data),
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
