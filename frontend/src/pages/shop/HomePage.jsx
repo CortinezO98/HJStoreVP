@@ -102,9 +102,12 @@ export default function HomePage() {
   for (const [id, after] of [['visual', 'campaigns'], ['loyalty', 'categories']]) {
     if (!savedOrder.includes(id)) savedOrder.splice(savedOrder.indexOf(after) + 1, 0, id)
   }
-  const sectionOrder = Array.isArray(savedOrder) && savedOrder.length === DEFAULT_ORDER.length &&
-    new Set(savedOrder).size === DEFAULT_ORDER.length && DEFAULT_ORDER.every(id => savedOrder.includes(id))
-    ? savedOrder : DEFAULT_ORDER
+  const customSections = Array.isArray(storeSettings.homepage_custom_sections)
+    ? storeSettings.homepage_custom_sections : []
+  const customIds = customSections.map(block => 'custom:' + block.id)
+  const allowedIds = [...DEFAULT_ORDER, ...customIds]
+  const knownOrder = savedOrder.filter(id => allowedIds.includes(id))
+  const sectionOrder = [...new Set([...knownOrder, ...allowedIds])]
   const hiddenSections = Array.isArray(storeSettings.homepage_hidden_sections)
     ? storeSettings.homepage_hidden_sections : []
   const sectionStyle = (id) => ({
@@ -370,6 +373,11 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {customSections.map(block => (
+        <HomeVisualBlocks key={block.id} blocks={[block]}
+          style={sectionStyle('custom:' + block.id)} />
+      ))}
 
       <section className="editorial-service-strip store-home-services" style={sectionStyle("services")}>
         <div><Truck size={25} strokeWidth={1.4}/><h3>ENVÍOS A COLOMBIA</h3><p>Compra desde donde estés</p></div>
