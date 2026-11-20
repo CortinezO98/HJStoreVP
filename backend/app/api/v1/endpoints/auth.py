@@ -64,7 +64,7 @@ def _mfa_record(db: Session, user_id: int, lock: bool = False):
 
 
 def _token_bundle(user: User, mfa: UserMFASettings | None = None):
-    extra = {"ver": credential_version(user.hashed_password)}
+    extra = {"ver": credential_version(user.hashed_password), "role": user.role.value}
     if mfa and mfa.version:
         extra["sec_v"] = mfa.version
     if mfa and mfa.enabled:
@@ -171,6 +171,8 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
 
     if not credential_version_matches(payload, user.hashed_password):
         raise HTTPException(status_code=401, detail="La sesión fue revocada; inicia sesión nuevamente")
+    if payload.get("role") is not None and payload.get("role") != user.role.value:
+        raise HTTPException(status_code=401, detail="Permisos cambiados; inicia sesión nuevamente")
 
     try:
         expires_at = int(payload.get("exp", ""))
