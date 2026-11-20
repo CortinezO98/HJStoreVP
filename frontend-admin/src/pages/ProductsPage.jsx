@@ -644,6 +644,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [featuredFilter, setFeaturedFilter] = useState('')
+  const [photoFilter, setPhotoFilter] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [page, setPage] = useState(1)
@@ -704,9 +705,11 @@ export default function ProductsPage() {
           ? Boolean(p.featured)
           : !Boolean(p.featured)
 
-      return matchesSearch && matchesCategory && matchesStatus && matchesFeatured
+      const matchesPhoto = photoFilter === 'missing' ? !p.primary_image
+        : photoFilter === 'ready' ? Boolean(p.primary_image) : true
+      return matchesSearch && matchesCategory && matchesStatus && matchesFeatured && matchesPhoto
     })
-  }, [products, search, categoryFilter, statusFilter, featuredFilter])
+  }, [products, search, categoryFilter, statusFilter, featuredFilter, photoFilter])
 
   // Paginación sobre la lista completa consultada, sin cambiar el contrato API.
   const sortedProducts = useMemo(() => [...filteredProducts].sort((a, b) => {
@@ -723,10 +726,11 @@ export default function ProductsPage() {
     setCategoryFilter('')
     setStatusFilter('')
     setFeaturedFilter('')
+    setPhotoFilter('')
     setSortBy('name')
     setPage(1)
   }
-  const filtersActive = Boolean(search || categoryFilter || statusFilter || featuredFilter || sortBy !== 'name')
+  const filtersActive = Boolean(search || categoryFilter || statusFilter || featuredFilter || photoFilter || sortBy !== 'name')
   
   const stats = useMemo(() => {
     const active = products.filter((p) => p.active).length
@@ -737,6 +741,7 @@ export default function ProductsPage() {
       active,
       inactive,
       featured,
+      missingPhotos: products.filter(p => p.active && !p.primary_image).length,
     }
   }, [products])
 
@@ -765,6 +770,7 @@ export default function ProductsPage() {
           { label: 'Activos', value: stats.active },
           { label: 'Inactivos', value: stats.inactive },
           { label: 'Destacados', value: stats.featured },
+          { label: 'Activos sin fotografía', value: stats.missingPhotos },
         ].map(item => <div className="col-12 col-sm-6 col-xl-3" key={item.label}>
           <div className="admin-catalog-stat">
             <span>{item.label}</span><strong>{item.value.toLocaleString('es-CO')}</strong>
@@ -811,6 +817,15 @@ export default function ProductsPage() {
             <select id="products-featured" className="form-select" value={featuredFilter}
               onChange={event => { setFeaturedFilter(event.target.value); setPage(1) }}>
               <option value="">Todos</option><option value="featured">Sí</option><option value="normal">No</option>
+            </select>
+          </div>
+          <div className="col-12 col-sm-6 col-lg-3">
+            <label className="form-label" htmlFor="products-photo-filter">Fotografías</label>
+            <select id="products-photo-filter" className="form-select" value={photoFilter}
+              onChange={event => { setPhotoFilter(event.target.value); setPage(1) }}>
+              <option value="">Todos los productos</option>
+              <option value="missing">Sin foto principal</option>
+              <option value="ready">Con foto principal</option>
             </select>
           </div>
           <div className="col-12 col-sm-6 col-lg-4">
@@ -890,6 +905,9 @@ export default function ProductsPage() {
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 line-clamp-1">{product.name}</p>
                             <p className="text-xs text-gray-500 mt-1">SKU: {product.sku}</p>
+                            {!product.primary_image && <span className="inline-flex mt-1 text-xs font-semibold text-amber-700">
+                              Sin fotografía principal
+                            </span>}
                           </div>
                         </div>
                       </td>
