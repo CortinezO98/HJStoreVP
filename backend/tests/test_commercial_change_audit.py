@@ -48,6 +48,14 @@ def test_price_changes_log_old_new_and_ignore_noop():
         assert row.details["price_changes"]["sale_price"] == {"before": "30.00", "after": "39.50"}
         assert row.details["price_changes"]["cost_price"] == {"before": "25.00", "after": "27.00"}
         assert is_signature_valid(row)
+        from app.api.v1.endpoints.commercial_audit import commercial_history
+        combined = commercial_history(source=None, actor_id=None,
+                                      resource="catalog", action=None,
+                                      from_date=None, to_date=None,
+                                      page=1, per_page=30, db=db, _=None)
+        assert combined["total"] == 1
+        assert combined["items"][0]["integrity"] == "signed_valid"
+        assert combined["items"][0]["details"]["price_changes"]["sale_price"]["before"] == "30.00"
         product.sale_price = Decimal("39.50")
         db.commit()
         assert db.query(SecurityAuditEvent).filter_by(action="catalog.prices.changed").count() == 1
@@ -67,6 +75,13 @@ def test_order_transitions_audited_once_per_real_change():
             "old_status": "pending", "new_status": "paid", "origin": "system"
         }
         assert is_signature_valid(events[0])
+        from app.api.v1.endpoints.commercial_audit import commercial_history
+        combined = commercial_history(source="security_audit_events", actor_id=None,
+                                      resource="orders", action="orders.status.changed",
+                                      from_date=None, to_date=None,
+                                      page=1, per_page=30, db=db, _=None)
+        assert combined["total"] == 1
+        assert combined["items"][0]["integrity"] == "signed_valid"
         order.status = OrderStatus.PAID
         db.commit()
         assert db.query(SecurityAuditEvent).filter_by(action="orders.status.changed").count() == 1
