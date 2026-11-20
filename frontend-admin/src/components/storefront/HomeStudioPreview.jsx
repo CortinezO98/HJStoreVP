@@ -39,8 +39,10 @@ function Tile({ item, mobile }) {
 
 export default function HomeStudioPreview({ draft, mobile = false, onSelect, selected }) {
   if (!draft) return null
-  const saved = draft.homepage_section_order || ORDER
-  const order = [...saved]
+  const custom = draft.homepage_custom_sections || []
+  const allowed = [...ORDER, ...custom.map(block => 'custom:' + block.id)]
+  const saved = Array.isArray(draft.homepage_section_order) ? draft.homepage_section_order : ORDER
+  const order = [...new Set([...saved.filter(id => allowed.includes(id)), ...allowed])]
   for (const [id, after] of [['visual', 'campaigns'], ['loyalty', 'categories']]) {
     if (!order.includes(id)) order.splice(order.indexOf(after) + 1, 0, id)
   }
@@ -96,9 +98,28 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
     {order.filter(id => !hidden.has(id)).map(id => <button
       key={id} type="button" onClick={() => click(id)}
       className="d-block w-100 text-start border-0 p-0 bg-white text-black"
-      aria-label={`Seleccionar sección ${LABELS[id]}`}
+      aria-label={`Seleccionar sección ${id.startsWith('custom:') ? 'personalizada' : LABELS[id]}`}
       style={{ outline: selected === id ? '3px solid #2563eb' : 'none', outlineOffset: -3 }}>
-      {id === 'statement' ? <div className="d-flex bg-black text-white">
+      {id.startsWith('custom:') ? (() => {
+        const block = custom.find(entry => 'custom:' + entry.id === id)
+        if (!block) return null
+        const images = (block.items || []).filter(item => item.image_url)
+        return <div className="p-3" style={{ background:'#f6f5f3' }}>
+          <p className="small mb-2 text-secondary">{block.type === 'carousel'
+            ? 'CARRUSEL' : block.type === 'mosaic' ? 'MOSAICO' : 'BANNER'} PERSONALIZADO
+            {!block.active && ' · AÚN NO PUBLICADO'}
+          </p>
+          <h2 style={{fontSize:mobile ? 20 : 28, fontWeight:900}}>
+            {block.title || 'Nueva sección'}
+          </h2>
+          {images.length ? <div className="d-grid gap-2 mt-2"
+            style={{gridTemplateColumns: block.type === 'banner' || mobile ? '1fr' : 'repeat(2,1fr)'}}>
+            {(block.type === 'banner' ? images.slice(0,1) : images).map((item,index) =>
+              <Tile key={index} item={item} mobile={mobile}/>)}
+          </div> : <p className="small text-secondary mb-0">Agrega fotografías para mostrar esta sección.</p>}
+        </div>
+      })() :
+      id === 'statement' ? <div className="d-flex bg-black text-white">
         <div className="p-3 d-flex"
           style={{ flex: 1, textAlign: statementPresentation.text_align || 'left',
             justifyContent: ({left:'flex-start',center:'center',right:'flex-end'})[statementPresentation.text_align || 'left'],
