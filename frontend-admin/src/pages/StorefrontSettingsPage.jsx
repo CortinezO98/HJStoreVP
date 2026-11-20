@@ -79,6 +79,7 @@ export default function StorefrontSettingsPage() {
   const [cropQueue, setCropQueue] = useState([])
   const [campaignImageBusy, setCampaignImageBusy] = useState(null)
   const [previewDevice, setPreviewDevice] = useState('desktop')
+  const [visualUploading, setVisualUploading] = useState(false)
   const currentHomeOrder = normalizedHomeOrder(form?.homepage_section_order)
   const homeOrder = validHomeOrder(currentHomeOrder) ? currentHomeOrder : DEFAULT_HOME_ORDER
   const hiddenHomeSections = Array.isArray(form?.homepage_hidden_sections)
@@ -489,6 +490,7 @@ export default function StorefrontSettingsPage() {
           </section>
 
           <HomeVisualBlocksEditor blocks={form.homepage_visual_blocks || []}
+            onBusyChange={setVisualUploading}
             onChange={(blocks) => change('homepage_visual_blocks', blocks)} />
 
           <div className="admin-settings-footer">
@@ -500,11 +502,11 @@ export default function StorefrontSettingsPage() {
             </div>
             <div className="d-flex flex-wrap gap-2">
               <button type="button" className="btn btn-outline-secondary"
-                disabled={!dirty || busy || !!uploading || cropQueue.length > 0} onClick={() => setForm(saved)}>
+                disabled={!dirty || busy || !!uploading || visualUploading || cropQueue.length > 0} onClick={() => setForm(saved)}>
                 Descartar cambios
               </button>
               <button type="submit" className="btn btn-primary"
-                disabled={!dirty || busy || !!uploading || campaignImageBusy !== null || banners.some((banner) => !banner.image_url || !banner.title?.trim())}>
+                disabled={!dirty || busy || !!uploading || visualUploading || cropQueue.length > 0 || campaignImageBusy !== null || banners.some((banner) => !banner.image_url || !banner.title?.trim())}>
                 {busy ? 'Publicando…' : 'Guardar y publicar'}
               </button>
             </div>
