@@ -188,3 +188,24 @@ sin duplicados. Probar rollback y estado sin cambios con las pruebas
 automatizadas. No realizar transacciones monetarias reales solo para
 probar eventos. La batería general del proyecto y seguridad de
 dependencias siguen como pendientes transversales antes de producción.
+
+
+### Consulta integrada de los nuevos eventos
+
+Los eventos `catalog.prices.changed` y `orders.status.changed` se
+incluyen también en `GET /api/v1/commercial-audit` como origen
+`security_audit_events` (solo estos dos tipos; nunca contraseñas,
+tokens ni MFA). Sus detalles permiten ver cambios de precio antes/después
+y estados anterior/posterior; el campo `integrity` vale `signed_valid`
+o `signed_invalid` según la validación HMAC. Las fuentes antiguas
+permanecen marcadas `source_history_unverified`.
+
+La exportación comercial CSV incorpora metadatos seguros y estado de
+integridad sin exponer la firma ni credenciales. Los registros firmados
+se consultan desde la tabla central, no se copian a otras tablas ni
+se crean eventos ficticios o retrospectivos.
+
+Para validar, además de la batería de 31 pruebas anterior, ejecutar
+`tests/test_commercial_change_audit.py` y observar una edición de
+precio de prueba o transición legítima de un pedido de prueba en el
+panel `/auditoria-comercial`, filtrando por `security_audit_events`.
