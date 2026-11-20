@@ -6,6 +6,7 @@ import ImageCropModal from '../components/products/ImageCropModal'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
+import CampaignDestinationEditor from '../components/storefront/CampaignDestinationEditor'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const GROUPS = [
@@ -529,7 +530,7 @@ export default function StorefrontSettingsPage() {
                   <div className="col-12 col-lg-7 row g-2 align-content-start">
                     {[
                       ['title', 'Título', 80], ['subtitle', 'Subtítulo', 160],
-                      ['button_text', 'Texto del botón', 40], ['link', 'Ruta de destino', 300],
+                      ['button_text', 'Texto del botón', 40],
                     ].map(([key, label, maxLength]) => (
                       <div className="col-12 col-sm-6" key={key}>
                         <label className="form-label" htmlFor={`campaign-${index}-${key}`}>{label}</label>
@@ -537,6 +538,13 @@ export default function StorefrontSettingsPage() {
                           value={banner[key] || ''} onChange={(event) => updateCampaign(index, key, event.target.value)} />
                       </div>
                     ))}
+                    <div className="col-12">
+                      <CampaignDestinationEditor id={`settings-campaign-${index}`} value={banner}
+                        onChange={next => setForm(current => ({
+                          ...current, homepage_banners: current.homepage_banners.map((item,i) =>
+                            i === index ? next : item),
+                        }))}/>
+                    </div>
                     <div className="col-12 col-sm-6">
                       <label className="form-label" htmlFor={`campaign-${index}-starts`}>Publicar desde (hora Colombia)</label>
                       <input type="datetime-local" className="form-control" id={`campaign-${index}-starts`}
