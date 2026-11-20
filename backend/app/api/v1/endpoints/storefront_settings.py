@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -35,6 +35,7 @@ DEFAULTS = {
     "hero_images": [],
     "statement_images": [],
     "homepage_banners": [],
+    "homepage_visual_blocks": [],
     "homepage_section_order": list(HOMEPAGE_SECTION_IDS),
     "homepage_hidden_sections": [],
     "logo_url": "",
@@ -89,6 +90,46 @@ class HomepageBanner(BaseModel):
         return value
 
 
+
+class HomepageVisualItem(BaseModel):
+    image_url: str = Field(default="", max_length=500)
+    mobile_image_url: str = Field(default="", max_length=500)
+    title: str = Field(default="", max_length=80)
+    subtitle: str = Field(default="", max_length=160)
+    button_text: str = Field(default="VER AHORA", max_length=40)
+    link: str = Field(default="/catalogo", max_length=300)
+
+    @field_validator("image_url", "mobile_image_url")
+    @classmethod
+    def valid_image(cls, value: str) -> str:
+        return HomepageBanner.image_is_safe(value)
+
+    @field_validator("link")
+    @classmethod
+    def valid_link(cls, value: str) -> str:
+        return HomepageBanner.link_is_internal(value)
+
+    @model_validator(mode="after")
+    def validate_mobile(self):
+        if not self.image_url and self.mobile_image_url:
+            raise ValueError("La imagen móvil requiere una imagen de escritorio")
+        return self
+
+
+class HomepageVisualBlock(BaseModel):
+    id: str = Field(min_length=8, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    type: str = Field(pattern=r"^(banner|mosaic|carousel)$")
+    title: str = Field(default="", max_length=90)
+    active: bool = False
+    items: list[HomepageVisualItem] = Field(default_factory=list, max_length=8)
+
+    @model_validator(mode="after")
+    def validate_published(self):
+        if self.active and (not self.items or any(not item.image_url for item in self.items)):
+            raise ValueError("Un bloque activo necesita imágenes en todos sus elementos")
+        return self
+
+
 class SettingsPayload(BaseModel):
     store_name: str = Field(min_length=1, max_length=100)
     tagline: str = Field(max_length=180)
@@ -101,6 +142,15 @@ class SettingsPayload(BaseModel):
     hero_images: list[str] = Field(default_factory=list, max_length=8)
     statement_images: list[str] = Field(default_factory=list, max_length=8)
     homepage_banners: list[HomepageBanner] = Field(default_factory=list, max_length=6)
+    homepage_visual_blocks: list[HomepageVisualBlock] = Field(default_factory=list, max_length=6)
+
+    @field_validator("homepage_visual_blocks")
+    @classmethod
+    def unique_blocks(cls, blocks: list[HomepageVisualBlock]) -> list[HomepageVisualBlock]:
+        if len({block.id for block in blocks}) != len(blocks):
+            raise ValueError("Cada bloque debe tener un ID único")
+        return blocks
+
     homepage_section_order: list[str] = Field(default_factory=lambda: list(HOMEPAGE_SECTION_IDS))
     homepage_hidden_sections: list[str] = Field(default_factory=list)
 
@@ -190,7 +240,12 @@ def public_settings(db: Session) -> dict:
 
 @router.get("/public")
 def get_public_settings(db: Session = Depends(get_db)):
-    return public_settings(db)
+    data = public_settings(db)
+    data["homepage_visual_blocks"] = [
+        block for block in data.get("homepage_visual_blocks", [])
+        if block.get("active") and block.get("items")
+    ]
+    return data
 
 
 @router.get("/admin")
