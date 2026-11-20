@@ -4,6 +4,7 @@ import { storefrontSettingsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../components/products/ImageCropModal'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
+import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const GROUPS = [
@@ -51,6 +52,7 @@ const HOME_SECTIONS = [
   ['featured', 'Productos destacados'], ['campaigns', 'Campañas fotográficas'],
   ['visual', 'Bloques visuales nuevos'],
   ['personalized', 'Recomendaciones'], ['categories', 'Categorías'],
+  ['loyalty', 'Banner de fidelización'],
   ['services', 'Beneficios'], ['faq', 'Preguntas frecuentes'], ['closing', 'Cierre editorial'],
 ]
 const DEFAULT_HOME_ORDER = HOME_SECTIONS.map(([id]) => id)
@@ -533,6 +535,11 @@ export default function StorefrontSettingsPage() {
               </div>
             ))}
           </section>
+
+          <HomeMarketingEditor tiles={form.homepage_category_tiles || []}
+            loyalty={form.homepage_loyalty_banner} onBusyChange={setVisualUploading}
+            onTilesChange={tiles => change('homepage_category_tiles', tiles)}
+            onLoyaltyChange={banner => change('homepage_loyalty_banner', banner)}/>
 
           <HomeVisualBlocksEditor blocks={form.homepage_visual_blocks || []}
             onBusyChange={setVisualUploading}
