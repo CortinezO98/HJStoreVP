@@ -48,6 +48,7 @@ export default function HomeStudioPage() {
   const [selected, setSelected] = useState('hero')
   const [showPreview, setShowPreview] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [versions, setVersions] = useState([])
   const changed = draft && savedDraft && JSON.stringify(draft) !== JSON.stringify(savedDraft)
   const order = useMemo(() => normalizeOrder(draft?.homepage_section_order), [draft?.homepage_section_order])
   const hidden = useMemo(() => draft?.homepage_hidden_sections || [], [draft?.homepage_hidden_sections])
@@ -62,6 +63,8 @@ export default function HomeStudioPage() {
       setSavedDraft(structuredClone(normalized))
       setHasSavedDraft(data.has_saved_draft)
       setConflict(data.has_saved_draft && data.draft_base_hash !== data.published_hash)
+      const history = await storefrontSettingsApi.homepageVersions()
+      setVersions(Array.isArray(history.data) ? history.data : [])
     } catch (err) {
       setLoadError(errorMessage(err))
     } finally {
@@ -138,6 +141,20 @@ export default function HomeStudioPage() {
     } catch (err) { toast.error(errorMessage(err)) }
     finally { setBusy(false) }
   }
+  const restoreVersion = async versionId => {
+    if (changed || hasSavedDraft) {
+      toast.error('Descarta los cambios o el borrador actual antes de recuperar una versión')
+      return
+    }
+    if (!window.confirm('¿Recuperar esta versión como borrador privado? La tienda publicada no cambiará.')) return
+    setBusy(true)
+    try {
+      await storefrontSettingsApi.restoreHomepageVersion(versionId)
+      await load()
+      toast.success('Versión recuperada como borrador. Revísala antes de publicar.')
+    } catch (err) { toast.error(errorMessage(err)) }
+    finally { setBusy(false) }
+  }
   const startCrop = (field, index, file) => {
     if (!file) return
     if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
@@ -201,6 +218,26 @@ export default function HomeStudioPage() {
       <button className="btn btn-dark btn-sm" type="button" disabled={disabled || changed || !hasSavedDraft || conflict}
         onClick={publish}><Send size={15} className="me-1"/>Publicar portada</button>
     </div>
+    <details className="admin-settings-section mb-4">
+      <summary className="fw-bold" style={{ cursor:'pointer' }}>
+        Historial de versiones publicadas ({versions.length})
+      </summary>
+      <p className="small text-secondary mt-3">
+        Se conservan hasta 5 versiones anteriores. Recuperar una versión crea un borrador;
+        no cambia automáticamente la tienda pública.
+      </p>
+      {!versions.length && <p className="small text-secondary">
+        El historial comenzará a registrarse con la próxima publicación hecha desde este estudio.
+      </p>}
+      {versions.map(version => <div key={version.id}
+        className="d-flex flex-wrap gap-2 justify-content-between align-items-center border rounded p-2 my-2">
+        <span className="small">{new Date(version.saved_at).toLocaleString('es-CO',
+          { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Bogota' })}</span>
+        <button type="button" className="btn btn-outline-secondary btn-sm"
+          disabled={disabled || changed || hasSavedDraft}
+          onClick={() => restoreVersion(version.id)}>Recuperar como borrador</button>
+      </div>)}
+    </details>
     <div className="row g-4 align-items-start">
       <div className={showPreview ? 'col-12 col-xl-5' : 'col-12'}>
         <div className="admin-settings-section mb-3">
