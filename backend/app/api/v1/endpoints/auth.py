@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from datetime import datetime, timedelta, timezone
 import hmac
+import uuid
 from jose import jwt
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -77,7 +78,7 @@ def _token_bundle(user: User, mfa: UserMFASettings | None = None):
 
 def _mfa_challenge(user: User):
     token = jwt.encode({
-        "sub": str(user.id), "type": "mfa_pending",
+        "sub": str(user.id), "type": "mfa_pending", "jti": uuid.uuid4().hex,
         "ver": credential_version(user.hashed_password),
         "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
     }, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -102,6 +103,17 @@ def _require_recent_factor(db: Session, user: User, request: Request, password: 
             raise HTTPException(status_code=403, detail="Código de segundo factor incorrecto")
     elif mfa_required:
         raise HTTPException(status_code=409, detail="El segundo factor no está activo")
+    return record
+
+
+def _bump_session_version(db: Session, user_id: int):
+    record = _mfa_record(db, user_id, lock=True)
+    if record is None:
+        record = UserMFASettings(user_id=user_id, enabled=False, recovery_hashes=[],
+                                 version=0, updated_at=datetime.utcnow())
+        db.add(record)
+    record.version += 1
+    record.updated_at = datetime.utcnow()
     return record
 
 
@@ -200,6 +212,7 @@ def change_my_email(data: ProfileEmailChange, request: Request,
         raise HTTPException(status_code=409, detail="Correo no disponible")
     previous_email = current_user.email
     current_user.email = data.email
+    _bump_session_version(db, current_user.id)
     db.commit()
     clear_login_failures(previous_email)
     return current_user
@@ -308,12 +321,7 @@ def revoke_my_sessions(data: MFASensitiveAction, request: Request,
                        current_user: User = Depends(get_current_user)):
     """Invalidar todos los access/refresh tokens anteriores, incluido el actual."""
     record = _require_recent_factor(db, current_user, request, data.current_password, data.code)
-    if record is None:
-        record = UserMFASettings(user_id=current_user.id, enabled=False,
-                                 recovery_hashes=[], version=0, updated_at=datetime.utcnow())
-        db.add(record)
-    record.version += 1
-    record.updated_at = datetime.utcnow()
+    _bump_session_version(db, current_user.id)
     db.commit()
     clear_login_failures(current_user.email)
 
