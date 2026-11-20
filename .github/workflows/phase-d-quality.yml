@@ -113,6 +113,8 @@ jobs:
             exit "$code"
           fi
           python ../scripts/ci/summarize_dependency_audit.py npm ../admin-dependency-audit.json
+          python ../scripts/ci/triage_dependency_audits.py npm ../admin-dependency-audit.json --project 'Panel administrativo' --output ../admin-audit-triage.md
+          cat ../admin-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preparar inventario npm de tienda publica
         working-directory: frontend
         shell: bash
@@ -138,6 +140,8 @@ jobs:
             exit "$code"
           fi
           python ../scripts/ci/summarize_dependency_audit.py npm ../store-dependency-audit.json
+          python ../scripts/ci/triage_dependency_audits.py npm ../store-dependency-audit.json --project 'Tienda publica' --output ../store-audit-triage.md
+          cat ../store-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preparar auditoria Python
         shell: bash
         run: |
@@ -157,6 +161,8 @@ jobs:
             exit "$code"
           fi
           python ../scripts/ci/summarize_dependency_audit.py python ../backend-dependency-audit.json
+          python ../scripts/ci/triage_dependency_audits.py python ../backend-dependency-audit.json --project 'Backend Python' --output ../backend-audit-triage.md
+          cat ../backend-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Publicar informes para revision
         if: always()
         uses: actions/upload-artifact@v4
@@ -166,6 +172,9 @@ jobs:
             admin-dependency-audit.json
             store-dependency-audit.json
             backend-dependency-audit.json
+            admin-audit-triage.md
+            store-audit-triage.md
+            backend-audit-triage.md
             npm-audit-errors.txt
             store-npm-audit-errors.txt
             pip-audit-errors.txt
