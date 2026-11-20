@@ -16,8 +16,9 @@ from app.core.deps import require_super_admin
 from app.db.session import get_db
 from app.models.models import (
     User, StockMovement, ShipmentEvent, PostSaleEvent,
-    CommercialDocumentEvent, ProductQualityReviewEvent,
+    CommercialDocumentEvent, ProductQualityReviewEvent, SecurityAuditEvent,
 )
+from app.services.security_audit import is_signature_valid
 
 router = APIRouter(prefix="/commercial-audit", tags=["Auditoría comercial"])
 
@@ -56,6 +57,13 @@ def _combined():
             cast(ProductQualityReviewEvent.status, String(64)),
             literal("catalog"), cast(ProductQualityReviewEvent.product_id, String(70)),
         ),
+        select(
+            literal("security_audit_events"), SecurityAuditEvent.id,
+            SecurityAuditEvent.created_at, SecurityAuditEvent.actor_id,
+            SecurityAuditEvent.action, SecurityAuditEvent.resource, SecurityAuditEvent.target_id,
+        ).where(SecurityAuditEvent.action.in_((
+            "catalog.prices.changed", "orders.status.changed",
+        ))),
     ]
     return union_all(*parts).subquery("commercial_events")
 
@@ -80,7 +88,14 @@ def _filtered(db: Session, *, source: str | None, actor_id: int | None,
     return events, q
 
 
-def _row_data(row):
+def _signed_lookup(db, rows):
+    ids = [row.source_id for row in rows if row.source == 'security_audit_events']
+    if not ids:
+        return {}
+    return {item.id: item for item in db.query(SecurityAuditEvent).filter(SecurityAuditEvent.id.in_(ids)).all()}
+
+
+def _row_data(row, signed=None):
     return {
         "source": row.source,
         "source_id": row.source_id,
@@ -90,7 +105,9 @@ def _row_data(row):
         "resource": row.resource,
         "target_id": row.target_id,
         # Historial transaccional de origen, no sujeto a HMAC central retroactivo.
-        "integrity": "source_history_unverified",
+        "integrity": ("signed_valid" if is_signature_valid(signed) else "signed_invalid")
+                     if signed is not None else "source_history_unverified",
+        "details": signed.details if signed is not None else {},
     }
 
 
@@ -114,11 +131,13 @@ def commercial_history(
         q.order_by(events.c.created_at.desc(), events.c.source, events.c.source_id.desc())
         .offset((page - 1) * per_page).limit(per_page)
     ).all()
+    signed = _signed_lookup(db, rows)
     return {"total": total, "page": page, "per_page": per_page,
             "sources": [
                 "stock_movements", "shipment_events", "post_sale_events",
                 "commercial_document_events", "product_quality_review_events",
-            ], "items": [_row_data(row) for row in rows]}
+                "security_audit_events",
+            ], "items": [_row_data(row, signed.get(row.source_id) if row.source == "security_audit_events" else None) for row in rows]}
 
 
 @router.get("/export")
@@ -140,9 +159,12 @@ def export_commercial_history(
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(("source", "source_id", "created_at_utc", "actor_id",
-                     "action", "resource", "target_id", "integrity"))
+                     "action", "resource", "target_id", "integrity", "details", "details"))
+    signed = _signed_lookup(db, rows)
     for row in rows:
-        values = _row_data(row)
+        values = _row_data(row, signed.get(row.source_id) if row.source == "security_audit_events" else None)
+        import json
+        values["details"] = json.dumps(values["details"], ensure_ascii=False, sort_keys=True)
         # Defensive CSV formula-injection handling.
         writer.writerow([
             ("'" + str(values[field]) if str(values[field]).lstrip().startswith(("=", "+", "-", "@"))
