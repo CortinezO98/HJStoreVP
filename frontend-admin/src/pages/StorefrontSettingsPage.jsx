@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { storefrontSettingsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../components/products/ImageCropModal'
+import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const GROUPS = [
@@ -47,10 +48,15 @@ const LONG_FIELDS = new Set([
 const HOME_SECTIONS = [
   ['newest', 'Recién llegados'], ['statement', 'Campaña de estilo'],
   ['featured', 'Productos destacados'], ['campaigns', 'Campañas fotográficas'],
+  ['visual', 'Bloques visuales nuevos'],
   ['personalized', 'Recomendaciones'], ['categories', 'Categorías'],
   ['services', 'Beneficios'], ['faq', 'Preguntas frecuentes'], ['closing', 'Cierre editorial'],
 ]
 const DEFAULT_HOME_ORDER = HOME_SECTIONS.map(([id]) => id)
+const normalizedHomeOrder = value =>
+  Array.isArray(value) && !value.includes('visual')
+    ? [...value.slice(0, value.indexOf('campaigns') + 1), 'visual',
+      ...value.slice(value.indexOf('campaigns') + 1)] : value
 const validHomeOrder = (value) => Array.isArray(value) &&
   value.length === DEFAULT_HOME_ORDER.length &&
   new Set(value).size === DEFAULT_HOME_ORDER.length &&
@@ -73,13 +79,13 @@ export default function StorefrontSettingsPage() {
   const [cropQueue, setCropQueue] = useState([])
   const [campaignImageBusy, setCampaignImageBusy] = useState(null)
   const [previewDevice, setPreviewDevice] = useState('desktop')
-  const homeOrder = validHomeOrder(form?.homepage_section_order)
-    ? form.homepage_section_order : DEFAULT_HOME_ORDER
+  const currentHomeOrder = normalizedHomeOrder(form?.homepage_section_order)
+  const homeOrder = validHomeOrder(currentHomeOrder) ? currentHomeOrder : DEFAULT_HOME_ORDER
   const hiddenHomeSections = Array.isArray(form?.homepage_hidden_sections)
     ? form.homepage_hidden_sections : []
   const moveHomeSection = (index, direction) => setForm((current) => {
-    const items = [...(validHomeOrder(current.homepage_section_order)
-      ? current.homepage_section_order : DEFAULT_HOME_ORDER)]
+    const normalized = normalizedHomeOrder(current.homepage_section_order)
+    const items = [...(validHomeOrder(normalized) ? normalized : DEFAULT_HOME_ORDER)]
     const target = index + direction
     if (target < 0 || target >= items.length) return current
     ;[items[index], items[target]] = [items[target], items[index]]
@@ -481,6 +487,9 @@ export default function StorefrontSettingsPage() {
               </div>
             ))}
           </section>
+
+          <HomeVisualBlocksEditor blocks={form.homepage_visual_blocks || []}
+            onChange={(blocks) => change('homepage_visual_blocks', blocks)} />
 
           <div className="admin-settings-footer">
             <div className="d-flex align-items-center gap-2" role="status" aria-live="polite">
