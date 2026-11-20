@@ -166,7 +166,11 @@ export default function HomeStudioPage() {
       await storefrontSettingsApi.saveHomepageDraft(draft)
       setSavedDraft(structuredClone(draft))
       setHasSavedDraft(true)
-      toast.success('Borrador privado guardado')
+      try {
+        const health = await storefrontSettingsApi.homepageStorageHealth()
+        setStorageHealth(health.data)
+      } catch { /* El diagnóstico no interrumpe el guardado del borrador. */ }
+      toast.success('Borrador privado guardado. La portada pública no ha cambiado.')
     } catch (err) {
       toast.error(errorMessage(err))
     } finally { setBusy(false) }
