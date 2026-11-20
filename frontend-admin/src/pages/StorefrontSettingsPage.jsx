@@ -499,7 +499,7 @@ export default function StorefrontSettingsPage() {
                       accept="image/jpeg,image/png,image/webp" disabled={campaignImageBusy !== null}
                       onChange={(event) => { uploadCampaignImage(index, event.target.files?.[0], 'mobile_image_url'); event.target.value = '' }} />
                     {banner.mobile_image_url && <button className="btn btn-sm btn-outline-secondary mt-2"
-                      type="button" onClick={() => updateCampaign(index, 'mobile_image_url', '')}>Usar imagen de escritorio</button>
+                      type="button" onClick={() => updateCampaign(index, 'mobile_image_url', '')}>Usar imagen de escritorio</button>}
                   </div>
                   <div className="col-12 col-lg-7 row g-2 align-content-start">
                     {[
