@@ -18,7 +18,7 @@ const emptyItem = () => ({
   button_text: 'VER AHORA', link: '/catalogo',
 })
 
-export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyChange = () => {} }) {
+export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyChange = () => {}, allowCreate = true, allowDelete = true }) {
   const [uploading, setUploading] = useState('')
   const [preview, setPreview] = useState('desktop')
   const [cropTask, setCropTask] = useState(null)
@@ -81,11 +81,11 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           Los bloques nuevos empiezan ocultos y solo se publican al guardar.
         </p>
       </div>
-      <button type="button" className="btn btn-outline-primary btn-sm"
+      {allowCreate && <button type="button" className="btn btn-outline-primary btn-sm"
         disabled={blocks.length >= 6 || !!uploading || !!cropTask}
         onClick={() => onChange([...blocks, {
           id: crypto.randomUUID(), type: 'mosaic', title: '', active: false, starts_at: '', ends_at: '', items: [emptyItem()],
-        }])}>+ Crear bloque</button>
+        }])}>+ Crear bloque</button>}
     </div>
     <div className="d-flex align-items-center gap-2 mb-3">
       <span className="small">Vista previa:</span>
@@ -104,8 +104,8 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           <button type="button" className="btn btn-outline-secondary btn-sm" aria-label="Bajar bloque"
             disabled={blockIndex === blocks.length - 1 || !!uploading}
             onClick={() => onChange(move(blocks, blockIndex, 1))}>↓</button>
-          <button type="button" className="btn btn-outline-danger btn-sm" disabled={!!uploading || !!cropTask}
-            onClick={() => onChange(blocks.filter((_, i) => i !== blockIndex))}>Eliminar</button>
+          {allowDelete && <button type="button" className="btn btn-outline-danger btn-sm" disabled={!!uploading || !!cropTask}
+            onClick={() => onChange(blocks.filter((_, i) => i !== blockIndex))}>Eliminar</button>}
         </div>
       </div>
       <div className="row g-3 mb-3">
