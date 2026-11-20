@@ -2,6 +2,7 @@
 from typing import Optional
 from urllib.parse import urlsplit
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,6 +19,39 @@ from app.models.models import StorefrontSettings, User
 
 router = APIRouter(prefix="/storefront-settings", tags=["Configuración de tienda"])
 ROW_ID = 1
+BOGOTA_TZ = ZoneInfo("America/Bogota")
+
+
+def validate_campaign_schedule(starts_at: str, ends_at: str):
+    """Schedule strings are ISO minute precision in Colombia local time."""
+    def parse(value):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%dT%H:%M").replace(tzinfo=BOGOTA_TZ)
+        except ValueError as exc:
+            raise ValueError("Usa fecha y hora AAAA-MM-DDTHH:MM") from exc
+    start, end = parse(starts_at), parse(ends_at)
+    if start and end and end <= start:
+        raise ValueError("La finalización debe ser posterior al inicio")
+
+
+def campaign_in_window(item: dict, now: datetime) -> bool:
+    if not item.get("active"):
+        return False
+    start = item.get("starts_at", "")
+    end = item.get("ends_at", "")
+    try:
+        validate_campaign_schedule(start, end)
+        if start and now < datetime.strptime(start, "%Y-%m-%dT%H:%M").replace(tzinfo=BOGOTA_TZ):
+            return False
+        if end and now >= datetime.strptime(end, "%Y-%m-%dT%H:%M").replace(tzinfo=BOGOTA_TZ):
+            return False
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
 HOMEPAGE_SECTION_IDS = (
     "newest", "statement", "featured", "campaigns", "personalized",
     "visual", "categories", "services", "faq", "closing",
@@ -61,6 +95,13 @@ class HomepageBanner(BaseModel):
     button_text: str = Field(default="DESCUBRIR", max_length=40)
     link: str = Field(default="/catalogo", max_length=300)
     active: bool = True
+    starts_at: str = Field(default="", max_length=16)
+    ends_at: str = Field(default="", max_length=16)
+
+    @model_validator(mode="after")
+    def validate_schedule(self):
+        validate_campaign_schedule(self.starts_at, self.ends_at)
+        return self
 
     @field_validator("image_url", "mobile_image_url")
     @classmethod
@@ -121,10 +162,13 @@ class HomepageVisualBlock(BaseModel):
     type: str = Field(pattern=r"^(banner|mosaic|carousel)$")
     title: str = Field(default="", max_length=90)
     active: bool = False
+    starts_at: str = Field(default="", max_length=16)
+    ends_at: str = Field(default="", max_length=16)
     items: list[HomepageVisualItem] = Field(default_factory=list, max_length=8)
 
     @model_validator(mode="after")
     def validate_published(self):
+        validate_campaign_schedule(self.starts_at, self.ends_at)
         if self.active and (not self.items or any(not item.image_url for item in self.items)):
             raise ValueError("Un bloque activo necesita imágenes en todos sus elementos")
         return self
@@ -245,9 +289,14 @@ def public_settings(db: Session) -> dict:
 @router.get("/public")
 def get_public_settings(db: Session = Depends(get_db)):
     data = public_settings(db)
+    now = datetime.now(BOGOTA_TZ)
+    data["homepage_banners"] = [
+        banner for banner in data.get("homepage_banners", [])
+        if banner.get("image_url") and campaign_in_window(banner, now)
+    ]
     data["homepage_visual_blocks"] = [
         block for block in data.get("homepage_visual_blocks", [])
-        if block.get("active") and block.get("items")
+        if block.get("items") and campaign_in_window(block, now)
     ]
     return data
 
