@@ -9,7 +9,8 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.core.deps import require_admin
 from app.core.security import hash_password
-from app.models.models import User, UserRole, Location, LocationType
+from app.models.models import User, UserRole, Location, LocationType, UserMFASettings
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 router = APIRouter(prefix="/users", tags=["Usuarios"])
@@ -249,7 +250,16 @@ def update_user(
         user.full_name = data.full_name
     if data.phone is not None:
         user.phone = data.phone
-    if data.role is not None:
+    if data.role is not None and data.role != user.role:
+        # Un rol diferente invalida de inmediato los tokens antiguos, incluso
+        # los refresh emitidos antes de incluir el claim role.
+        security_state = db.query(UserMFASettings).filter_by(user_id=user.id).with_for_update().first()
+        if security_state is None:
+            security_state = UserMFASettings(user_id=user.id, enabled=False, recovery_hashes=[],
+                                              version=0, updated_at=datetime.utcnow())
+            db.add(security_state)
+        security_state.version += 1
+        security_state.updated_at = datetime.utcnow()
         user.role = data.role
     user.location_id = target_location
     if data.active is not None:
