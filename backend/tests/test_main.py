@@ -16,6 +16,7 @@ from app.models.models import (
     Order, OrderItem, OrderChannel, OrderStatus, OrderStockReservation, ShippingRate,
 )
 from app.core.security import hash_password
+from app.core.config import settings
 
 # ── Setup BD de prueba en memoria ─────────────────────────────────────────────
 SQLALCHEMY_TEST_URL = os.environ["DATABASE_URL"]
@@ -40,7 +41,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 
 @pytest.fixture(autouse=True)
-def setup_db():
+def setup_db(monkeypatch):
+    # Los pagos demo solo son accesibles en esta fixture SQLite de tests.
+    # La aplicación desplegada conserva su propio ENVIRONMENT y rechaza
+    # confirmaciones ficticias fuera de desarrollo.
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
     # Cada prueba reinstala su dependencia, incluso si otro archivo creó
     # clientes FastAPI con overrides propios. No dejar sesiones reales activas.
     previous_overrides = dict(app.dependency_overrides)
@@ -765,7 +770,12 @@ def test_variant_image_is_visible_on_variant_and_filtered_catalog(client, auth_h
 
     monkeypatch.setattr(image_routes, "save_file_local", local_save)
     output = BytesIO()
-    Image.new("RGB", (16, 16), (200, 0, 0)).save(output, format="PNG")
+    photo = Image.new("RGB", (64, 64))
+    for y in range(64):
+        for x in range(64):
+            photo.putpixel((x, y), ((x * 5 + y * 3) % 256,
+                                    (x * 2 + y * 7) % 256, (x * 11 + y) % 256))
+    photo.save(output, format="PNG")
 
     uploaded = client.post(
         f"/api/v1/products/{vid}/images",
@@ -1004,15 +1014,29 @@ def test_storefront_settings_are_public_and_superadmin_only(client, auth_headers
     admin.role = UserRole.ADMIN
     db.commit()
     db.close()
+    # El JWT anterior contiene el rol super_admin; al reducir privilegios
+    # el token se revoca (401) antes de evaluar la autorización (403).
     assert client.put(
         "/api/v1/storefront-settings/admin",
         headers=auth_headers, json=defaults.json()
-    ).status_code == 403
+    ).status_code == 401
+    admin_login = client.post("/api/v1/auth/login", json={
+        "email": "test@hjstorevp.com", "password": "Test1234!"
+    })
+    assert admin_login.status_code == 200
+    admin_token = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+    assert client.put("/api/v1/storefront-settings/admin",
+                      headers=admin_token, json=defaults.json()).status_code == 403
 
     db = TestingSession()
     db.query(User).filter(User.email == "test@hjstorevp.com").one().role = UserRole.SUPER_ADMIN
     db.commit()
     db.close()
+    elevated_login = client.post("/api/v1/auth/login", json={
+        "email": "test@hjstorevp.com", "password": "Test1234!"
+    })
+    assert elevated_login.status_code == 200
+    auth_headers = {"Authorization": f"Bearer {elevated_login.json()['access_token']}"}
 
     payload = {**defaults.json(), "store_name": "Tienda Prisma",
                "hero_title": "Muestra tu estilo",
@@ -1038,7 +1062,12 @@ def test_storefront_settings_branding_upload_is_restricted(client, auth_headers,
 
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
     data = BytesIO()
-    Image.new("RGB", (24, 24), (30, 50, 80)).save(data, format="PNG")
+    logo = Image.new("RGB", (64, 64))
+    for y in range(64):
+        for x in range(64):
+            logo.putpixel((x, y), ((x * 5 + y * 3) % 256,
+                                   (x * 2 + y * 7) % 256, (x * 11 + y) % 256))
+    logo.save(data, format="PNG")
     blob = data.getvalue()
 
     response = client.post("/api/v1/storefront-settings/admin/upload-image",
