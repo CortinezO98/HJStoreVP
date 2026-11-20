@@ -11,6 +11,7 @@ from app.core.security import verify_password, create_access_token, create_refre
 from app.core.deps import get_current_user
 from app.models.models import User, UserRole, UserMFASettings
 from app.core.config import settings
+from app.services.security_audit import append_audit, identity_fingerprint
 from app.core.security import hash_password
 from app.services.mfa import (new_secret, encrypt_secret, decrypt_secret,
     match_totp_step, provisioning_uri, generate_recovery_codes, recovery_hash)
@@ -143,6 +144,10 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     if not user or not verify_password(data.password, user.hashed_password):
         note_login_failure(request, data.email)
+        append_audit(db, action='auth.login.failure', outcome='failure',
+                     target_id=identity_fingerprint(data.email),
+                     details={'reason': 'invalid_credentials'})
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
@@ -152,6 +157,8 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if mfa and mfa.enabled:
         return _mfa_challenge(user, mfa)
     clear_login_failures(data.email)
+    append_audit(db, action='auth.login.success', actor_id=user.id, target_id=user.id)
+    db.commit()
     return _token_bundle(user, mfa)
 
 
@@ -201,6 +208,9 @@ def update_my_profile(data: ProfileUpdate, db: Session = Depends(get_db),
         raise HTTPException(status_code=422, detail="El nombre debe tener al menos dos caracteres")
     current_user.full_name = cleaned_name
     current_user.phone = (data.phone.strip() or None) if data.phone is not None else None
+    append_audit(db, action='auth.profile.changed', actor_id=current_user.id,
+                 resource='users', target_id=current_user.id,
+                 details={'changed_fields': ['full_name', 'phone']})
     db.commit()
     db.refresh(current_user)
     return current_user
@@ -216,6 +226,8 @@ def change_my_email(data: ProfileEmailChange, request: Request,
     previous_email = current_user.email
     current_user.email = data.email
     _bump_session_version(db, current_user.id)
+    append_audit(db, action='auth.email.changed', actor_id=current_user.id,
+                 resource='users', target_id=current_user.id)
     db.commit()
     clear_login_failures(previous_email)
     return current_user
@@ -229,6 +241,8 @@ def change_my_password(data: ProfilePasswordChange, request: Request,
     if verify_password(data.new_password, current_user.hashed_password):
         raise HTTPException(status_code=422, detail="La nueva contraseña debe ser diferente")
     current_user.hashed_password = hash_password(data.new_password)
+    append_audit(db, action='auth.password.changed', actor_id=current_user.id,
+                 resource='users', target_id=current_user.id)
     db.commit()
     clear_login_failures(current_user.email)
 
@@ -285,6 +299,7 @@ def confirm_mfa(data: MFACode, request: Request, db: Session = Depends(get_db),
     record.last_totp_step = step
     record.recovery_hashes = hashed
     record.updated_at = datetime.utcnow()
+    append_audit(db, action='auth.mfa.enabled', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
     clear_login_failures(current_user.email)
     return {"enabled": True, "recovery_codes": plain,
@@ -310,9 +325,13 @@ def verify_mfa_challenge(data: MFAChallenge, request: Request, db: Session = Dep
     check_login_limit(request, user.email)
     if not _verify_mfa_code(record, data.code):
         note_login_failure(request, user.email)
+        append_audit(db, action='auth.mfa.failure', actor_id=user.id,
+                     target_id=user.id, outcome='failure', details={'reason': 'invalid_factor'})
+        db.commit()
         raise HTTPException(status_code=401, detail="Código de seguridad incorrecto")
     record.updated_at = datetime.utcnow()
     consume_mfa_challenge(data.challenge_token, int(payload["exp"]))
+    append_audit(db, action='auth.mfa.success', actor_id=user.id, target_id=user.id)
     db.commit()
     clear_login_failures(user.email)
     return _token_bundle(user, record)
@@ -325,6 +344,7 @@ def revoke_my_sessions(data: MFASensitiveAction, request: Request,
     """Invalidar todos los access/refresh tokens anteriores, incluido el actual."""
     record = _require_recent_factor(db, current_user, request, data.current_password, data.code)
     _bump_session_version(db, current_user.id)
+    append_audit(db, action='auth.sessions.revoked', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
     clear_login_failures(current_user.email)
 
@@ -341,6 +361,7 @@ def rotate_mfa_recovery_codes(data: MFARotateCodes, request: Request,
     plain, hashed = generate_recovery_codes()
     record.recovery_hashes = hashed
     record.updated_at = datetime.utcnow()
+    append_audit(db, action='auth.mfa.recovery_rotated', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
     clear_login_failures(current_user.email)
     return {"recovery_codes": plain, "message": "Sustituye los códigos anteriores; no se mostrarán de nuevo"}
@@ -362,5 +383,6 @@ def disable_mfa(data: MFASensitiveAction, request: Request,
     record.last_totp_step = None
     record.version += 1
     record.updated_at = datetime.utcnow()
+    append_audit(db, action='auth.mfa.disabled', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
     clear_login_failures(current_user.email)
