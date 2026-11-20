@@ -76,22 +76,35 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       <div className="position-relative overflow-hidden d-flex"
         style={{ height: mobile ? 400 : 370,
           alignItems: ({top:'flex-start',center:'center',bottom:'flex-end'})[heroPresentation.text_position || 'center'] }}>
-        {heroImage && <img src={src(heroImage)} alt="Portada"
-          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, objectFit: 'cover' }}/>}
-        <div className="position-absolute w-100 h-100"
-          style={{ background: `linear-gradient(90deg,rgba(0,0,0,${(heroPresentation.overlay_opacity ?? 65)/100}),transparent)` }}/>
-        <div className="position-relative p-4" style={{ maxWidth: 530, width: '100%',
+        {heroImage ? <img src={src(heroImage)} alt="Fotografía principal del borrador"
+          style={{ width:'100%', height:'100%', position:'absolute', inset:0, objectFit:'cover' }}/> :
+          <div className="position-absolute top-0 end-0 h-100 d-flex align-items-center justify-content-center"
+            style={{ width:mobile ? '100%' : '43%', background:'#f2f1ef',
+              opacity:mobile ? .18 : 1, color:'#171717', overflow:'hidden' }}>
+            <span style={{ fontWeight:950, fontSize:mobile ? 65 : 75,
+              letterSpacing:-5, transform:'rotate(-8deg)', lineHeight:.9,
+              textAlign:'center' }}>ESTILO<br/>PROPIO<span style={{color:'#dc2626'}}>.</span></span>
+          </div>}
+        {heroImage && <div className="position-absolute w-100 h-100"
+          style={{ background: `linear-gradient(90deg,rgba(0,0,0,${(heroPresentation.overlay_opacity ?? 65)/100}),transparent)` }}/>}
+        <div className="position-relative p-4" style={{ maxWidth: heroImage ? 530 : mobile ? 375 : 550,
+          width: heroImage || mobile ? '100%' : '57%',
           textAlign: heroPresentation.text_align || 'left',
           marginLeft: heroPresentation.text_align === 'right' ? 'auto' : undefined,
           marginInline: heroPresentation.text_align === 'center' ? 'auto' : undefined }}>
           <small>{draft.hero_eyebrow}</small>
-          <h1 style={{ fontSize: mobile ? 38 : 56, fontWeight: 900, lineHeight: 1, margin: '10px 0' }}>
+          <h1 style={{ fontFamily:'Impact, Arial Narrow, sans-serif',
+            fontSize: mobile ? 38 : 48, fontWeight:900, lineHeight:1,
+            margin:'10px 0', textTransform:'uppercase' }}>
             {draft.hero_title || 'ESTILO PROPIO'}
           </h1>
           <p>{draft.hero_description}</p>
           <span className="d-inline-flex align-items-center gap-2 px-3 py-2 bg-white text-black fw-bold">
             {draft.hero_button || 'EXPLORAR'} <ArrowUpRight size={14}/>
           </span>
+          {!heroImage && <small className="d-block mt-3" style={{opacity:.7}}>
+            Diseño predeterminado sin fotografía de campaña
+          </small>}
         </div>
       </div>
     </button>
