@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import decode_token, credential_version_matches
-from app.models.models import User, UserRole
+from app.models.models import User, UserRole, UserMFASettings
 
 bearer_scheme = HTTPBearer()
 
@@ -43,6 +43,10 @@ def get_current_user(
             detail="Sesión revocada; inicia sesión nuevamente",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if user.role in (UserRole.SUPER_ADMIN, UserRole.ADMIN):
+        mfa = db.query(UserMFASettings).filter_by(user_id=user.id, enabled=True).first()
+        if mfa and payload.get("mfa_v") != mfa.version:
+            raise HTTPException(status_code=401, detail="Se requiere una nueva sesión con segundo factor")
     return user
 
 
@@ -86,6 +90,10 @@ def get_optional_user(
     ).first()
     if not user or not credential_version_matches(payload, user.hashed_password):
         return None
+    if user.role in (UserRole.SUPER_ADMIN, UserRole.ADMIN):
+        mfa = db.query(UserMFASettings).filter_by(user_id=user.id, enabled=True).first()
+        if mfa and payload.get("mfa_v") != mfa.version:
+            return None
     return user
 
 
