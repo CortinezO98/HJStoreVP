@@ -13,7 +13,7 @@ from app.models.models import StorefrontVisualBlock, StorefrontVisualSlide
 
 
 VISUAL_FIELDS = (
-    "hero_images", "statement_images", "homepage_banners",
+    "hero_images", "statement_images", "homepage_banners", "homepage_custom_sections",
     "homepage_visual_blocks", "homepage_category_tiles", "homepage_loyalty_banner",
     "hero_presentation", "statement_presentation",
     "hero_carousel_settings", "statement_carousel_settings",
@@ -43,6 +43,11 @@ def iter_visual_entries(data: dict):
     for index, block in enumerate(data.get("homepage_visual_blocks") or []):
         key = str(block.get("id") or f"legacy:{index}")
         yield _entry("visual", f"visual:{key}", index + 20,
+                     {k: v for k, v in block.items() if k != "items"},
+                     [dict(item) for item in (block.get("items") or [])])
+    for index, block in enumerate(data.get("homepage_custom_sections") or []):
+        key = str(block.get("id") or f"legacy-custom:{index}")
+        yield _entry("custom", f"custom:{key}", 120 + index,
                      {k: v for k, v in block.items() if k != "items"},
                      [dict(item) for item in (block.get("items") or [])])
     tiles = data.get("homepage_category_tiles") or []
