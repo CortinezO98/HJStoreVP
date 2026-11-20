@@ -94,6 +94,7 @@ apiClient.interceptors.response.use(
 export const securityAuditApi = {
   list: (params) => apiClient.get('/security-audit', { params }),
   summary: () => apiClient.get('/security-audit/summary'),
+  exportCsv: (params) => apiClient.get('/security-audit/export', { params, responseType: 'blob' }),
 }
 
 export const authApi = {
