@@ -33,27 +33,6 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
     ;[result[index], result[target]] = [result[target], result[index]]
     return result
   }
-  const uploadImage = async (blockIndex, itemIndex, field, file) => {
-    if (!file) return
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.error('Usa una imagen JPG, PNG o WEBP')
-      return
-    }
-    const key = `${blocks[blockIndex].id}-${itemIndex}-${field}`
-    setUploading(key)
-    try {
-      const { data } = await storefrontSettingsApi.upload(file)
-      await verifyUploadedImage(data.url)
-      replaceItem(blockIndex, itemIndex, { [field]: data.url })
-      toast.success('Imagen cargada. Guarda y publica para mostrarla.')
-    } catch (error) {
-      const detail = error?.response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : 'No se pudo subir la imagen')
-    } finally {
-      setUploading('')
-    }
-  }
-
   const queueCrop = (blockIndex, itemIndex, field, file) => {
     if (!file) return
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
