@@ -321,6 +321,9 @@ export const storefrontSettingsApi = {
   saveHomepageDraft: (draft) => apiClient.put('/storefront-settings/admin/homepage-draft', { draft }),
   publishHomepageDraft: () => apiClient.post('/storefront-settings/admin/homepage-publish'),
   discardHomepageDraft: () => apiClient.delete('/storefront-settings/admin/homepage-draft'),
+  homepageVersions: () => apiClient.get('/storefront-settings/admin/homepage-versions'),
+  restoreHomepageVersion: (versionId) =>
+    apiClient.post(`/storefront-settings/admin/homepage-versions/${encodeURIComponent(versionId)}/restore-draft`),
   save: (data) => apiClient.put('/storefront-settings/admin', data),
   upload: (file) => {
     const form = new FormData()
