@@ -15,11 +15,19 @@ const placeholders = [1, 2, 3, 4]
 
 function Tile({ item, mobile }) {
   const image = mobile ? item.mobile_image_url || item.image_url : item.image_url
+  const align = item.text_align || 'left'
+  const position = item.text_position || 'bottom'
+  const opacity = (item.overlay_opacity ?? 65) / 100
   return <div className="position-relative overflow-hidden bg-dark text-white" style={{ minHeight: mobile ? 220 : 245 }}>
     {image && <img src={src(image)} alt={item.title || 'Campaña'}
       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>}
-    <div className="position-absolute bottom-0 start-0 w-100 p-3"
-      style={{ background: 'linear-gradient(transparent, rgba(0,0,0,.88))' }}>
+    <div className="position-absolute inset-0" aria-hidden="true"
+      style={{ background: `linear-gradient(transparent,rgba(0,0,0,${opacity}))` }}/>
+    <div className="position-absolute start-0 w-100 p-3"
+      style={{ textAlign: align, top: position === 'top' ? 0 :
+        position === 'center' ? '50%' : 'auto',
+        bottom: position === 'bottom' ? 0 : 'auto',
+        transform: position === 'center' ? 'translateY(-50%)' : undefined }}>
       <small>{item.subtitle || ''}</small>
       <strong className="d-block fs-5 lh-sm text-uppercase">{item.title || 'NUEVA COLECCIÓN'}</strong>
       <small className="d-inline-flex bg-white text-black px-2 py-1 mt-2">
@@ -112,7 +120,11 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
         <img src={src(mobile ? loyalty.mobile_image_url || loyalty.image_url : loyalty.image_url)}
           alt="Club de clientes" style={{ position:'absolute', inset:0,width:'100%',height:'100%',objectFit:'cover' }}/>
         <div className="position-absolute inset-0" style={{ background:'linear-gradient(90deg,#000a,#0002)' }}/>
-        <div className="position-relative">
+        <div className="position-relative" style={{
+          textAlign: loyalty.text_align || 'left',
+          paddingTop: loyalty.text_position === 'bottom' ? (mobile ? 110 : 145) :
+            loyalty.text_position === 'center' ? (mobile ? 70 : 100) : 0,
+        }}>
           <small>{loyalty.eyebrow}</small>
           <h2 style={{ fontWeight:900,fontSize:mobile ? 28 : 42 }}>{loyalty.title}</h2>
           <p>{loyalty.description}</p>
