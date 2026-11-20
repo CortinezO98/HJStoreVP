@@ -1,4 +1,4 @@
-# HJStoreVP · Migración relacional de la portada (20261119_14)
+# HJStoreVP · Migración relacional de la portada (20261120_15)
 
 ## Objetivo y compatibilidad
 
@@ -29,7 +29,7 @@ como fuente única de verdad ni eliminar el sistema JSON.
 4. Revisa la secuencia disponible:
    `docker compose exec backend alembic heads`.
 
-La revisión nueva se llama `20261119_14` y depende de `20261118_13`.
+La revisión nueva se llama `20261120_15` y depende de `20261119_14`.
 Si el ambiente está en una revisión anterior, Alembic ejecutará las
 revisiones intermedias. Revisa previamente sus efectos.
 
