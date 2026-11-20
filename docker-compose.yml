@@ -1,10 +1,13 @@
-version: "3.9"
-
 services:
   db:
     image: mariadb:10.11
     container_name: hjstorevp_db
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
       MYSQL_DATABASE: ${DB_NAME:-hjstorevp}
@@ -29,6 +32,11 @@ services:
     image: redis:7-alpine
     container_name: hjstorevp_redis
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -45,8 +53,13 @@ services:
       dockerfile: Dockerfile
     container_name: hjstorevp_backend
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - DATABASE_URL=mysql+pymysql://${DB_USER:-hjstore}:${DB_PASSWORD:-hjstore123}@db:3306/${DB_NAME:-hjstorevp}
       - REDIS_URL=redis://redis:6379/0
@@ -60,6 +73,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 35s
+      retries: 3
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   notification-worker:
@@ -69,6 +88,11 @@ services:
       dockerfile: Dockerfile
     container_name: hjstorevp_notification_worker
     restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - DATABASE_URL=mysql+pymysql://${DB_USER:-hjstore}:${DB_PASSWORD:-hjstore123}@db:3306/${DB_NAME:-hjstorevp}
       - REDIS_URL=redis://redis:6379/0
@@ -87,6 +111,11 @@ services:
       dockerfile: Dockerfile
     container_name: hjstorevp_cart_recovery
     restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - DATABASE_URL=mysql+pymysql://${DB_USER:-hjstore}:${DB_PASSWORD:-hjstore123}@db:3306/${DB_NAME:-hjstorevp}
       - ENVIRONMENT=${ENVIRONMENT:-development}
@@ -113,8 +142,13 @@ services:
       dockerfile: Dockerfile
     container_name: hjstorevp_frontend
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -129,8 +163,13 @@ services:
       dockerfile: Dockerfile
     container_name: hjstorevp_admin
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
-      - "5174:5174"
+      - "127.0.0.1:5174:5174"
     volumes:
       - ./frontend-admin:/app
       - /app/node_modules
