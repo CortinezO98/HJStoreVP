@@ -175,6 +175,53 @@ class StorefrontSettings(Base):
     )
 
 
+# ─── HOMEPAGE VISUAL LAYOUT (RELATIONAL MIRROR) ─────────────────────────────
+# Legacy storefront_settings.settings_data remains the compatibility read model.
+# New rows track editable visual blocks/slides by publication scope.
+class StorefrontVisualBlock(Base):
+    __tablename__ = "storefront_visual_blocks"
+    __table_args__ = (
+        UniqueConstraint("storefront_id", "scope", "block_key", name="uq_visual_block_scope_key"),
+        Index("ix_visual_block_scope_position", "storefront_id", "scope", "position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    storefront_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("storefront_settings.id", ondelete="CASCADE"), nullable=False
+    )
+    scope: Mapped[str] = mapped_column(String(70), nullable=False)  # published, draft, history:<id>
+    block_key: Mapped[str] = mapped_column(String(110), nullable=False)
+    block_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    configuration: Mapped[dict] = mapped_column(JSON, nullable=False)
+    items: Mapped[list["StorefrontVisualSlide"]] = relationship(
+        "StorefrontVisualSlide", back_populates="block",
+        cascade="all, delete-orphan", passive_deletes=True,
+        order_by="StorefrontVisualSlide.position",
+    )
+
+
+class StorefrontVisualSlide(Base):
+    __tablename__ = "storefront_visual_slides"
+    __table_args__ = (
+        UniqueConstraint("block_id", "position", name="uq_visual_slide_position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    block_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("storefront_visual_blocks.id", ondelete="CASCADE"), nullable=False
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    image_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    mobile_image_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    title: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    link: Mapped[str] = mapped_column(String(300), nullable=False, default="/catalogo")
+    configuration: Mapped[dict] = mapped_column(JSON, nullable=False)
+    block: Mapped["StorefrontVisualBlock"] = relationship(
+        "StorefrontVisualBlock", back_populates="items"
+    )
+
+
 # ─── PRODUCTS ───────────────────────────────────────────────────────────────
 
 class Product(Base, TimestampMixin):
