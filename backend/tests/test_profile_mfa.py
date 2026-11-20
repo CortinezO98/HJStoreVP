@@ -136,3 +136,52 @@ def test_challenge_token_cannot_be_used_as_access_token(mfa_db, monkeypatch):
     with pytest.raises(HTTPException) as exc:
         get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=challenge), db)
     assert exc.value.status_code == 401
+
+
+def test_refresh_from_before_mfa_activation_is_rejected(mfa_db, monkeypatch):
+    import app.api.v1.endpoints.auth as auth
+    from app.schemas.schemas import RefreshRequest
+    db, user = mfa_db
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    original = login(LoginRequest(email=user.email, password="RootSecurePassword123!"), request, db)
+    setup_mfa(MFAStart(current_password="RootSecurePassword123!"), request, db, user)
+    monkeypatch.setattr(auth, "match_totp_step", lambda secret, code: 100 if code == "123456" else None)
+    confirm_mfa(MFACode(code="123456"), request, db, user)
+    with pytest.raises(HTTPException) as exc:
+        auth.refresh_token(RefreshRequest(refresh_token=original.refresh_token), db)
+    assert exc.value.status_code == 401
+
+
+def test_changing_email_revokes_existing_sessions(mfa_db):
+    import app.api.v1.endpoints.auth as auth
+    from app.core.deps import get_current_user
+    from fastapi.security import HTTPAuthorizationCredentials
+    db, user = mfa_db
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    original = login(LoginRequest(email=user.email, password="RootSecurePassword123!"), request, db)
+    updated = auth.change_my_email(auth.ProfileEmailChange(
+        email="other@example.org", current_password="RootSecurePassword123!"), request, db, user)
+    assert updated.email == "other@example.org"
+    with pytest.raises(HTTPException) as exc:
+        get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=original.access_token), db)
+    assert exc.value.status_code == 401
+
+
+def test_disabled_mfa_requires_reauthentication_and_revokes_tokens(mfa_db, monkeypatch):
+    import app.api.v1.endpoints.auth as auth
+    db, user = mfa_db
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    setup_mfa(MFAStart(current_password="RootSecurePassword123!"), request, db, user)
+    monkeypatch.setattr(auth, "match_totp_step", lambda secret, code: 100 if code == "123456" else None)
+    confirm_mfa(MFACode(code="123456"), request, db, user)
+    record = db.query(UserMFASettings).filter_by(user_id=user.id).one()
+    original_version = record.version
+    with pytest.raises(HTTPException) as exc:
+        auth.disable_mfa(auth.MFASensitiveAction(current_password="wrong", code="123456"), request, db, user)
+    assert exc.value.status_code == 403
+    auth.disable_mfa(auth.MFASensitiveAction(current_password="RootSecurePassword123!",
+                                            code="123456"), request, db, user)
+    assert record.enabled is False
+    assert record.secret_ciphertext is None
+    assert record.recovery_hashes == []
+    assert record.version == original_version + 1
