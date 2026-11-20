@@ -1,31 +1,32 @@
+import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from './store'
 
 import AdminLayout from './components/layout/AdminLayout'
-import LoginPage from './pages/LoginPage'
-import MyProfilePage from './pages/MyProfilePage'
-import SecurityAuditPage from './pages/SecurityAuditPage'
-import CommercialAuditPage from './pages/CommercialAuditPage'
-import DashboardPage from './pages/DashboardPage'
-import ProductsPage from './pages/ProductsPage'
-import CategoriesPage from './pages/CategoriesPage'
-import InventoryPage from './pages/InventoryPage'
-import OrdersPage from './pages/OrdersPage'
-import WebOrdersPage from './pages/WebOrdersPage'
-import LocationsPage from './pages/LocationsPage'
-import UsersPage from './pages/UsersPage'
-import ReportsPage from './pages/ReportsPage'
-import ShippingRatesPage from './pages/ShippingRatesPage'
-import NotificationsPage from './pages/NotificationsPage'
-import PostSalePage from './pages/PostSalePage'
-import BillingPage from './pages/BillingPage'
-import TaxReadinessPage from './pages/TaxReadinessPage'
-import PromotionsPage from './pages/PromotionsPage'
-import EngagementPage from './pages/EngagementPage'
-import IntegrationsPage from './pages/IntegrationsPage'
-import CashPage from './pages/CashPage'
-import StorefrontSettingsPage from './pages/StorefrontSettingsPage'
-import HomeStudioPage from './pages/HomeStudioPage'
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const MyProfilePage = lazy(() => import('./pages/MyProfilePage'))
+const SecurityAuditPage = lazy(() => import('./pages/SecurityAuditPage'))
+const CommercialAuditPage = lazy(() => import('./pages/CommercialAuditPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProductsPage = lazy(() => import('./pages/ProductsPage'))
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'))
+const InventoryPage = lazy(() => import('./pages/InventoryPage'))
+const OrdersPage = lazy(() => import('./pages/OrdersPage'))
+const WebOrdersPage = lazy(() => import('./pages/WebOrdersPage'))
+const LocationsPage = lazy(() => import('./pages/LocationsPage'))
+const UsersPage = lazy(() => import('./pages/UsersPage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const ShippingRatesPage = lazy(() => import('./pages/ShippingRatesPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const PostSalePage = lazy(() => import('./pages/PostSalePage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
+const TaxReadinessPage = lazy(() => import('./pages/TaxReadinessPage'))
+const PromotionsPage = lazy(() => import('./pages/PromotionsPage'))
+const EngagementPage = lazy(() => import('./pages/EngagementPage'))
+const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'))
+const CashPage = lazy(() => import('./pages/CashPage'))
+const StorefrontSettingsPage = lazy(() => import('./pages/StorefrontSettingsPage'))
+const HomeStudioPage = lazy(() => import('./pages/HomeStudioPage'))
 
 function ProtectedAdmin({ roles }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -49,6 +50,7 @@ function ProtectedAdmin({ roles }) {
 
 export default function App() {
   return (
+    <Suspense fallback={<div role="status" aria-live="polite" className="min-h-screen flex items-center justify-center text-gray-600">Cargando módulo…</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
@@ -216,5 +218,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }
