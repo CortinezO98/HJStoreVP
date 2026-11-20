@@ -74,8 +74,11 @@ export default function HomePage() {
   // Dos formatos distintos, sin volver a mostrar exactamente las mismas fichas.
   const showNewestCarousel = newest.filter(product => product?.primary_image).length >= 4
   const showcase = newest.slice(0, 4)
-  const newestIds = new Set(newest.map(product => product.id))
-  const featuredShowcase = featured.filter(product => !newestIds.has(product.id)).slice(0, 4)
+  const alreadyDisplayedIds = new Set((showNewestCarousel
+    ? newest.filter(product => product?.primary_image)
+    : showcase).map(product => product.id))
+  const featuredShowcase = featured.filter(product =>
+    !alreadyDisplayedIds.has(product.id)).slice(0, 4)
   // Nuevos carruseles vivos: muestran fotos de los productos disponibles en el catálogo.
   // No dependen de campañas creadas manualmente desde el administrador.
   const latestWithPhotos = newest.filter(product => product?.primary_image)
