@@ -85,13 +85,17 @@ function statusBadge(active) {
             throw new Error('La contraseña temporal debe tener al menos 12 caracteres')
         }
 
+        if (currentUser?.role !== 'super_admin' && ['admin', 'super_admin'].includes(form.role) && (!isEdit || form.role !== userItem?.role)) {
+            throw new Error('Solo el Superadministrador puede asignar roles administrativos')
+        }
+
         if (form.role === 'seller' && !form.location_id) {
             throw new Error('Debes asignar un punto físico al vendedor')
         }
 
         const payload = {
             full_name: form.full_name.trim(),
-            email: form.email.trim(),
+            ...(isEdit && userItem?.id === currentUser?.id ? {} : { email: form.email.trim() }),
             phone: form.phone.trim() || null,
         }
         if (!isEdit) {
@@ -164,6 +168,7 @@ function statusBadge(active) {
                 type="email"
                 className="form-control"
                 value={form.email}
+                disabled={isEdit && userItem?.id === currentUser?.id}
                 onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                 placeholder="usuario@correo.com"
                 />
