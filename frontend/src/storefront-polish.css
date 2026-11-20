@@ -1546,3 +1546,102 @@
 @media (prefers-reduced-motion: reduce) {
   .store-cart-drawer { animation: none; }
 }
+
+
+/* Header superpuesto solo en inicio con hero publicado.
+   La portada sin imágenes conserva el diseño dividido. */
+.editorial-header {
+  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+.editorial-header.store-header-overlay {
+  background: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+.store-header-overlay .editorial-nav a,
+.store-header-overlay .editorial-actions > a,
+.store-header-overlay .editorial-actions > button,
+.store-header-overlay .editorial-logo,
+.store-header-overlay .store-brand-name,
+.store-header-overlay .store-brand-name small {
+  color: #fff;
+}
+.store-header-overlay .editorial-nav a.editorial-sale { color: #fecaca; }
+.store-header-overlay .store-brand-emblem,
+.store-header-overlay .store-custom-header-logo {
+  filter: brightness(0) invert(1);
+}
+.store-header-overlay .editorial-actions > a:hover,
+.store-header-overlay .editorial-actions > button:hover {
+  background: rgb(255 255 255 / 19%);
+}
+.store-header-overlay .editorial-bag > span { background: #fff; color: #111; }
+.store-header-overlay .editorial-nav a,
+.store-header-overlay .editorial-actions > a,
+.store-header-overlay .editorial-actions > button,
+.store-header-overlay .store-brand-name {
+  text-shadow: 0 1px 8px rgb(0 0 0 / 55%);
+}
+.store-home-hero--immersive {
+  position: relative;
+  margin-top: -66px;
+  isolation: isolate;
+}
+.store-home-hero--immersive .store-home-hero-grid {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  max-width: none;
+  min-height: clamp(590px, 79svh, 920px);
+}
+.store-home-hero--immersive .store-home-hero-art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.store-home-hero--immersive .store-home-hero-art::before { display: none; }
+.store-home-hero--immersive .store-home-hero-art.has-image::after {
+  width: auto;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(0 0 0 / 76%) 0%, rgb(0 0 0 / 30%) 55%, rgb(0 0 0 / 25%) 100%);
+}
+.store-home-hero--immersive .store-home-hero-copy {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 900px);
+  min-height: inherit;
+  padding-top: clamp(130px, 13vw, 210px);
+  padding-bottom: clamp(70px, 9vw, 130px);
+}
+.store-home-hero--immersive .store-home-hero-copy h1 {
+  text-shadow: 0 3px 24px rgb(0 0 0 / 25%);
+}
+.store-home-hero--immersive .store-home-hero-carousel-controls {
+  z-index: 6;
+  left: auto;
+  right: 20px;
+  transform: none;
+}
+@media (max-width: 767px) {
+  .store-home-hero--immersive { margin-top: -60px; }
+  .store-home-hero--immersive .store-home-hero-grid {
+    display: flex;
+    min-height: min(850px, 92svh);
+  }
+  .store-home-hero--immersive .store-home-hero-copy {
+    justify-content: flex-end;
+    padding: 145px 22px 82px;
+  }
+  .store-home-hero--immersive .store-home-hero-copy h1 {
+    font-size: clamp(46px, 11.7vw, 80px);
+  }
+  .store-home-hero--immersive .store-home-hero-copy > p { color: #eee; }
+  .store-home-hero--immersive .store-home-hero-footnote { margin-top: 28px; color: #ddd; }
+  .store-home-hero--immersive .store-home-hero-carousel-controls { bottom: 12px; right: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editorial-header { transition: none; }
+}
