@@ -162,3 +162,74 @@ docker compose ps
 **Nunca** ejecutar `docker compose down -v` ni aplicar tests
 contra la BD de la tienda; `conftest.py` debe seguir bloqueando
 motores distintos de SQLite y los pagos reales durante pytest.
+
+
+## Segunda entrega de la Fase D — CI y auditoría de dependencias
+
+La ejecución local del 20/11/2026 reportada por el desarrollador
+terminó con **201 pruebas aprobadas, 0 fallidas**; panel compilado,
+verificador de contratos OK, Alembic `20261120_18 (head)`,
+servicios operativos. Esto es una validación local, no una afirmación
+de que los nuevos pipelines GitHub hayan finalizado.
+
+Se ampliaron las verificaciones de seguridad para cubrir:
+
+- Backend Python: `pip-audit` en el archivo de requisitos y
+  `pip check` tras instalación en los workflows.
+- Panel administrativo: `npm audit --json` y verificación de compilación.
+- Tienda pública: `npm audit --json` y compilación independiente.
+- Analizador de hallazgos versionado en
+  `scripts/ci/summarize_dependency_audit.py`, con pruebas
+  `scripts/ci/test_summarize_dependency_audit.py`.
+
+### Interpretación correcta del CI
+
+Un resultado de escáner distinto de 0 puede representar
+vulnerabilidades; errores de ejecución del escáner (código > 1),
+reportes JSON incompletos o malformados hacen **fallar el job**.
+Los hallazgos reales se registran y se muestran como advertencias;
+**todavía NO bloquean automáticamente despliegues** hasta clasificar
+las vulnerabilidades existentes y definir excepciones aprobadas.
+El informe completo se conserva 14 días como artifact
+`fase-d-dependency-audits` en Actions.
+
+El pipeline mantiene cambios comerciales fuera de alcance. No ejecuta
+`npm audit fix --force`, no hace upgrade automático de paquetes ni
+introduce nuevas migraciones. Las versiones a corregir se decidirán
+solo al inspeccionar hallazgos reales, versiones corregidas,
+impacto y compatibilidad con las 201 pruebas.
+
+### Instalaciones reproducibles pendientes
+
+Ninguno de los dos frontends dispone actualmente de
+`package-lock.json` **versionado**. El archivo
+`frontend-admin/package-lock.json` que existe localmente
+sin rastrear debe revisarse antes de agregarlo a Git, verificando
+que corresponda al `package.json` actual. Los workflows usan
+`npm ci` cuando hay lockfile; mientras falta, usan `npm install`
+y advierten expresamente que la instalación no es reproducible.
+No publicar producción como lista hasta cerrar este punto.
+
+Plan de adopción: inspeccionar primero el diff y dependencias
+transitivas, validar `npm ci` y build de ambos frontends con
+locks propuestos, añadir cada lock a `main` y convertir los
+fallbacks de `npm install` a errores en CI.
+
+### Priorización de hallazgos
+
+1. Críticos/altos alcanzables desde producción: corregir primero;
+   activar bloqueo una vez confirmado el baseline.
+2. Vulnerabilidades transitivas o solo herramientas de desarrollo:
+   verificar realmente su exposición, ruta de explotación y solución.
+3. Cambios mayores: probar integración de pagos, reservas concurrentes,
+   MFA, archivos, webhooks, devoluciones y frontends antes de integrar.
+4. Documentar riesgos aceptados, responsable y fecha de revisión.
+   No confundir un resultado de auditoría sin errores con ausencia
+   total de vulnerabilidades.
+
+Para revisar resultados ir a
+`GitHub > Actions > Fase D - estabilidad y rendimiento` y descargar
+`fase-d-dependency-audits`. Los archivos son
+`admin-dependency-audit.json`, `store-dependency-audit.json`
+y `backend-dependency-audit.json`. No contienen contraseñas
+volcadas por la aplicación; de todas formas controlar su acceso.
