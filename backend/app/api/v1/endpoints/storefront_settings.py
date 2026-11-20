@@ -458,7 +458,7 @@ def resolve_public_destinations(settings_data: dict, db: Session) -> None:
 def sync_visual_layout_if_ready(db: Session, row: StorefrontSettings) -> None:
     """Keep old JSON compatible before migration; mirror atomically after it.
 
-    Migration 20261119_14 must be applied before relational tracking is enabled.
+    Migration 20261120_15 must be applied before relational tracking is enabled.
     Never alter the published JSON if the new tables do not exist yet.
     """
     inspector = inspect(db.get_bind())
