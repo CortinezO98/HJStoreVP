@@ -23,6 +23,7 @@ import { categoriesApi, productsApi, apiClient } from '../services/api'
 import toast from 'react-hot-toast'
 import ProductVariantsManager from '../components/products/ProductVariantsManager'
 import ImageCropModal from '../components/products/ImageCropModal'
+import ProductPhotoQuality from '../components/products/ProductPhotoQuality'
 import AdminTableMessage from '../components/AdminTableMessage'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
@@ -252,8 +253,14 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
         <div className="p-6">
           <p className="text-sm text-gray-500 mb-4">
             Marca una fotografía como principal para la portada del catálogo y utiliza las flechas
-            para establecer la secuencia de la galería y su carrusel en la tienda pública. La primera imagen será la principal.
+            para establecer la secuencia de la galería en la tienda pública. La primera imagen será la principal.
+            Las alertas fotográficas orientan la revisión; no cambian ni eliminan imágenes existentes.
           </p>
+          {!isLoading && images.length > 0 && <div className="mb-4 border rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-700">
+            {images.length} fotografía{images.length !== 1 ? 's' : ''} ·
+            {images.filter(img => img.is_primary).length === 1
+              ? ' Imagen principal configurada' : ' Revisa cuál es la imagen principal'}
+          </div>}
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -273,7 +280,8 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
                   <div key={img.id} className="border border-gray-100 rounded-xl overflow-hidden bg-white">
                     <div className="aspect-square bg-gray-50 overflow-hidden">
                       {src ? (
-                        <img src={src} alt={img.alt_text || product.name} className="w-full h-full object-cover" />
+                        <img src={src} alt={img.alt_text || product.name} loading="lazy"
+                          className="w-full h-full object-contain p-2" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <ImageIcon size={24} className="text-gray-300" />
@@ -309,6 +317,8 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
                         </button>
                       )}
 
+                      <ProductPhotoQuality src={src} altText={img.alt_text}
+                        isPrimary={img.is_primary} compact />
                       <ImageAltEditor key={`${img.id}-${img.alt_text || ''}`} image={img} productId={product.id}
                         onSaved={() => {
                           queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
