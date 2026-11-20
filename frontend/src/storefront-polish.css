@@ -1712,3 +1712,230 @@
 @media (prefers-reduced-motion: reduce) {
   .home-visual-tile picture img { transition: none; }
 }
+
+
+/* HJSTOREVP – fotografía y descubrimiento en la portada pública.
+   Los carruseles usan ProductCard: conservan acciones, precios y existencias reales. */
+.store-editorial-rail {
+  width: 100%;
+  overflow: hidden;
+  padding: clamp(44px, 6vw, 95px) 0 clamp(32px, 5vw, 64px);
+  background: #f2f0ed;
+  color: #141414;
+}
+.store-editorial-rail:nth-of-type(even) { background: #f9f8f6; }
+.store-editorial-rail-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 clamp(18px, 5vw, 78px);
+  margin-bottom: clamp(24px, 3vw, 38px);
+}
+.store-editorial-rail-copy { max-width: 860px; }
+.store-editorial-rail-eyebrow {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 11px;
+  letter-spacing: .22em;
+  font-weight: 800;
+  color: #666;
+}
+.store-editorial-rail-copy h2 {
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: clamp(43px, 7vw, 110px);
+  letter-spacing: -.04em;
+  line-height: .94;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.store-editorial-rail-copy p {
+  font-size: clamp(13px, 1.3vw, 16px);
+  max-width: 570px;
+  margin-top: 15px;
+  color: #656565;
+  line-height: 1.6;
+}
+.store-editorial-rail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.store-editorial-rail-actions > button {
+  border: 1px solid #181818;
+  background: transparent;
+  width: 45px;
+  height: 45px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: background .18s ease, color .18s ease;
+}
+.store-editorial-rail-actions > button:hover { color: #fff; background: #111; }
+.store-editorial-rail-viewall {
+  color: #fff;
+  background: #111;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 45px;
+  padding: 0 16px;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .06em;
+  gap: 9px;
+}
+.store-editorial-rail-track {
+  display: flex;
+  gap: clamp(12px, 2vw, 28px);
+  overflow-x: auto;
+  padding: 6px clamp(18px, 5vw, 78px) 28px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: #777 transparent;
+  overscroll-behavior-inline: contain;
+}
+.store-editorial-rail-item {
+  flex: 0 0 clamp(200px, 23vw, 340px);
+  min-width: 0;
+  scroll-snap-align: start;
+  background: #fff;
+  padding: 10px;
+  box-shadow: 0 15px 35px rgb(0 0 0 / .035);
+}
+.store-editorial-rail-item .editorial-product-media > a {
+  aspect-ratio: 4 / 4.5;
+}
+.store-editorial-rail-item .editorial-product-details { padding: 3px 5px 12px; }
+.store-editorial-rail-end {
+  flex: 0 0 clamp(200px, 23vw, 340px);
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 30px;
+  background: #121212;
+  color: #fff;
+  min-height: 390px;
+  text-decoration: none;
+}
+.store-editorial-rail-end > span:first-child {
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: 28px;
+}
+.store-editorial-rail-end strong {
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  font-size: clamp(31px, 3vw, 47px);
+  line-height: 1;
+}
+.store-editorial-rail-end-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #fff;
+  padding-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: .05em;
+  font-weight: 800;
+}
+.store-editorial-rail-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px clamp(18px, 5vw, 78px) 0;
+  color: #737373;
+  font-size: 10px;
+  letter-spacing: .12em;
+  font-weight: 700;
+}
+.store-photo-category-feature {
+  max-width: 1480px;
+  margin: 0 auto 56px;
+  padding: 0;
+}
+.store-photo-category-title { max-width: 770px; padding-bottom: 28px; }
+.store-photo-category-title > span {
+  display: block;
+  font-size: 11px;
+  letter-spacing: .18em;
+  font-weight: 800;
+  color: #777;
+  margin-bottom: 12px;
+}
+.store-photo-category-title h2 {
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: clamp(42px, 6vw, 84px);
+  text-transform: uppercase;
+  line-height: .95;
+  letter-spacing: -.035em;
+}
+.store-photo-category-title p { color: #666; margin-top: 16px; line-height: 1.6; }
+.store-photo-category-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.store-photo-category-tile {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: #e5e5e5;
+  min-height: clamp(260px, 36vw, 500px);
+  isolation: isolate;
+}
+.store-photo-category-tile img {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  object-fit: cover;
+  transition: transform .6s ease;
+}
+.store-photo-category-tile:hover img { transform: scale(1.055); }
+.store-photo-category-tile::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 35% 0 0;
+  background: linear-gradient(transparent, rgb(0 0 0 / .8));
+}
+.store-photo-category-label {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 2;
+  color: #fff;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.store-photo-category-label strong {
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: clamp(24px, 2.6vw, 40px);
+  line-height: 1;
+  text-transform: uppercase;
+}
+@media (max-width: 900px) {
+  .store-photo-category-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .store-editorial-rail-viewall { display: none; }
+}
+@media (max-width: 639px) {
+  .store-editorial-rail { padding-top: 48px; }
+  .store-editorial-rail-top { align-items: flex-end; }
+  .store-editorial-rail-copy h2 { font-size: clamp(42px, 11vw, 65px); }
+  .store-editorial-rail-copy p { font-size: 12px; }
+  .store-editorial-rail-actions > button { width: 39px; height: 43px; }
+  .store-editorial-rail-item { flex-basis: min(72vw, 280px); }
+  .store-editorial-rail-end { flex-basis: min(72vw, 280px); min-height: 360px; }
+  .store-photo-category-tiles { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .store-photo-category-tile { min-height: 255px; }
+  .store-photo-category-label { left: 12px; right: 12px; bottom: 14px; }
+  .store-photo-category-label strong { font-size: clamp(21px, 6vw, 30px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .store-photo-category-tile img { transition: none; }
+}
