@@ -1,0 +1,79 @@
+name: Fase D - estabilidad y rendimiento
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-regression:
+    name: Backend - regresion completa
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Ejecutar pruebas funcionales y de seguridad
+        run: python -m pytest tests/ -q
+
+  admin-regression:
+    name: Admin - contrato y modulos lazy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - name: Verificar contratos administrativos
+        run: node scripts/verify-admin-modules.mjs
+      - name: Compilar panel
+        run: npm run build
+      - name: Verificar separacion real de JavaScript
+        run: |
+          count=$(find dist/assets -maxdepth 1 -type f -name '*.js' | wc -l)
+          echo "Bundles JavaScript: $count"
+          test "$count" -gt 1
+
+  dependency-inventory:
+    name: Dependencias - informe sin actualizacion automatica
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencias npm y auditoria JSON
+        working-directory: frontend-admin
+        run: |
+          npm install --ignore-scripts --no-audit
+          npm audit --json > ../admin-dependency-audit.json || true
+      - name: Dependencias Python y auditoria JSON
+        working-directory: backend
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit --requirement requirements.txt --format json > ../backend-dependency-audit.json || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fase-d-dependency-audits
+          path: |
+            admin-dependency-audit.json
+            backend-dependency-audit.json
+          if-no-files-found: warn
+          retention-days: 14
