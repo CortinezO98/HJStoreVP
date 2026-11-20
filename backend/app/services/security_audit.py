@@ -16,6 +16,7 @@ from app.models.models import SecurityAuditEvent
 _ALLOWED_DETAIL_KEYS = frozenset({
     "old_role", "new_role", "old_active", "new_active", "changed_fields",
     "mfa_enabled", "account_kind", "reason", "location_id",
+    "old_status", "new_status", "price_changes", "origin",
 })
 _ALLOWED_ACTIONS = frozenset({
     "auth.login.success", "auth.login.failure", "auth.mfa.success",
@@ -24,6 +25,7 @@ _ALLOWED_ACTIONS = frozenset({
     "auth.mfa.recovery_rotated", "auth.sessions.revoked",
     "users.created", "users.updated", "users.status_changed",
     "users.password_reset", "users.deleted",
+    "catalog.prices.changed", "orders.status.changed",
 })
 
 
@@ -67,6 +69,22 @@ def append_audit(db, *, action: str, actor_id: int | None = None,
                 for item in value
             ):
                 raise ValueError("Lista de campos inválida")
+        elif key == "price_changes":
+            if not isinstance(value, dict) or not value or len(value) > 3:
+                raise ValueError("Cambios de precio inválidos")
+            if any(field not in ("sale_price", "cost_price", "margin_pct")
+                   or not isinstance(change, dict)
+                   or set(change) != {"before", "after"}
+                   or any(not isinstance(amount, str) or len(amount) > 32
+                          for amount in change.values())
+                   for field, change in value.items()):
+                raise ValueError("Cambio monetario no permitido")
+        elif key in ("old_status", "new_status"):
+            if not isinstance(value, str) or not 1 <= len(value) <= 32:
+                raise ValueError("Estado inválido")
+        elif key == "origin":
+            if value not in ("authenticated", "system"):
+                raise ValueError("Origen inválido")
         elif key == "reason":
             if value not in ("invalid_credentials", "invalid_factor"):
                 raise ValueError("Motivo no permitido")
