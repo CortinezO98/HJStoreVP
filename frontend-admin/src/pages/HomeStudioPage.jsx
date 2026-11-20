@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { ArrowDown, ArrowUp, CheckCircle2, Eye, RotateCcw, Save, Send, Smartphone, Monitor } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Eye, RotateCcw, Save, Send, Smartphone, Monitor, Plus, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { storefrontSettingsApi } from '../services/api'
 import HomeStudioPreview from '../components/storefront/HomeStudioPreview'
@@ -20,19 +20,17 @@ const SECTIONS = [
   ['categories','Categorías'],['loyalty','Banner de fidelización'],['services','Beneficios'],
   ['faq','Preguntas frecuentes'],['closing','Cierre editorial'],
 ]
-const normalizeOrder = value => {
-  const ids = SECTIONS.map(([id]) => id)
-  if (!Array.isArray(value)) return ids
-  const normalized = [...new Set(value.filter(id => ids.includes(id)))]
+const normalizeOrder = (value, custom = []) => {
+  const builtIn = SECTIONS.map(([id]) => id)
+  const all = [...builtIn, ...custom.map(block => 'custom:' + block.id)]
+  const normalized = [...new Set((Array.isArray(value) ? value : builtIn).filter(id => all.includes(id)))]
   for (const [id, after] of [['visual', 'campaigns'], ['loyalty', 'categories']]) {
     if (!normalized.includes(id)) {
       const position = normalized.indexOf(after)
       normalized.splice(position >= 0 ? position + 1 : normalized.length, 0, id)
     }
   }
-  for (const id of ids) {
-    if (!normalized.includes(id)) normalized.push(id)
-  }
+  for (const id of all) if (!normalized.includes(id)) normalized.push(id)
   return normalized
 }
 const blankBanner = () => ({
@@ -62,7 +60,8 @@ export default function HomeStudioPage() {
   const [versions, setVersions] = useState([])
   const [storageHealth, setStorageHealth] = useState(null)
   const changed = draft && savedDraft && JSON.stringify(draft) !== JSON.stringify(savedDraft)
-  const order = useMemo(() => normalizeOrder(draft?.homepage_section_order), [draft?.homepage_section_order])
+  const order = useMemo(() => normalizeOrder(draft?.homepage_section_order,
+    draft?.homepage_custom_sections), [draft?.homepage_section_order, draft?.homepage_custom_sections])
   const hidden = useMemo(() => draft?.homepage_hidden_sections || [], [draft?.homepage_hidden_sections])
 
   const load = async () => {
@@ -70,7 +69,11 @@ export default function HomeStudioPage() {
     setLoadError('')
     try {
       const { data } = await storefrontSettingsApi.readHomepageDraft()
-      const normalized = { ...data.draft, homepage_section_order: normalizeOrder(data.draft.homepage_section_order) }
+      const normalized = { ...data.draft,
+        homepage_custom_sections: data.draft.homepage_custom_sections || [],
+        homepage_section_order: normalizeOrder(data.draft.homepage_section_order,
+          data.draft.homepage_custom_sections || []),
+      }
       setDraft(normalized)
       setSavedDraft(structuredClone(normalized))
       setHasSavedDraft(data.has_saved_draft)
@@ -91,6 +94,45 @@ export default function HomeStudioPage() {
   }
   useEffect(() => { load() }, [])
   const update = (key, value) => setDraft(current => ({ ...current, [key]: value }))
+  const createCustomSection = type => {
+    if ((draft.homepage_custom_sections || []).length >= 12) {
+      toast.error('Máximo 12 secciones personalizadas')
+      return
+    }
+    const id = 'section_' + crypto.randomUUID().replace(/-/g, '')
+    const section = { id, type, title: 'NUEVA SECCIÓN', active: false,
+      starts_at: '', ends_at: '', autoplay: false, interval_ms: 6000,
+      show_navigation: true, items: [{
+        image_url: '', mobile_image_url: '', title: '', subtitle: '',
+        button_text: 'VER AHORA', link: '/catalogo',
+      }],
+    }
+    setDraft(current => ({
+      ...current,
+      homepage_custom_sections: [...(current.homepage_custom_sections || []), section],
+      homepage_section_order: [...normalizeOrder(current.homepage_section_order,
+        current.homepage_custom_sections || []), 'custom:' + id],
+    }))
+    setSelected('custom:' + id)
+    toast('Sección creada en el borrador. Agrega imágenes y actívala antes de publicar.')
+  }
+  const removeCustomSection = id => {
+    const block = (draft.homepage_custom_sections || []).find(item => item.id === id)
+    if (!block || !window.confirm('¿Eliminar esta sección del borrador? No se borrarán las imágenes del almacenamiento.')) return
+    const key = 'custom:' + id
+    setDraft(current => ({
+      ...current,
+      homepage_custom_sections: (current.homepage_custom_sections || []).filter(item => item.id !== id),
+      homepage_section_order: (current.homepage_section_order || []).filter(item => item !== key),
+      homepage_hidden_sections: (current.homepage_hidden_sections || []).filter(item => item !== key),
+    }))
+    setSelected('hero')
+  }
+  const updateCustomSection = (id, blocks) => {
+    if (blocks.length !== 1 || blocks[0].id !== id) return
+    update('homepage_custom_sections', (draft.homepage_custom_sections || []).map(block =>
+      block.id === id ? blocks[0] : block))
+  }
   const move = (id, direction) => {
     const i = order.indexOf(id), j = i + direction
     if (i < 0 || j < 0 || j >= order.length) return
@@ -246,8 +288,11 @@ export default function HomeStudioPage() {
       </button>
       <button className="btn btn-outline-secondary btn-sm" type="button" disabled={disabled || !hasSavedDraft && !changed}
         onClick={discard}><RotateCcw size={15} className="me-1"/>Descartar</button>
-      <button className="btn btn-primary btn-sm" type="button" disabled={disabled || !changed}
-        onClick={saveDraft}><Save size={15} className="me-1"/>Guardar borrador</button>
+      <button className="btn btn-primary btn-sm" type="button"
+        disabled={disabled || (!changed && hasSavedDraft)}
+        onClick={saveDraft}><Save size={15} className="me-1"/>
+        {!hasSavedDraft && !changed ? 'Inicializar borrador privado' : 'Guardar borrador'}
+      </button>
       <button className="btn btn-dark btn-sm" type="button" disabled={disabled || changed || !hasSavedDraft || conflict}
         onClick={publish}><Send size={15} className="me-1"/>Publicar portada</button>
     </div>
@@ -275,6 +320,20 @@ export default function HomeStudioPage() {
       <div className={showPreview ? 'col-12 col-xl-5' : 'col-12'}>
         <div className="admin-settings-section mb-3">
           <h2 className="admin-settings-section-title">Orden de las secciones</h2>
+          <p className="small text-secondary">
+            Las secciones principales se pueden ocultar sin borrar datos; las que crees aquí
+            se pueden eliminar individualmente. Todo permanece privado hasta publicar.
+          </p>
+          <div className="d-flex gap-2 flex-wrap mb-3">
+            {[
+              ['banner', 'Banner'], ['mosaic', 'Mosaico'], ['carousel', 'Carrusel'],
+            ].map(([type, label]) => <button key={type} type="button"
+              className="btn btn-outline-primary btn-sm" disabled={disabled ||
+                (draft.homepage_custom_sections || []).length >= 12}
+              onClick={() => createCustomSection(type)}>
+              <Plus size={14} className="me-1"/>Crear {label.toLowerCase()}
+            </button>)}
+          </div>
           <p className="small text-secondary">Selecciona una sección para editarla. Las flechas cambian su posición; el interruptor controla su visibilidad.</p>
           <button type="button" className="btn btn-outline-secondary w-100 text-start mb-2"
             onClick={() => setSelected('hero')}>01 · Banner principal (siempre visible)</button>
@@ -283,17 +342,37 @@ export default function HomeStudioPage() {
             <input type="checkbox" checked={!hidden.includes(id)} aria-label={`Mostrar ${id}`}
               onChange={() => toggle(id)} />
             <button type="button" className="btn btn-link text-dark text-start flex-grow-1 text-decoration-none p-0"
-              onClick={() => setSelected(id)}>{i + 2} · {SECTIONS.find(([x]) => x === id)?.[1]}</button>
+              onClick={() => setSelected(id)}>{i + 2} · {id.startsWith('custom:')
+                ? (draft.homepage_custom_sections || []).find(block =>
+                    'custom:' + block.id === id)?.title || 'Nueva sección'
+                : SECTIONS.find(([x]) => x === id)?.[1]}</button>
             <button type="button" className="btn btn-sm btn-outline-secondary" disabled={i === 0}
               aria-label="Subir sección" onClick={() => move(id, -1)}><ArrowUp size={14}/></button>
             <button type="button" className="btn btn-sm btn-outline-secondary" disabled={i === order.length - 1}
               aria-label="Bajar sección" onClick={() => move(id, 1)}><ArrowDown size={14}/></button>
+            {id.startsWith('custom:') && <button type="button"
+              className="btn btn-sm btn-outline-danger" disabled={disabled}
+              aria-label="Eliminar sección" onClick={() => removeCustomSection(id.slice(7))}>
+              <Trash2 size={14}/>
+            </button>}
           </div>)}
         </div>
         <div className="admin-settings-section">
           <h2 className="admin-settings-section-title">
-            Editar · {selected === 'hero' ? 'Banner principal' : SECTIONS.find(([id]) => id === selected)?.[1]}
+            Editar · {selected === 'hero' ? 'Banner principal' :
+              selected.startsWith('custom:')
+                ? (draft.homepage_custom_sections || []).find(block =>
+                    'custom:' + block.id === selected)?.title || 'Sección personalizada'
+                : SECTIONS.find(([id]) => id === selected)?.[1]}
           </h2>
+          {selected.startsWith('custom:') && (() => {
+            const block = (draft.homepage_custom_sections || []).find(item =>
+              'custom:' + item.id === selected)
+            return block ? <HomeVisualBlocksEditor key={block.id} blocks={[block]}
+              allowCreate={false} allowDelete={false}
+              onBusyChange={setUploading}
+              onChange={next => updateCustomSection(block.id, next)}/> : null
+          })()}
           {selected === 'hero' && <div className="row g-3">
             {[
               ['hero_eyebrow','Texto superior',120], ['hero_title','Título',160],
@@ -382,7 +461,7 @@ export default function HomeStudioPage() {
             onBusyChange={setUploading}/>}
           {selected === 'visual' && <HomeVisualBlocksEditor blocks={draft.homepage_visual_blocks || []}
             onBusyChange={setUploading} onChange={blocks => update('homepage_visual_blocks',blocks)}/>}
-          {!['hero','visual','campaigns','categories','loyalty'].includes(selected) && <div>
+          {!['hero','visual','campaigns','categories','loyalty','statement'].includes(selected) && !selected.startsWith('custom:') && <div>
             <p className="text-secondary">Esta sección utiliza los componentes comerciales actuales de HJStoreVP.
               Puedes cambiar su orden o visibilidad desde el panel superior, sin afectar sus datos.</p>
             {(selected === 'statement') && <p className="small">Las imágenes del carrusel de estilo siguen disponibles en
