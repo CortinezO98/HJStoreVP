@@ -30,6 +30,7 @@ DEFAULTS = {
     "hero_image_url": "",
     "hero_images": [],
     "statement_images": [],
+    "homepage_banners": [],
     "logo_url": "",
     "contact_email": "",
     "contact_phone": "",
@@ -44,6 +45,41 @@ DEFAULTS = {
     "terms_policy": "",
 }
 
+class HomepageBanner(BaseModel):
+    """Campaña fotográfica publicada en el inicio."""
+    image_url: str = Field(min_length=1, max_length=500)
+    title: str = Field(min_length=1, max_length=80)
+    subtitle: str = Field(default="", max_length=160)
+    button_text: str = Field(default="DESCUBRIR", max_length=40)
+    link: str = Field(default="/catalogo", max_length=300)
+    active: bool = True
+
+    @field_validator("image_url")
+    @classmethod
+    def image_is_safe(cls, value: str) -> str:
+        value = value.strip()
+        if value.startswith("/uploads/branding/"):
+            name = value.removeprefix("/uploads/branding/")
+            if not name or any(c in name for c in ("/", chr(92), "?", "#")) or ".." in name:
+                raise ValueError("Ruta de imagen no válida")
+            return value
+        parts = urlsplit(value)
+        if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
+            raise ValueError("La imagen debe ser HTTPS o una subida a la tienda")
+        return value
+
+    @field_validator("link")
+    @classmethod
+    def link_is_internal(cls, value: str) -> str:
+        value = value.strip()
+        if not value.startswith("/") or value.startswith("//") or chr(92) in value or any(ord(c) < 32 for c in value):
+            raise ValueError("El enlace debe ser una ruta interna")
+        if value.split("?", 1)[0].split("#", 1)[0] not in ("/", "/catalogo", "/registro", "/login"):
+            if not value.startswith("/producto/"):
+                raise ValueError("Selecciona una ruta de la tienda permitida")
+        return value
+
+
 class SettingsPayload(BaseModel):
     store_name: str = Field(min_length=1, max_length=100)
     tagline: str = Field(max_length=180)
@@ -55,6 +91,7 @@ class SettingsPayload(BaseModel):
     hero_image_url: str = Field(max_length=500)
     hero_images: list[str] = Field(default_factory=list, max_length=8)
     statement_images: list[str] = Field(default_factory=list, max_length=8)
+    homepage_banners: list[HomepageBanner] = Field(default_factory=list, max_length=6)
     logo_url: str = Field(max_length=500)
     contact_email: str = Field(max_length=254)
     contact_phone: str = Field(max_length=50)
