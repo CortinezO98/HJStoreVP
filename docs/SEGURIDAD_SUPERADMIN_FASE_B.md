@@ -50,8 +50,8 @@ un control de versión Alembic. Nunca usar `down -v`, seeds ni reinicializar Mar
 1. Iniciar sesión normal; entrar a `/mi-perfil`; cambiar nombre y teléfono.
 2. Comprobar que el cambio de correo exige la contraseña y fuerza un nuevo login.
 3. Cambiar contraseña; verificar que los tokens previos ya no funcionen.
-4. Iniciar enrolamiento TOTP con la contraseña; copiar clave secreta manualmente
-   a una aplicación autenticadora; verificar el código.
+4. Iniciar enrolamiento TOTP con la contraseña; escanear el QR generado localmente (sin servicios externos), o copiar
+   la clave secreta manualmente a una aplicación autenticadora; verificar el código.
 5. Guardar los diez códigos de recuperación en un medio seguro; cerrar sesión.
 6. Iniciar sesión: debe solicitar segundo factor antes de obtener access/refresh.
 7. Probar error de código, TOTP repetido y un código de recuperación utilizado dos veces.
@@ -79,5 +79,5 @@ administrativo fuera de banda, validación de identidad, respaldos y evidencia d
 auditoría por un operador autorizado; prohibido eliminar o editar secretos de
 la base directamente como supuesto procedimiento habitual.
 
-La aplicación muestra la clave TOTP manualmente; el QR es mejora opcional
-posterior, pero **no enviar el otpauth URI a un servicio externo** para generarlo.
+La aplicación muestra el QR TOTP generado en el navegador con `qrcode.react` y
+la clave manual. El URI `otpauth` **no se envía a un servicio externo**.
