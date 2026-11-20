@@ -474,32 +474,32 @@ def visual_storage_health(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
+    from app.services.storefront_visual_storage import inspect_homepage_mirror
     inspector = inspect(db.get_bind())
-    ready = inspector.has_table("storefront_visual_blocks") and inspector.has_table("storefront_visual_slides")
+    ready = (inspector.has_table("storefront_visual_blocks")
+             and inspector.has_table("storefront_visual_slides"))
     row = db.get(StorefrontSettings, ROW_ID)
-    stored = dict(row.settings_data or {}) if row else {}
     if not ready:
-        return {"schema_ready": False, "published_blocks": 0,
-                "draft_blocks": 0, "history_blocks": 0, "in_sync": False}
-    scopes = ["published", "draft"]
-    counts = {}
-    for scope in scopes:
-        counts[scope] = db.query(StorefrontVisualBlock).filter(
-            StorefrontVisualBlock.storefront_id == ROW_ID,
-            StorefrontVisualBlock.scope == scope,
-        ).count()
-    history_count = db.query(StorefrontVisualBlock).filter(
-        StorefrontVisualBlock.storefront_id == ROW_ID,
-        StorefrontVisualBlock.scope.like("history:%"),
-    ).count()
-    from app.services.storefront_visual_storage import iter_visual_entries
-    expected = len(list(iter_visual_entries(stored)))
-    saved = stored.get("_homepage_draft")
-    expected_draft = (len(list(iter_visual_entries(saved["data"])))
-                      if isinstance(saved, dict) and isinstance(saved.get("data"), dict) else 0)
-    return {"schema_ready": True, "published_blocks": counts["published"],
-            "draft_blocks": counts["draft"], "history_blocks": history_count,
-            "in_sync": (counts["published"] == expected and counts["draft"] == expected_draft)}
+        return {
+            "schema_ready": False, "source_exists": row is not None,
+            "in_sync": False, "expected_blocks": None, "actual_blocks": None,
+            "published_blocks": 0, "draft_blocks": 0, "history_blocks": 0,
+        }
+    if row is None:
+        # Empty mirror and absent configuration is an uninitialized storefront,
+        # not a data-loss or out-of-sync event.
+        count = db.query(StorefrontVisualBlock).filter(
+            StorefrontVisualBlock.storefront_id == ROW_ID).count()
+        return {
+            "schema_ready": True, "source_exists": False,
+            "in_sync": count == 0, "expected_blocks": 0, "actual_blocks": count,
+            "published_blocks": 0, "draft_blocks": 0, "history_blocks": 0,
+        }
+    return {
+        "schema_ready": True, "source_exists": True,
+        **inspect_homepage_mirror(db, row.id, dict(row.settings_data or {})),
+    }
+
 
 
 def public_settings(db: Session) -> dict:
