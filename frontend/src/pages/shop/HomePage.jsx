@@ -67,7 +67,7 @@ export default function HomePage() {
 
   return (
     <div className="editorial-home">
-      <section className="store-home-hero" aria-label="Colección HJStoreVP">
+      <section className={`store-home-hero ${heroImages.length ? "store-home-hero--immersive" : ""}`} aria-label="Colección HJStoreVP">
         <div className="store-home-hero-grid">
           <div className="store-home-hero-copy">
             <div className="store-home-hero-kicker"><span className="store-home-hero-dot" aria-hidden="true" />{storeSettings.hero_eyebrow || 'HJSTOREVP · ESTILO PROPIO'}</div>
