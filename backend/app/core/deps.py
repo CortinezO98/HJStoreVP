@@ -30,7 +30,7 @@ def get_current_user(
             detail="Token inválido",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = db.query(User).filter(User.id == user_id, User.active == True).first()
+    user = db.query(User).filter(User.id == user_id, User.active.is_(True), User.deleted.is_(False)).first()
 
     if not user:
         raise HTTPException(
@@ -89,7 +89,7 @@ def get_optional_user(
     except (TypeError, ValueError):
         return None
     user = db.query(User).filter(
-        User.id == user_id, User.active.is_(True)
+        User.id == user_id, User.active.is_(True), User.deleted.is_(False)
     ).first()
     if not user or not credential_version_matches(payload, user.hashed_password):
         return None
