@@ -6,11 +6,11 @@ const LABELS = {
   newest: 'ACABAN DE LLEGAR', statement: 'HAZ QUE TU ESTILO HABLE',
   featured: 'PRODUCTOS DESTACADOS', campaigns: 'COLECCIONES Y CAMPAÑAS',
   personalized: 'ELEGIDOS PARA TI', visual: 'CAMPAÑAS ESPECIALES',
-  categories: 'EXPLORA POR CATEGORÍA', services: 'BENEFICIOS',
+  categories: 'EXPLORA POR CATEGORÍA', loyalty: 'CLUB DE CLIENTES', services: 'BENEFICIOS',
   faq: 'PREGUNTAS FRECUENTES', closing: 'ENCUENTRA TU SIGUIENTE FAVORITO',
 }
 const ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
-  'visual', 'categories', 'services', 'faq', 'closing']
+  'visual', 'categories', 'loyalty', 'services', 'faq', 'closing']
 const placeholders = [1, 2, 3, 4]
 
 function Tile({ item, mobile }) {
@@ -41,6 +41,8 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
   const visuals = (draft.homepage_visual_blocks || []).filter(block => block.active && block.items?.length)
   const heroImage = (draft.hero_images || [])[0]
   const statementImage = (draft.statement_images || [])[0]
+  const categoryPhotos = (draft.homepage_category_tiles || []).filter(x => x.image_url)
+  const loyalty = draft.homepage_loyalty_banner
   const click = (id) => onSelect?.(id)
 
   return <div className="bg-white text-black mx-auto overflow-hidden"
@@ -104,6 +106,31 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
               <Tile item={item} mobile={mobile} key={i}/>)}
           </div>
         </div>)}
+      </div> :
+      id === 'loyalty' ? loyalty?.image_url && loyalty.active && <div className="position-relative overflow-hidden bg-dark text-white p-4"
+        style={{ minHeight: mobile ? 250 : 320 }}>
+        <img src={src(mobile ? loyalty.mobile_image_url || loyalty.image_url : loyalty.image_url)}
+          alt="Club de clientes" style={{ position:'absolute', inset:0,width:'100%',height:'100%',objectFit:'cover' }}/>
+        <div className="position-absolute inset-0" style={{ background:'linear-gradient(90deg,#000a,#0002)' }}/>
+        <div className="position-relative">
+          <small>{loyalty.eyebrow}</small>
+          <h2 style={{ fontWeight:900,fontSize:mobile ? 28 : 42 }}>{loyalty.title}</h2>
+          <p>{loyalty.description}</p>
+          <span className="d-inline-flex bg-white text-black px-3 py-2">{loyalty.button_text}</span>
+        </div>
+      </div> :
+      id === 'categories' && categoryPhotos.length > 0 ? <div className="p-3">
+        <h2 style={{ fontSize: mobile ? 18 : 26 }}>{LABELS[id]}</h2>
+        <div className="d-grid gap-2" style={{gridTemplateColumns:mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)'}}>
+          {categoryPhotos.map(tile => <div key={tile.category_slug} className="position-relative bg-dark text-white overflow-hidden"
+            style={{height:mobile ? 160 : 220}}>
+            <img src={src(mobile ? tile.mobile_image_url || tile.image_url : tile.image_url)}
+              alt={tile.title || tile.category_slug} className="w-100 h-100" style={{objectFit:'cover'}}/>
+            <strong className="position-absolute bottom-0 start-0 p-2" style={{background:'#0008'}}>
+              {tile.title || tile.category_slug}
+            </strong>
+          </div>)}
+        </div>
       </div> :
       id === 'newest' || id === 'featured' || id === 'personalized' ?
         <div className="p-3">
