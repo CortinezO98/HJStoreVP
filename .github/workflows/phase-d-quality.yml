@@ -48,6 +48,28 @@ jobs:
           echo "Bundles JavaScript: $count"
           test "$count" -gt 1
 
+  public-store-regression:
+    name: Tienda publica - compilacion
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias sin scripts
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts --no-audit
+          else
+            echo "::warning::Tienda publica sin lockfile versionado."
+            npm install --ignore-scripts --no-audit
+          fi
+      - name: Compilar tienda publica
+        run: npm run build
+
   dependency-inventory:
     name: Dependencias - informe sin actualizacion automatica
     runs-on: ubuntu-latest
@@ -59,6 +81,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validar analizador de reportes
+        run: python -m unittest discover -s scripts/ci -p 'test_*.py'
       - name: Preparar inventario npm reproducible
         working-directory: frontend-admin
         shell: bash
@@ -87,6 +111,31 @@ jobs:
             exit "$code"
           fi
           python ../scripts/ci/summarize_dependency_audit.py npm ../admin-dependency-audit.json
+      - name: Preparar inventario npm de tienda publica
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+          else
+            echo "::warning::La tienda publica no tiene package-lock.json versionado."
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          fi
+      - name: Auditoria npm de tienda publica
+        working-directory: frontend
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > ../store-dependency-audit.json 2> ../store-npm-audit-errors.txt
+          code=$?
+          set -e
+          if [ "$code" -gt 1 ]; then
+            echo "::error::npm audit de tienda falló (codigo $code)"
+            cat ../store-npm-audit-errors.txt
+            exit "$code"
+          fi
+          python ../scripts/ci/summarize_dependency_audit.py npm ../store-dependency-audit.json
       - name: Preparar auditoria Python
         shell: bash
         run: |
@@ -113,8 +162,10 @@ jobs:
           name: fase-d-dependency-audits
           path: |
             admin-dependency-audit.json
+            store-dependency-audit.json
             backend-dependency-audit.json
             npm-audit-errors.txt
+            store-npm-audit-errors.txt
             pip-audit-errors.txt
           if-no-files-found: warn
           retention-days: 14
