@@ -1,0 +1,131 @@
+import { ArrowUpRight, ShoppingBag, Search, UserRound } from 'lucide-react'
+
+const API_URL = import.meta.env.VITE_API_URL || ''
+const src = value => value?.startsWith('/') ? `${API_URL}${value}` : value
+const LABELS = {
+  newest: 'ACABAN DE LLEGAR', statement: 'HAZ QUE TU ESTILO HABLE',
+  featured: 'PRODUCTOS DESTACADOS', campaigns: 'COLECCIONES Y CAMPAÑAS',
+  personalized: 'ELEGIDOS PARA TI', visual: 'CAMPAÑAS ESPECIALES',
+  categories: 'EXPLORA POR CATEGORÍA', services: 'BENEFICIOS',
+  faq: 'PREGUNTAS FRECUENTES', closing: 'ENCUENTRA TU SIGUIENTE FAVORITO',
+}
+const ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
+  'visual', 'categories', 'services', 'faq', 'closing']
+const placeholders = [1, 2, 3, 4]
+
+function Tile({ item, mobile }) {
+  const image = mobile ? item.mobile_image_url || item.image_url : item.image_url
+  return <div className="position-relative overflow-hidden bg-dark text-white" style={{ minHeight: mobile ? 220 : 245 }}>
+    {image && <img src={src(image)} alt={item.title || 'Campaña'}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>}
+    <div className="position-absolute bottom-0 start-0 w-100 p-3"
+      style={{ background: 'linear-gradient(transparent, rgba(0,0,0,.88))' }}>
+      <small>{item.subtitle || ''}</small>
+      <strong className="d-block fs-5 lh-sm text-uppercase">{item.title || 'NUEVA COLECCIÓN'}</strong>
+      <small className="d-inline-flex bg-white text-black px-2 py-1 mt-2">
+        {item.button_text || 'VER AHORA'} <ArrowUpRight size={14}/>
+      </small>
+    </div>
+  </div>
+}
+
+export default function HomeStudioPreview({ draft, mobile = false, onSelect, selected }) {
+  if (!draft) return null
+  const saved = draft.homepage_section_order || ORDER
+  const order = saved.includes('visual') ? saved : [
+    ...saved.slice(0, saved.indexOf('campaigns') + 1), 'visual',
+    ...saved.slice(saved.indexOf('campaigns') + 1),
+  ]
+  const hidden = new Set(draft.homepage_hidden_sections || [])
+  const banners = (draft.homepage_banners || []).filter(item => item.active && item.image_url)
+  const visuals = (draft.homepage_visual_blocks || []).filter(block => block.active && block.items?.length)
+  const heroImage = (draft.hero_images || [])[0]
+  const statementImage = (draft.statement_images || [])[0]
+  const click = (id) => onSelect?.(id)
+
+  return <div className="bg-white text-black mx-auto overflow-hidden"
+    style={{ maxWidth: mobile ? 375 : 1000, width: '100%', boxShadow: '0 12px 42px #0002',
+      fontFamily: 'Arial, sans-serif', fontSize: mobile ? 12 : 14 }}>
+    <div className="text-center text-white bg-black py-2" style={{ fontSize: 9, letterSpacing: 2 }}>
+      HJSTOREVP · ESTILO PROPIO
+    </div>
+    <div className="d-flex align-items-center justify-content-between px-3 py-3 border-bottom">
+      <strong style={{ letterSpacing: -1, fontSize: mobile ? 18 : 25 }}>HJ STOREVP</strong>
+      {!mobile && <div className="fw-bold" style={{ fontSize: 10, letterSpacing: 1 }}>
+        INICIO　CATÁLOGO　NOVEDADES　DESTACADOS
+      </div>}
+      <div className="d-flex gap-2"><Search size={16}/><UserRound size={16}/><ShoppingBag size={16}/></div>
+    </div>
+    <button type="button" onClick={() => click('hero')} className="w-100 text-start border-0 p-0"
+      aria-label="Seleccionar banner principal" style={{ outline: selected === 'hero' ? '3px solid #2563eb' : 'none',
+        outlineOffset: -3, background: '#171717', color: '#fff' }}>
+      <div className="position-relative overflow-hidden d-flex align-items-end"
+        style={{ height: mobile ? 400 : 370 }}>
+        {heroImage && <img src={src(heroImage)} alt="Portada"
+          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, objectFit: 'cover' }}/>}
+        <div className="position-absolute w-100 h-100"
+          style={{ background: 'linear-gradient(90deg,#000b,#0002)' }}/>
+        <div className="position-relative p-4" style={{ maxWidth: 530 }}>
+          <small>{draft.hero_eyebrow}</small>
+          <h1 style={{ fontSize: mobile ? 38 : 56, fontWeight: 900, lineHeight: 1, margin: '10px 0' }}>
+            {draft.hero_title || 'ESTILO PROPIO'}
+          </h1>
+          <p>{draft.hero_description}</p>
+          <span className="d-inline-flex align-items-center gap-2 px-3 py-2 bg-white text-black fw-bold">
+            {draft.hero_button || 'EXPLORAR'} <ArrowUpRight size={14}/>
+          </span>
+        </div>
+      </div>
+    </button>
+    {order.filter(id => !hidden.has(id)).map(id => <button
+      key={id} type="button" onClick={() => click(id)}
+      className="d-block w-100 text-start border-0 p-0 bg-white text-black"
+      aria-label={`Seleccionar sección ${LABELS[id]}`}
+      style={{ outline: selected === id ? '3px solid #2563eb' : 'none', outlineOffset: -3 }}>
+      {id === 'statement' ? <div className="d-flex bg-black text-white">
+        <div className="p-3 d-flex align-items-center" style={{ flex: 1 }}>
+          <strong style={{ fontSize: mobile ? 22 : 36, lineHeight: 1 }}>HAZ QUE TU ESTILO HABLE.</strong>
+        </div>
+        {statementImage && <img src={src(statementImage)} alt="Campaña de estilo"
+          style={{ width: '45%', height: mobile ? 170 : 255, objectFit: 'cover' }}/>}
+      </div> :
+      id === 'campaigns' ? banners.length > 0 && <div className="p-3">
+        <h2 className="fw-black mb-3" style={{ fontSize: mobile ? 18 : 26 }}>{LABELS[id]}</h2>
+        <div className="d-grid gap-2" style={{ gridTemplateColumns: mobile ? '1fr' : 'repeat(2,1fr)' }}>
+          {banners.map((item,i) => <Tile item={item} mobile={mobile} key={i}/>)}
+        </div>
+      </div> :
+      id === 'visual' ? visuals.length > 0 && <div className="p-3">
+        {visuals.map(block => <div className="mb-3" key={block.id}>
+          <h2 style={{ fontSize: 20 }}>{block.title || 'CAMPAÑA ESPECIAL'}</h2>
+          <div className="d-grid gap-2" style={{
+            gridTemplateColumns: block.type === 'banner' || mobile ? '1fr' : 'repeat(2,1fr)' }}>
+            {(block.type === 'banner' ? block.items.slice(0, 1) : block.items).map((item,i) =>
+              <Tile item={item} mobile={mobile} key={i}/>)}
+          </div>
+        </div>)}
+      </div> :
+      id === 'newest' || id === 'featured' || id === 'personalized' ?
+        <div className="p-3">
+          <h2 className="fw-bold" style={{ fontSize: mobile ? 17 : 25 }}>{LABELS[id]}</h2>
+          <div className="d-grid gap-2 mt-3" style={{ gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)' }}>
+            {placeholders.map(i => <div key={i}>
+              <div className="bg-light border" style={{ aspectRatio: '1/1.12' }}/>
+              <div className="bg-light mt-2" style={{ height: 10, width: '75%' }}/>
+              <div className="bg-light mt-1" style={{ height: 8, width: '50%' }}/>
+            </div>)}
+          </div>
+        </div> :
+      <div className="p-3" style={{ background: id === 'categories' || id === 'closing' ? '#f2f2f2' : '#fff' }}>
+        <h2 className="fw-bold" style={{ fontSize: mobile ? 17 : 25 }}>{LABELS[id]}</h2>
+        <p className="text-secondary small mb-0">
+          {id === 'categories' ? 'GORRAS · PERFUMES · RELOJES · ACCESORIOS' :
+            id === 'services' ? 'Envíos a Colombia · Opciones de pago · Seguimiento de pedidos' :
+            id === 'faq' ? '¿Cómo puedo realizar una compra? · ¿Hacen envíos?' :
+            'DESCUBRIR PRODUCTOS'}
+        </p>
+      </div>}
+    </button>)}
+    <div className="text-white bg-black p-4" style={{ fontSize: 10 }}>HJSTOREVP · CATÁLOGO · CONTACTO · POLÍTICAS</div>
+  </div>
+}
