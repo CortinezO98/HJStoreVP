@@ -64,6 +64,18 @@ export default function HomePage() {
     .filter((banner) => banner?.active && banner?.image_url && banner?.title)
   const showcase = newest.slice(0, 8)
   const featuredShowcase = featured.slice(0, 4)
+  const DEFAULT_ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
+    'categories', 'services', 'faq', 'closing']
+  const savedOrder = storeSettings.homepage_section_order
+  const sectionOrder = Array.isArray(savedOrder) && savedOrder.length === DEFAULT_ORDER.length &&
+    new Set(savedOrder).size === DEFAULT_ORDER.length && DEFAULT_ORDER.every(id => savedOrder.includes(id))
+    ? savedOrder : DEFAULT_ORDER
+  const hiddenSections = Array.isArray(storeSettings.homepage_hidden_sections)
+    ? storeSettings.homepage_hidden_sections : []
+  const sectionStyle = (id) => ({
+    order: sectionOrder.indexOf(id) + 1,
+    display: hiddenSections.includes(id) ? 'none' : undefined,
+  })
 
   return (
     <div className="editorial-home">
@@ -131,7 +143,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="editorial-products-section store-home-products">
+      <section className="editorial-products-section store-home-products" style={sectionStyle("newest")}>
         <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
         {loadingNewest ? (
           <LoadingGrid count={8} />
@@ -146,7 +158,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <section className="store-home-statement" aria-label="Nuestra filosofía de estilo">
+      <section className="store-home-statement" style={sectionStyle("statement")} aria-label="Nuestra filosofía de estilo">
         <div className="store-home-statement-copy">
           <span>NO ES SOLO UN ACCESORIO</span>
           <h2>HAZ QUE TU<br />ESTILO HABLE.</h2>
@@ -185,7 +197,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="editorial-products-section">
+      <section className="editorial-products-section" style={sectionStyle("featured")}>
         <SectionHeading eyebrow="ELEGIDOS PARA TI" title="PRODUCTOS DESTACADOS" link="/catalogo?featured=true" />
         {loadingFeatured ? (
           <LoadingGrid count={8} />
@@ -199,7 +211,7 @@ export default function HomePage() {
       </section>
 
       {campaignBanners.length > 0 && (
-        <section className="w-full bg-white" aria-label="Campañas destacadas">
+        <section className="w-full bg-white" style={sectionStyle("campaigns")} aria-label="Campañas destacadas">
           <div className="editorial-section-heading px-5 sm:px-8">
             <div><span className="editorial-eyebrow">DESCUBRE MÁS</span><h2>COLECCIONES Y CAMPAÑAS</h2></div>
           </div>
@@ -207,9 +219,12 @@ export default function HomePage() {
             {campaignBanners.map((banner, index) => (
               <Link key={`${banner.image_url}-${index}`} to={banner.link || '/catalogo'}
                 className="relative block overflow-hidden bg-neutral-900 text-white group min-h-[380px] sm:min-h-[480px]">
-                <img src={sourceUrl(banner.image_url)} alt={banner.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="lazy" decoding="async" />
+                <picture>
+                  {banner.mobile_image_url && <source media="(max-width: 767px)" srcSet={sourceUrl(banner.mobile_image_url)} />}
+                  <img src={sourceUrl(banner.image_url)} alt={banner.title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    loading="lazy" decoding="async" />
+                </picture>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" aria-hidden="true" />
                 <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10">
                   {banner.subtitle && <p className="text-xs font-bold tracking-[.16em] uppercase mb-2">{banner.subtitle}</p>}
@@ -224,9 +239,9 @@ export default function HomePage() {
         </section>
       )}
 
-      <PersonalizedShowcase />
+      <div style={sectionStyle("personalized")}><PersonalizedShowcase /></div>
 
-      <section className="editorial-category-section store-home-categories">
+      <section className="editorial-category-section store-home-categories" style={sectionStyle("categories")}>
         <div className="editorial-section-heading">
           <div><span className="editorial-eyebrow">ENCUENTRA LO TUYO</span><h2>EXPLORA POR CATEGORÍA</h2></div>
         </div>
@@ -241,13 +256,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="editorial-service-strip store-home-services">
+      <section className="editorial-service-strip store-home-services" style={sectionStyle("services")}>
         <div><Truck size={25} strokeWidth={1.4}/><h3>ENVÍOS A COLOMBIA</h3><p>Compra desde donde estés</p></div>
         <div><CreditCard size={25} strokeWidth={1.4}/><h3>OPCIONES DE PAGO</h3><p>Consulta los medios disponibles al pagar</p></div>
         <div><PackageCheck size={25} strokeWidth={1.4}/><h3>CONSULTA TUS PEDIDOS</h3><p>Sigue tus compras desde tu cuenta</p></div>
       </section>
 
-      <section className="editorial-faq-section store-home-faq">
+      <section className="editorial-faq-section store-home-faq" style={sectionStyle("faq")}>
         <span className="editorial-eyebrow">¿TIENES DUDAS?</span>
         <h2>PREGUNTAS FRECUENTES</h2>
         <div className="editorial-faq-items">
@@ -267,7 +282,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-      <section className="editorial-closing store-home-closing">
+      <section className="editorial-closing store-home-closing" style={sectionStyle("closing")}>
         <span>HJSTOREVP / ESTILO PROPIO</span>
         <h2>ENCUENTRA TU SIGUIENTE FAVORITO.</h2>
         <Link to="/catalogo">DESCUBRIR PRODUCTOS <ArrowRight size={16}/></Link>
