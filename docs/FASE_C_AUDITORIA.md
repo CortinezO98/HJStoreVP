@@ -55,3 +55,78 @@ deben abordarse para aprobación productiva.
 exporta solo 500 entradas recientes y exige SUPER_ADMIN. Las celdas de texto
 se neutralizan para evitar fórmulas al abrir en hojas de cálculo. No incluye
 firmas HMAC ni secretos; los permisos y límites se aplican en el backend.
+
+
+## Ampliación de la Fase C — consulta comercial unificada
+
+Ruta privada `GET /api/v1/commercial-audit` y exportación
+`GET /api/v1/commercial-audit/export`, únicamente para SUPER_ADMIN.
+Vista `/auditoria-comercial`. Consultas de solo lectura y sin duplicar
+ni alterar tablas comerciales. Paginación hasta 100 eventos por solicitud
+y CSV limitado a 500 eventos filtrados; mitigación contra fórmulas CSV.
+
+La vista combina mediante UNION ALL los historiales que realmente
+existen: `stock_movements`, `shipment_events`, `post_sale_events`,
+`commercial_document_events` y `product_quality_review_events`.
+Solo expone IDs, actor, acción, módulo y fecha. No muestra notas,
+identificadores de pago, cliente ni contacto. Las filas del origen se
+marcan `source_history_unverified`, pues no poseen firma central retroactiva.
+Esta consulta **no es un historial completo de transiciones de pedidos**:
+no todos los módulos tienen evento histórico para cada cambio. Esa
+instrumentación requiere una fase posterior específica por proceso.
+
+## Comprobación de integridad central
+
+`GET /api/v1/security-audit/integrity` (SUPER_ADMIN) verifica hasta
+5.000 firmas existentes por solicitud (1.000 por defecto). Acepta fechas
+desde/hasta, indica resultado parcial y muestra IDs con firmas inválidas.
+**No detecta registros eliminados** ni demuestra que todo el historial exista.
+
+## Conservación y evidencias externas
+
+Política: **conservar por defecto; no purgar automáticamente registros**.
+Cualquier plazo de retención debe aprobarse según obligaciones legales,
+contables y de privacidad en Colombia, después de clasificar cada tipo
+de evidencia; no asumir que existe un único plazo universal.
+
+Herramientas voluntarias, solo lectura:
+
+- `backend/scripts/export_audit_snapshot.py`: exporta hasta 50.000
+  eventos centrales a JSONL con sus firmas, un SHA-256 y un manifiesto
+  firmado HMAC. Se niega a exportar si detecta firmas inválidas o si
+  el volumen supera el límite para impedir que una muestra se anuncie
+  como evidencia completa.
+- `backend/scripts/verify_audit_snapshot.py`: verifica fuera de banda
+  HMAC del manifiesto, SHA-256 del contenido, conteo, rango de IDs y
+  firmas de cada evento. No modifica ni el archivo ni la base de datos.
+
+**Procedimiento de producción**: respaldar primero la base; montar un
+volumen privado de almacenamiento independiente (no público), con
+cuenta de servicio limitada; ejecutar la exportación en ventana controlada;
+copiar el resultado a almacenamiento inmutable con versiones y retención
+aprobada; probar la verificación en otro entorno. No guardar `SECRET_KEY`
+en archivos ni entregar la clave junto con evidencias. Rotar la clave
+solo con estrategia que preserve la verificabilidad de históricos.
+
+La herramienta NO crea ni configura almacenamiento remoto, WORM,
+programación periódica ni eliminación: su automatización queda bloqueada
+hasta definir proveedor de almacenamiento, políticas y credenciales.
+Tampoco transforma los historiales comerciales existentes en evidencias
+criptográficamente inmutables.
+
+## Verificaciones para actualizar main
+
+Después de `git pull --ff-only origin main`:
+
+```bat
+docker compose up -d --build backend frontend-admin
+docker compose exec backend python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py tests/test_security_audit.py tests/test_commercial_audit.py -v
+docker compose exec frontend-admin npm run build
+docker compose exec backend alembic current
+docker compose exec backend alembic heads
+```
+
+Si `current` continúa en `20261120_17` y `heads` en `20261120_18`,
+verificar primero respaldo de MariaDB y tabla `security_audit_events`;
+solo después aplicar `docker compose exec backend alembic upgrade head`.
+Es una migración aditiva que no cambia tablas comerciales.
