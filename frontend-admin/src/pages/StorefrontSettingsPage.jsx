@@ -57,9 +57,14 @@ const HOME_SECTIONS = [
 ]
 const DEFAULT_HOME_ORDER = HOME_SECTIONS.map(([id]) => id)
 const normalizedHomeOrder = value =>
-  Array.isArray(value) && !value.includes('visual')
-    ? [...value.slice(0, value.indexOf('campaigns') + 1), 'visual',
-      ...value.slice(value.indexOf('campaigns') + 1)] : value
+  Array.isArray(value)
+    ? (() => {
+      const sections = [...value]
+      for (const [id, after] of [['visual','campaigns'], ['loyalty','categories']]) {
+        if (!sections.includes(id)) sections.splice(sections.indexOf(after) + 1, 0, id)
+      }
+      return sections
+    })() : value
 const validHomeOrder = (value) => Array.isArray(value) &&
   value.length === DEFAULT_HOME_ORDER.length &&
   new Set(value).size === DEFAULT_HOME_ORDER.length &&
@@ -558,7 +563,7 @@ export default function StorefrontSettingsPage() {
                 Descartar cambios
               </button>
               <button type="submit" className="btn btn-primary"
-                disabled={!dirty || busy || !!uploading || visualUploading || !!campaignCrop || cropQueue.length > 0 || campaignImageBusy !== null || banners.some((banner) => !banner.image_url || !banner.title?.trim())}>
+                disabled={!dirty || busy || !!uploading || visualUploading || !!campaignCrop || cropQueue.length > 0 || campaignImageBusy !== null || banners.some((banner) => banner.active && (!banner.image_url || !banner.title?.trim()))}>
                 {busy ? 'Publicando…' : 'Guardar y publicar'}
               </button>
             </div>
