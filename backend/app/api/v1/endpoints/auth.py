@@ -138,7 +138,7 @@ def _verify_mfa_code(record: UserMFASettings, code: str):
 @router.post("/login")
 def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     check_login_limit(request, data.email)
-    user = db.query(User).filter(User.email == data.email, User.active == True).first()
+    user = db.query(User).filter(User.email == data.email, User.active.is_(True), User.deleted.is_(False)).first()
 
     if not user or not verify_password(data.password, user.hashed_password):
         note_login_failure(request, data.email)
@@ -165,7 +165,7 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
         user_id = int(payload.get("sub", ""))
     except (TypeError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido")
-    user = db.query(User).filter(User.id == user_id, User.active == True).first()
+    user = db.query(User).filter(User.id == user_id, User.active.is_(True), User.deleted.is_(False)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado")
 
