@@ -186,3 +186,33 @@ def test_disabled_mfa_requires_reauthentication_and_revokes_tokens(mfa_db, monke
     assert record.secret_ciphertext is None
     assert record.recovery_hashes == []
     assert record.version == original_version + 1
+
+
+def test_pending_mfa_challenge_is_revoked_when_security_version_changes(mfa_db, monkeypatch):
+    import app.api.v1.endpoints.auth as auth
+    db, user = mfa_db
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    setup_mfa(MFAStart(current_password="RootSecurePassword123!"), request, db, user)
+    monkeypatch.setattr(auth, "match_totp_step", lambda secret, code: 100 if code == "123456" else None)
+    recovery = confirm_mfa(MFACode(code="123456"), request, db, user)["recovery_codes"][0]
+    pending = login(LoginRequest(email=user.email, password="RootSecurePassword123!"), request, db)
+    assert decode_token(pending["challenge_token"])["mfa_v"] == 1
+    record = db.query(UserMFASettings).filter_by(user_id=user.id).one()
+    record.version += 1
+    db.commit()
+    with pytest.raises(HTTPException) as exc:
+        verify_mfa_challenge(MFAChallenge(challenge_token=pending["challenge_token"],
+                             code=recovery), request, db)
+    assert exc.value.status_code == 401
+
+
+def test_totp_step_cannot_be_reused_in_one_account():
+    secret = new_secret()
+    from app.services.mfa import encrypt_secret
+    row = UserMFASettings(enabled=True, secret_ciphertext=encrypt_secret(secret),
+                          recovery_hashes=[], last_totp_step=None)
+    from app.api.v1.endpoints.auth import _verify_mfa_code
+    import time
+    code = totp_code(secret, int(time.time() // 30))
+    assert _verify_mfa_code(row, code) is True
+    assert _verify_mfa_code(row, code) is False
