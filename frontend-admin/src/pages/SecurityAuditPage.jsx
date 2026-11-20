@@ -9,6 +9,7 @@ export default function SecurityAuditPage() {
   const [data, setData] = useState({ total: 0, items: [] })
   const [busy, setBusy] = useState(false)
   const [nonce, setNonce] = useState(0)
+  const [integrity, setIntegrity] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -27,6 +28,20 @@ export default function SecurityAuditPage() {
 
   const change = (key, value) => { setPage(1); setFilters(f => ({ ...f, [key]: value })) }
   const hasNext = page * 30 < data.total
+  const checkIntegrity = async () => {
+    setBusy(true)
+    try {
+      const params = { limit: 1000 }
+      if (filters.from_date) params.from_date = filters.from_date
+      if (filters.to_date) params.to_date = filters.to_date
+      const { data: report } = await securityAuditApi.verifyIntegrity(params)
+      setIntegrity(report)
+    } catch {
+      toast.error('No se pudo verificar integridad')
+    } finally {
+      setBusy(false)
+    }
+  }
   const exportCsv = async () => {
     setBusy(true)
     try {
@@ -55,6 +70,7 @@ export default function SecurityAuditPage() {
         <p className="text-sm text-gray-600">Historial de seguridad y administración. Acceso exclusivo Superadministrador.</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <button type="button" className="rounded-lg border px-4 py-2" onClick={checkIntegrity} disabled={busy}>Verificar integridad (1000)</button>
         <button type="button" className="rounded-lg border px-4 py-2" onClick={exportCsv} disabled={busy}>Exportar CSV (máx. 500)</button>
         <button type="button" className="btn-primary flex items-center gap-2" onClick={() => setNonce(n => n + 1)} disabled={busy}>
           <RefreshCw size={16} /> Actualizar
@@ -62,6 +78,14 @@ export default function SecurityAuditPage() {
       </div>
     </div>
 
+    {integrity && <section className="bg-white border border-gray-200 rounded-xl p-4 text-sm space-y-1">
+      <p className="font-semibold">Comprobación de firmas: {integrity.checked} / {integrity.total_matching} entradas evaluadas</p>
+      <p className={integrity.invalid_count ? 'text-red-700' : 'text-green-700'}>
+        {integrity.invalid_count ? `${integrity.invalid_count} firmas inválidas: ${integrity.invalid_ids.join(', ')}` : 'Todas las filas evaluadas tienen firmas válidas'}
+      </p>
+      {integrity.truncated && <p className="text-amber-700">Resultado parcial: existen más registros que el límite.</p>}
+      <p className="text-gray-600">{integrity.limitation}</p>
+    </section>}
     <section className="bg-white border border-gray-200 rounded-xl p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
       <label className="text-sm">Acción
         <input className="input mt-1" value={filters.action} maxLength={64} onChange={e => change('action', e.target.value)} placeholder="users.updated" />
