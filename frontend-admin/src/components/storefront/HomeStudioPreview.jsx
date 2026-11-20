@@ -51,6 +51,8 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
   const statementImage = (draft.statement_images || [])[0]
   const categoryPhotos = (draft.homepage_category_tiles || []).filter(x => x.image_url)
   const loyalty = draft.homepage_loyalty_banner
+  const heroPresentation = draft.hero_presentation || {}
+  const statementPresentation = draft.statement_presentation || {}
   const click = (id) => onSelect?.(id)
 
   return <div className="bg-white text-black mx-auto overflow-hidden"
@@ -69,13 +71,17 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
     <button type="button" onClick={() => click('hero')} className="w-100 text-start border-0 p-0"
       aria-label="Seleccionar banner principal" style={{ outline: selected === 'hero' ? '3px solid #2563eb' : 'none',
         outlineOffset: -3, background: '#171717', color: '#fff' }}>
-      <div className="position-relative overflow-hidden d-flex align-items-end"
-        style={{ height: mobile ? 400 : 370 }}>
+      <div className="position-relative overflow-hidden d-flex"
+        style={{ height: mobile ? 400 : 370,
+          alignItems: ({top:'flex-start',center:'center',bottom:'flex-end'})[heroPresentation.text_position || 'center'] }}>
         {heroImage && <img src={src(heroImage)} alt="Portada"
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, objectFit: 'cover' }}/>}
         <div className="position-absolute w-100 h-100"
-          style={{ background: 'linear-gradient(90deg,#000b,#0002)' }}/>
-        <div className="position-relative p-4" style={{ maxWidth: 530 }}>
+          style={{ background: `linear-gradient(90deg,rgba(0,0,0,${(heroPresentation.overlay_opacity ?? 65)/100}),transparent)` }}/>
+        <div className="position-relative p-4" style={{ maxWidth: 530, width: '100%',
+          textAlign: heroPresentation.text_align || 'left',
+          marginLeft: heroPresentation.text_align === 'right' ? 'auto' : undefined,
+          marginInline: heroPresentation.text_align === 'center' ? 'auto' : undefined }}>
           <small>{draft.hero_eyebrow}</small>
           <h1 style={{ fontSize: mobile ? 38 : 56, fontWeight: 900, lineHeight: 1, margin: '10px 0' }}>
             {draft.hero_title || 'ESTILO PROPIO'}
@@ -93,7 +99,10 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       aria-label={`Seleccionar sección ${LABELS[id]}`}
       style={{ outline: selected === id ? '3px solid #2563eb' : 'none', outlineOffset: -3 }}>
       {id === 'statement' ? <div className="d-flex bg-black text-white">
-        <div className="p-3 d-flex align-items-center" style={{ flex: 1 }}>
+        <div className="p-3 d-flex"
+          style={{ flex: 1, textAlign: statementPresentation.text_align || 'left',
+            justifyContent: ({left:'flex-start',center:'center',right:'flex-end'})[statementPresentation.text_align || 'left'],
+            alignItems: ({top:'flex-start',center:'center',bottom:'flex-end'})[statementPresentation.text_position || 'center'] }}>
           <strong style={{ fontSize: mobile ? 22 : 36, lineHeight: 1 }}>HAZ QUE TU ESTILO HABLE.</strong>
         </div>
         {statementImage && <img src={src(statementImage)} alt="Campaña de estilo"
