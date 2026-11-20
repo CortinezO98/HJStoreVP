@@ -98,3 +98,10 @@ media/
 .coverage
 htmlcov/
 .pytest_cache/
+##############################################
+# Local database backups and integrity manifests
+##############################################
+backups/
+*.sql.gz
+*.sql.gz.sha256
+*.partial
