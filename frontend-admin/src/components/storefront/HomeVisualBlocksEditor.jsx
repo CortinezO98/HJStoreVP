@@ -15,7 +15,7 @@ const emptyItem = () => ({
   button_text: 'VER AHORA', link: '/catalogo',
 })
 
-export default function HomeVisualBlocksEditor({ blocks = [], onChange }) {
+export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyChange = () => {} }) {
   const [uploading, setUploading] = useState('')
   const [preview, setPreview] = useState('desktop')
   const replaceBlock = (index, patch) => onChange(blocks.map((block, i) =>
@@ -39,6 +39,7 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange }) {
     }
     const key = `${blocks[blockIndex].id}-${itemIndex}-${field}`
     setUploading(key)
+    onBusyChange(true)
     try {
       const { data } = await storefrontSettingsApi.upload(file)
       await verifyUploadedImage(data.url)
@@ -49,6 +50,7 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange }) {
       toast.error(typeof detail === 'string' ? detail : 'No se pudo subir la imagen')
     } finally {
       setUploading('')
+      onBusyChange(false)
     }
   }
 
