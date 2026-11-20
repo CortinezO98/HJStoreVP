@@ -78,6 +78,7 @@ export default function StorefrontSettingsPage() {
   const [uploading, setUploading] = useState(null)
   const [cropQueue, setCropQueue] = useState([])
   const [campaignImageBusy, setCampaignImageBusy] = useState(null)
+  const [campaignCrop, setCampaignCrop] = useState(null)
   const [previewDevice, setPreviewDevice] = useState('desktop')
   const [visualUploading, setVisualUploading] = useState(false)
   const currentHomeOrder = normalizedHomeOrder(form?.homepage_section_order)
@@ -117,12 +118,18 @@ export default function StorefrontSettingsPage() {
       toast.error('Selecciona JPG, PNG o WEBP')
       return
     }
+    setCampaignCrop({ index, field, file })
+  }
+  const confirmCampaignCrop = async (file) => {
+    if (!campaignCrop) return
+    const { index, field } = campaignCrop
     setCampaignImageBusy(index)
     try {
       const { data } = await storefrontSettingsApi.upload(file)
       await verifyUploadedImage(data.url)
       updateCampaign(index, field, data.url)
-      toast.success('Imagen lista. Guarda y publica para mostrarla.')
+      setCampaignCrop(null)
+      toast.success('Imagen optimizada. Guarda y publica para mostrarla.')
     } catch (error) {
       toast.error(errorText(error))
     } finally {
@@ -245,6 +252,11 @@ export default function StorefrontSettingsPage() {
           Reintentar
         </button>
       </div>}
+      {campaignCrop && <ImageCropModal key={campaignCrop.file.name + campaignCrop.index + campaignCrop.field}
+        file={campaignCrop.file} ratio={campaignCrop.field === 'mobile_image_url' ? 9/16 : 16/9}
+        width={campaignCrop.field === 'mobile_image_url' ? 720 : 1600}
+        title="Encuadrar fotografía promocional"
+        onCancel={() => setCampaignCrop(null)} onConfirm={confirmCampaignCrop} />}
       {cropQueue[0] && <ImageCropModal
         key={cropQueue[0].file.name + cropQueue[0].file.lastModified + cropQueue[0].key}
         file={cropQueue[0].file} ratio={16 / 9} width={1920}
@@ -408,7 +420,7 @@ export default function StorefrontSettingsPage() {
                 disabled={banners.length >= 6 || campaignImageBusy !== null}
                 onClick={() => setForm((current) => ({ ...current, homepage_banners: [
                   ...(current.homepage_banners || []),
-                  { image_url: '', mobile_image_url: '', title: 'NUEVA CAMPAÑA', subtitle: '', button_text: 'DESCUBRIR', link: '/catalogo', active: false },
+                  { image_url: '', mobile_image_url: '', title: 'NUEVA CAMPAÑA', subtitle: '', button_text: 'DESCUBRIR', link: '/catalogo', active: false, starts_at: '', ends_at: '' },
                 ] }))}>+ Agregar campaña</button>
             </div>
             <p className="small text-secondary">Cada campaña debe tener una imagen y un título. Usa rutas internas como /catalogo o /catalogo?categoria=gorras. Desactiva una campaña para ocultarla sin borrarla.</p>
@@ -478,6 +490,17 @@ export default function StorefrontSettingsPage() {
                           value={banner[key] || ''} onChange={(event) => updateCampaign(index, key, event.target.value)} />
                       </div>
                     ))}
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label" htmlFor={`campaign-${index}-starts`}>Publicar desde (hora Colombia)</label>
+                      <input type="datetime-local" className="form-control" id={`campaign-${index}-starts`}
+                        value={banner.starts_at || ''} onChange={event => updateCampaign(index, 'starts_at', event.target.value)}/>
+                    </div>
+                    <div className="col-12 col-sm-6">
+                      <label className="form-label" htmlFor={`campaign-${index}-ends`}>Retirar desde (hora Colombia)</label>
+                      <input type="datetime-local" className="form-control" id={`campaign-${index}-ends`}
+                        min={banner.starts_at || undefined} value={banner.ends_at || ''}
+                        onChange={event => updateCampaign(index, 'ends_at', event.target.value)}/>
+                    </div>
                     <label className="col-12 d-flex align-items-center gap-2 mt-3">
                       <input type="checkbox" checked={!!banner.active}
                         onChange={(event) => updateCampaign(index, 'active', event.target.checked)} />
@@ -502,11 +525,11 @@ export default function StorefrontSettingsPage() {
             </div>
             <div className="d-flex flex-wrap gap-2">
               <button type="button" className="btn btn-outline-secondary"
-                disabled={!dirty || busy || !!uploading || visualUploading || cropQueue.length > 0} onClick={() => setForm(saved)}>
+                disabled={!dirty || busy || !!uploading || visualUploading || !!campaignCrop || cropQueue.length > 0} onClick={() => setForm(saved)}>
                 Descartar cambios
               </button>
               <button type="submit" className="btn btn-primary"
-                disabled={!dirty || busy || !!uploading || visualUploading || cropQueue.length > 0 || campaignImageBusy !== null || banners.some((banner) => !banner.image_url || !banner.title?.trim())}>
+                disabled={!dirty || busy || !!uploading || visualUploading || !!campaignCrop || cropQueue.length > 0 || campaignImageBusy !== null || banners.some((banner) => !banner.image_url || !banner.title?.trim())}>
                 {busy ? 'Publicando…' : 'Guardar y publicar'}
               </button>
             </div>
