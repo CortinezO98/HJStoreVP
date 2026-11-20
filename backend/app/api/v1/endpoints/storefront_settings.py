@@ -419,6 +419,8 @@ HOMEPAGE_EDIT_FIELDS = (
     "homepage_section_order", "homepage_hidden_sections",
 )
 DRAFT_KEY = "_homepage_draft"
+HISTORY_KEY = "_homepage_history"
+HISTORY_LIMIT = 5
 
 
 def published_homepage(settings_data: dict) -> dict:
@@ -498,6 +500,14 @@ def publish_homepage_draft(
     if saved.get("base_hash") != homepage_fingerprint(published):
         raise HTTPException(status_code=409, detail="La portada publicada cambió desde que inició este borrador. Revise los cambios antes de publicarlo.")
     draft = validated_homepage(saved.get("data", {}), stored)
+    history = list(stored.get(HISTORY_KEY) or [])
+    history.insert(0, {
+        "id": uuid4().hex,
+        "saved_at": datetime.now(BOGOTA_TZ).isoformat(timespec="seconds"),
+        "saved_by": current_user.id,
+        "data": published,
+    })
+    stored[HISTORY_KEY] = history[:HISTORY_LIMIT]
     stored.update(draft)
     stored.pop(DRAFT_KEY, None)
     row.settings_data = stored
@@ -521,6 +531,51 @@ def discard_homepage_draft(
         row.updated_at = datetime.utcnow()
         db.commit()
     return {"discarded": True}
+
+
+
+@router.get("/admin/homepage-versions")
+def get_homepage_versions(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    row = db.get(StorefrontSettings, ROW_ID)
+    history = (row.settings_data or {}).get(HISTORY_KEY, []) if row else []
+    # Metadatos; nunca exponer datos internos ni el historial en /public.
+    return [{
+        "id": version["id"],
+        "saved_at": version["saved_at"],
+        "saved_by": version.get("saved_by"),
+    } for version in history if isinstance(version, dict) and "id" in version]
+
+
+@router.post("/admin/homepage-versions/{version_id}/restore-draft")
+def restore_homepage_version_as_draft(
+    version_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    row = db.query(StorefrontSettings).filter(StorefrontSettings.id == ROW_ID).with_for_update().first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="No hay versiones anteriores")
+    stored = dict(row.settings_data or {})
+    if DRAFT_KEY in stored:
+        raise HTTPException(status_code=409, detail="Descarta primero el borrador actual antes de recuperar una versión")
+    history = stored.get(HISTORY_KEY) or []
+    version = next((v for v in history if isinstance(v, dict) and v.get("id") == version_id), None)
+    if version is None:
+        raise HTTPException(status_code=404, detail="Versión no encontrada")
+    published = published_homepage(stored)
+    draft = validated_homepage(version.get("data", {}), stored)
+    stored[DRAFT_KEY] = {
+        "data": draft,
+        "base_hash": homepage_fingerprint(published),
+    }
+    row.settings_data = stored
+    row.updated_by = current_user.id
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    return {"restored_as_draft": True, "published_unchanged": True}
 
 
 @router.post("/admin/upload-image", status_code=201)
