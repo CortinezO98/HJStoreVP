@@ -20,7 +20,7 @@ router = APIRouter(prefix="/storefront-settings", tags=["Configuración de tiend
 ROW_ID = 1
 HOMEPAGE_SECTION_IDS = (
     "newest", "statement", "featured", "campaigns", "personalized",
-    "categories", "services", "faq", "closing",
+    "visual", "categories", "services", "faq", "closing",
 )
 
 DEFAULTS = {
@@ -157,6 +157,10 @@ class SettingsPayload(BaseModel):
     @field_validator("homepage_section_order")
     @classmethod
     def validate_section_order(cls, sections: list[str]) -> list[str]:
+        legacy = set(HOMEPAGE_SECTION_IDS) - {"visual"}
+        if len(sections) == len(legacy) and set(sections) == legacy:
+            sections = [*sections]
+            sections.insert(sections.index("campaigns") + 1, "visual")
         if len(sections) != len(HOMEPAGE_SECTION_IDS) or set(sections) != set(HOMEPAGE_SECTION_IDS):
             raise ValueError("El orden debe incluir cada sección del inicio una sola vez")
         return sections
