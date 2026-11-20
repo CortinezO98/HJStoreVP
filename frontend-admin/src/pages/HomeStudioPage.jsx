@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { storefrontSettingsApi } from '../services/api'
 import HomeStudioPreview from '../components/storefront/HomeStudioPreview'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
+import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import ImageCropModal from '../components/products/ImageCropModal'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
@@ -14,7 +15,7 @@ const SECTIONS = [
   ['newest','Recién llegados'],['statement','Campaña de estilo'],
   ['featured','Productos destacados'],['campaigns','Campañas fotográficas'],
   ['personalized','Recomendaciones'],['visual','Bloques visuales'],
-  ['categories','Categorías'],['services','Beneficios'],
+  ['categories','Categorías'],['loyalty','Banner de fidelización'],['services','Beneficios'],
   ['faq','Preguntas frecuentes'],['closing','Cierre editorial'],
 ]
 const normalizeOrder = value => {
@@ -285,9 +286,14 @@ export default function HomeStudioPage() {
               </label>
             </div>)}
           </div>}
+          {['categories', 'loyalty'].includes(selected) && <HomeMarketingEditor
+            tiles={draft.homepage_category_tiles || []} loyalty={draft.homepage_loyalty_banner}
+            onTilesChange={tiles => update('homepage_category_tiles', tiles)}
+            onLoyaltyChange={banner => update('homepage_loyalty_banner', banner)}
+            onBusyChange={setUploading}/>}
           {selected === 'visual' && <HomeVisualBlocksEditor blocks={draft.homepage_visual_blocks || []}
             onBusyChange={setUploading} onChange={blocks => update('homepage_visual_blocks',blocks)}/>}
-          {!['hero','visual','campaigns'].includes(selected) && <div>
+          {!['hero','visual','campaigns','categories','loyalty'].includes(selected) && <div>
             <p className="text-secondary">Esta sección utiliza los componentes comerciales actuales de HJStoreVP.
               Puedes cambiar su orden o visibilidad desde el panel superior, sin afectar sus datos.</p>
             {(selected === 'statement') && <p className="small">Las imágenes del carrusel de estilo siguen disponibles en
