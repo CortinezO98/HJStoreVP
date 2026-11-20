@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import ImageCropModal from '../components/products/ImageCropModal'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
+import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
 const GROUPS = [
@@ -391,6 +392,14 @@ export default function StorefrontSettingsPage() {
                 <p className="form-text mt-3 mb-0">Las imágenes se muestran en el orden indicado. Pulsa «Guardar y publicar» para aplicar los cambios.</p>
               </div>
             )))}
+            {index === 1 && <div className="mt-4">
+              <CarouselPlaybackControls title="Carrusel principal"
+                value={form.hero_carousel_settings}
+                onChange={next => change('hero_carousel_settings', next)}/>
+              <CarouselPlaybackControls title="Carrusel de campaña secundaria"
+                value={form.statement_carousel_settings}
+                onChange={next => change('statement_carousel_settings', next)}/>
+            </div>}
             {index === 3 && <div className="admin-settings-info mt-4">
               Revisa estos textos con el comercio antes de publicarlos. El sistema no genera políticas legales automáticamente.
             </div>}
@@ -490,6 +499,11 @@ export default function StorefrontSettingsPage() {
                     </div>
                   </div>
                 )}
+                <BannerPresentationControls value={banner}
+                  onChange={next => setForm(current => ({
+                    ...current, homepage_banners: current.homepage_banners.map((item,i)=>
+                      i === index ? next : item),
+                  }))}/>
                 <div className="row g-3">
                   <div className="col-12 col-lg-5">
                     {banner.image_url && <img src={fileSrc(banner.image_url)} alt={banner.title || 'Campaña'}
