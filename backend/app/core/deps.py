@@ -50,6 +50,7 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Sesión revocada; inicia sesión nuevamente")
     if mfa and mfa.enabled and payload.get("mfa_v") != mfa.version:
         raise HTTPException(status_code=401, detail="Se requiere una nueva sesión con segundo factor")
+    db.info["audit_actor_id"] = user.id
     return user
 
 
@@ -100,6 +101,7 @@ def get_optional_user(
         return None
     if mfa and mfa.enabled and payload.get("mfa_v") != mfa.version:
         return None
+    db.info["audit_actor_id"] = user.id
     return user
 
 
