@@ -89,7 +89,7 @@ const inventory = read('src/pages/InventoryPage.jsx')
 for (const item of [
   'inventoryApi.replenish', 'inventoryApi.transfer', 'inventoryApi.byProduct',
   'inventoryApi.lowStock', 'ProductStockModal', 'ReplenishModal', 'TransferModal',
-  'include_inactive: true', 'per_page: 100', 'pageProducts', 'setStockFilter',
+  'include_inactive: isAdmin', 'per_page: 100', 'pageProducts', 'setStockFilter',
   'setActiveFilter', 'setPerPage', 'pageCount',
 ]) {
   if (!inventory.includes(item)) missing.push('Inventario: falta ' + item)
@@ -99,7 +99,7 @@ for (const item of [
 for (const [file, required] of [
   ['src/pages/WebOrdersPage.jsx', [
     'ordersApi.list', 'ordersApi.updateStatus', 'ShipmentManager',
-    'OrderDetailModal', 'NEXT_STATUS_OPTIONS', "status === 'shipped'",
+    'OrderDetailModal', 'MANUAL_STATUS_OPTIONS', 'shipped: [],',
     'pageOrders', 'setPerPage', 'setSortBy', 'shipping_address',
   ]],
   ['src/components/ShipmentManager.jsx', [
@@ -145,7 +145,7 @@ for (const [file, symbols] of [
     'UserFormModal', 'pageUsers', 'setPerPage', 'setRoleFilter',
   ]],
   ['src/pages/ReportsPage.jsx', [
-    'analyticsApi.salesByMonth', '.topProducts({', '.salesByLocation({',
+    'analyticsApi.salesByMonth', 'topProductsFiltered', 'salesByLocationFiltered',
     'ordersApi.list', 'physicalSalesApi.list', 'exportAccounting',
     'exportCategories', 'exportTopProducts', 'exportLocations',
     'exportOrders', 'exportPhysicalSales', 'accountingSummary', 'OperationalAnalytics',
