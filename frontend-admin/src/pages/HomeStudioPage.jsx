@@ -6,6 +6,7 @@ import { storefrontSettingsApi } from '../services/api'
 import HomeStudioPreview from '../components/storefront/HomeStudioPreview'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
+import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
 import ImageCropModal from '../components/products/ImageCropModal'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
@@ -280,6 +281,10 @@ export default function HomeStudioPage() {
                 onChange={e => update(key,e.target.value)}/>
             </div>)}
             <div className="col-12">
+              <CarouselPlaybackControls title="Carrusel principal" value={draft.hero_carousel_settings}
+                onChange={next => update('hero_carousel_settings', next)}/>
+            </div>
+            <div className="col-12">
               <label className="form-label">Agregar fotografía al carrusel principal (máx. 8)</label>
               <input className="form-control" type="file" accept="image/png,image/jpeg,image/webp"
                 disabled={disabled || (draft.hero_images || []).length >= 8}
@@ -292,6 +297,9 @@ export default function HomeStudioPage() {
                 onClick={() => update('hero_images',draft.hero_images.filter((_,j)=>i!==j))}>Quitar</button>
             </div>)}
           </div>}
+          {selected === 'statement' && <CarouselPlaybackControls
+            title="Carrusel de campaña de estilo" value={draft.statement_carousel_settings}
+            onChange={next => update('statement_carousel_settings', next)}/>}
           {selected === 'campaigns' && <div className="d-flex flex-column gap-3">
             <p className="small text-secondary">Campañas con enlace, fotografía para celular y fechas de publicación.</p>
             <button className="btn btn-outline-primary btn-sm" type="button" onClick={addBanner}
@@ -308,6 +316,9 @@ export default function HomeStudioPage() {
                     onClick={() => update('homepage_banners',draft.homepage_banners.filter((_,j)=>i!==j))}>Eliminar</button>
                 </div>
               </div>
+              <BannerPresentationControls value={b}
+                onChange={next => update('homepage_banners',
+                  draft.homepage_banners.map((item,j)=>j===i ? next : item))}/>
               {b.image_url && <img src={imageSrc(b.image_url)} alt={b.title} className="w-100 rounded mb-2"
                 style={{ aspectRatio:'16/7',objectFit:'cover' }}/>}
               {[
