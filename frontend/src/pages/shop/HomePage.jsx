@@ -310,7 +310,8 @@ export default function HomePage() {
               <h2>ENCUENTRA LO QUE TE DEFINE.</h2>
               <p>Recorre nuestras categorías a través de las fotografías reales del catálogo.</p>
             </div>
-            <div className="store-photo-category-tiles">
+            <div className="store-photo-category-tiles"
+              style={{ '--category-photo-columns': Math.min(categoriesWithPhotos.length, 4) }}>
               {categoriesWithPhotos.map(category => (
                 <Link key={category.slug} className="store-photo-category-tile"
                   to={`/catalogo?categoria=${encodeURIComponent(category.slug)}`}>
