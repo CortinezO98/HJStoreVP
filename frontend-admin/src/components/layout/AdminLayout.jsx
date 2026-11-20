@@ -136,6 +136,12 @@ const NAV_ITEMS = [
     roles: ['super_admin', 'admin'],
   },
   {
+    to: '/auditoria-comercial',
+    icon: History,
+    label: 'Auditoría comercial',
+    roles: ['super_admin'],
+  },
+  {
     to: '/auditoria-seguridad',
     icon: History,
     label: 'Auditoría de seguridad',
@@ -178,7 +184,7 @@ const NAV_GROUPS = [
   { label: 'Catálogo y existencias', links: ['/productos', '/categorias', '/inventario', '/puntos'] },
   { label: 'Ventas y operaciones', links: ['/pedidos', '/caja', '/pedidos-web', '/envios', '/posventa'] },
   { label: 'Marketing y clientes', links: ['/promociones', '/fidelizacion', '/notificaciones', '/usuarios'] },
-  { label: 'Administración', links: ['/integraciones', '/auditoria-seguridad', '/estudio-inicio', '/configuracion-tienda', '/comprobantes', '/configuracion-dian'] },
+  { label: 'Administración', links: ['/integraciones', '/auditoria-seguridad', '/auditoria-comercial', '/estudio-inicio', '/configuracion-tienda', '/comprobantes', '/configuracion-dian'] },
 ]
 
 function AdminNavigation({ mobile = false, navItems, navSearch, setNavSearch,
