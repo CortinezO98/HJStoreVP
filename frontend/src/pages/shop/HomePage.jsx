@@ -71,12 +71,14 @@ export default function HomePage() {
   const activeStatementImage = statementImages[statementCarousel.index]
   const campaignBanners = (Array.isArray(storeSettings.homepage_banners) ? storeSettings.homepage_banners : [])
     .filter((banner) => banner?.active && banner?.image_url && banner?.title)
-  const showcase = newest.slice(0, 8)
-  const featuredShowcase = featured.slice(0, 4)
+  // Dos formatos distintos, sin volver a mostrar exactamente las mismas fichas.
+  const showNewestCarousel = newest.filter(product => product?.primary_image).length >= 4
+  const showcase = newest.slice(0, 4)
+  const newestIds = new Set(newest.map(product => product.id))
+  const featuredShowcase = featured.filter(product => !newestIds.has(product.id)).slice(0, 4)
   // Nuevos carruseles vivos: muestran fotos de los productos disponibles en el catálogo.
   // No dependen de campañas creadas manualmente desde el administrador.
   const latestWithPhotos = newest.filter(product => product?.primary_image)
-  const featuredWithPhotos = featured.filter(product => product?.primary_image)
   const savedCategoryPhotos = Array.isArray(storeSettings.homepage_category_tiles)
     ? storeSettings.homepage_category_tiles : []
   // Solo fotografías elegidas por el superadministrador para uso editorial.
@@ -180,26 +182,35 @@ export default function HomePage() {
       </section>
 
       <div style={sectionStyle("newest")}>
-        <ShopProductCarousel sectionId="coleccion-en-movimiento"
-          products={latestWithPhotos} eyebrow="01 / DESCUBRE LA COLECCIÓN"
-          title="ELIGE TU ESTILO." description="Una selección en movimiento: fotografías reales de nuestros productos y acceso directo a cada referencia."
-          link="/catalogo?sort=newest" />
-      </div>
-
-      <section className="editorial-products-section store-home-products" style={sectionStyle("newest")}>
-        <SectionHeading eyebrow="LO ÚLTIMO EN HJSTOREVP" title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
-        {loadingNewest ? (
-          <LoadingGrid count={8} />
-        ) : newestError ? (
-          <ErrorState onRetry={() => retryNewest()} description="No pudimos consultar las últimas novedades." />
-        ) : showcase.length ? (
-          <div className="editorial-product-grid">
-            {showcase.map((product) => <ProductCard key={product.id} product={product} label="NUEVO" />)}
-          </div>
+        {showNewestCarousel ? (
+          <ShopProductCarousel sectionId="coleccion-en-movimiento"
+            products={latestWithPhotos}
+            eyebrow="01 / RECIÉN LLEGADOS"
+            title="ACABAN DE LLEGAR."
+            description="Descubre las últimas referencias de nuestra colección."
+            link="/catalogo?sort=newest" />
         ) : (
-          <div className="editorial-empty-state">Pronto encontrarás aquí los productos recién agregados. <Link to="/catalogo">Ver catálogo</Link></div>
+          <section className="editorial-products-section store-home-products">
+            <SectionHeading eyebrow="01 / LO ÚLTIMO EN HJSTOREVP"
+              title="ACABAN DE LLEGAR" link="/catalogo?sort=newest" />
+            {loadingNewest ? (
+              <LoadingGrid count={4} />
+            ) : newestError ? (
+              <ErrorState onRetry={() => retryNewest()}
+                description="No pudimos consultar las últimas novedades." />
+            ) : showcase.length ? (
+              <div className="editorial-product-grid">
+                {showcase.map(product => <ProductCard key={product.id}
+                  product={product} label="NUEVO" />)}
+              </div>
+            ) : (
+              <div className="editorial-empty-state">Pronto encontrarás aquí nuestros productos.
+                <Link to="/catalogo"> Ver catálogo</Link>
+              </div>
+            )}
+          </section>
         )}
-      </section>
+      </div>
 
       <section className="store-home-statement" style={{
         ...sectionStyle("statement"),
@@ -245,26 +256,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div style={sectionStyle("featured")}>
-        <ShopProductCarousel sectionId="seleccion-destacada"
-          products={featuredWithPhotos.length ? featuredWithPhotos : latestWithPhotos}
-          eyebrow="02 / LO QUE NOS REPRESENTA"
-          title="PIEZAS QUE DESTACAN." description="Descubre nuestras referencias en un carrusel visual con compra y favoritos."
-          link="/catalogo?featured=true" />
-      </div>
-
-      <section className="editorial-products-section" style={sectionStyle("featured")}>
-        <SectionHeading eyebrow="ELEGIDOS PARA TI" title="PRODUCTOS DESTACADOS" link="/catalogo?featured=true" />
-        {loadingFeatured ? (
-          <LoadingGrid count={8} />
-        ) : featuredError ? (
-          <ErrorState onRetry={() => retryFeatured()} description="No pudimos consultar los productos destacados." />
-        ) : featured.length ? (
-          <div className="editorial-product-grid">
-            {featuredShowcase.map((product) => <ProductCard key={product.id} product={product} label="DESTACADO" />)}
-          </div>
-        ) : <div className="editorial-empty-state">Explora todas nuestras referencias. <Link to="/catalogo">Ir al catálogo</Link></div>}
-      </section>
+      {(loadingFeatured || featuredError || featuredShowcase.length > 0) && (
+        <section className="editorial-products-section store-home-featured"
+          style={sectionStyle("featured")}>
+          <SectionHeading eyebrow="02 / SELECCIÓN HJSTOREVP"
+            title="PIEZAS QUE DESTACAN" link="/catalogo?featured=true" />
+          {loadingFeatured ? (
+            <LoadingGrid count={4} />
+          ) : featuredError ? (
+            <ErrorState onRetry={() => retryFeatured()}
+              description="No pudimos consultar los productos destacados." />
+          ) : (
+            <div className="editorial-product-grid">
+              {featuredShowcase.map(product => <ProductCard key={product.id}
+                product={product} label="DESTACADO" />)}
+            </div>
+          )}
+        </section>
+      )}
 
       {campaignBanners.length > 0 && (
         <section className="w-full bg-white" style={sectionStyle("campaigns")} aria-label="Campañas destacadas">
