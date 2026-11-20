@@ -26,6 +26,7 @@ import {
   PlugZap,
   Wallet,
   Settings2,
+  PanelsTopLeft,
   Search,
   ChevronDown,
   Command,
@@ -133,6 +134,12 @@ const NAV_ITEMS = [
     roles: ['super_admin', 'admin'],
   },
   {
+    to: '/estudio-inicio',
+    icon: PanelsTopLeft,
+    label: 'Estudio visual del inicio',
+    roles: ['super_admin'],
+  },
+  {
     to: '/configuracion-tienda',
     icon: Settings2,
     label: 'Configuración de tienda',
@@ -157,7 +164,7 @@ const NAV_GROUPS = [
   { label: 'Catálogo y existencias', links: ['/productos', '/categorias', '/inventario', '/puntos'] },
   { label: 'Ventas y operaciones', links: ['/pedidos', '/caja', '/pedidos-web', '/envios', '/posventa'] },
   { label: 'Marketing y clientes', links: ['/promociones', '/fidelizacion', '/notificaciones', '/usuarios'] },
-  { label: 'Administración', links: ['/integraciones', '/configuracion-tienda', '/comprobantes', '/configuracion-dian'] },
+  { label: 'Administración', links: ['/integraciones', '/estudio-inicio', '/configuracion-tienda', '/comprobantes', '/configuracion-dian'] },
 ]
 
 function AdminNavigation({ mobile = false, navItems, navSearch, setNavSearch,
