@@ -151,7 +151,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if mfa and mfa.enabled:
         return _mfa_challenge(user)
     clear_login_failures(data.email)
-    return _token_bundle(user)
+    return _token_bundle(user, mfa)
 
 
 @router.post("/refresh", response_model=TokenResponse)
