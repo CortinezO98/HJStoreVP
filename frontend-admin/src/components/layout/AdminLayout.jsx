@@ -8,6 +8,7 @@ import {
   Globe,
   MapPin,
   Users,
+  UserCircle,
   BarChart2,
   LogOut,
   Menu,
@@ -41,6 +42,12 @@ const NAV_ITEMS = [
     to: '/',
     icon: LayoutDashboard,
     label: 'Dashboard',
+    roles: ['super_admin', 'admin', 'seller'],
+  },
+  {
+    to: '/mi-perfil',
+    icon: UserCircle,
+    label: 'Mi perfil',
     roles: ['super_admin', 'admin', 'seller'],
   },
   {
@@ -160,7 +167,7 @@ const NAV_ITEMS = [
 ]
 
 const NAV_GROUPS = [
-  { label: 'Visión general', links: ['/', '/reportes'] },
+  { label: 'Visión general', links: ['/', '/reportes', '/mi-perfil'] },
   { label: 'Catálogo y existencias', links: ['/productos', '/categorias', '/inventario', '/puntos'] },
   { label: 'Ventas y operaciones', links: ['/pedidos', '/caja', '/pedidos-web', '/envios', '/posventa'] },
   { label: 'Marketing y clientes', links: ['/promociones', '/fidelizacion', '/notificaciones', '/usuarios'] },
@@ -309,6 +316,7 @@ export default function AdminLayout() {
         toggleGroup={toggleGroup} setSidebarOpen={setSidebarOpen}
         navSearchRef={navSearchRef} navLinkClass={navLinkClass} />
       <div className="admin-sidebar-bottom">
+        <NavLink to="/mi-perfil" className="admin-sidebar-store-link"><UserCircle size={17}/> Mi perfil y seguridad</NavLink>
         <a href={storeUrl} target="_blank" rel="noopener noreferrer" className="admin-sidebar-store-link">
           <ExternalLink size={17} /> Ver tienda pública
         </a>

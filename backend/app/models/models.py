@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from sqlalchemy import (
-    String, Text, Boolean, Integer, Numeric, DateTime,
+    String, Text, Boolean, Integer, BigInteger, Numeric, DateTime,
     ForeignKey, Enum, JSON, Index, UniqueConstraint,
     func, event
 )
@@ -115,6 +115,18 @@ class User(Base, TimestampMixin):
 
     def __repr__(self):
         return f"<User {self.email} ({self.role})>"
+
+
+class UserMFASettings(Base):
+    __tablename__ = "user_mfa_settings"
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    secret_ciphertext: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pending_secret_ciphertext: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    recovery_hashes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_totp_step: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class Address(Base, TimestampMixin):

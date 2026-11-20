@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import decode_token, credential_version_matches
-from app.models.models import User, UserRole
+from app.models.models import User, UserRole, UserMFASettings
 
 bearer_scheme = HTTPBearer()
 
@@ -30,19 +30,26 @@ def get_current_user(
             detail="Token inválido",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = db.query(User).filter(User.id == user_id, User.active == True).first()
+    user = db.query(User).filter(User.id == user_id, User.active.is_(True), User.deleted.is_(False)).first()
 
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no encontrado o inactivo",
         )
+    if payload.get("role") is not None and payload.get("role") != user.role.value:
+        raise HTTPException(status_code=401, detail="Permisos cambiados; inicia sesión nuevamente")
     if not credential_version_matches(payload, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Sesión revocada; inicia sesión nuevamente",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    mfa = db.query(UserMFASettings).filter_by(user_id=user.id).first()
+    if mfa and mfa.version and payload.get("sec_v") != mfa.version:
+        raise HTTPException(status_code=401, detail="Sesión revocada; inicia sesión nuevamente")
+    if mfa and mfa.enabled and payload.get("mfa_v") != mfa.version:
+        raise HTTPException(status_code=401, detail="Se requiere una nueva sesión con segundo factor")
     return user
 
 
@@ -82,9 +89,16 @@ def get_optional_user(
     except (TypeError, ValueError):
         return None
     user = db.query(User).filter(
-        User.id == user_id, User.active.is_(True)
+        User.id == user_id, User.active.is_(True), User.deleted.is_(False)
     ).first()
     if not user or not credential_version_matches(payload, user.hashed_password):
+        return None
+    if payload.get("role") is not None and payload.get("role") != user.role.value:
+        return None
+    mfa = db.query(UserMFASettings).filter_by(user_id=user.id).first()
+    if mfa and mfa.version and payload.get("sec_v") != mfa.version:
+        return None
+    if mfa and mfa.enabled and payload.get("mfa_v") != mfa.version:
         return None
     return user
 

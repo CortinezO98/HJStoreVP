@@ -36,7 +36,8 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     const isAuthRequest = originalRequest?.url?.includes('/auth/login') ||
-      originalRequest?.url?.includes('/auth/refresh')
+      originalRequest?.url?.includes('/auth/refresh') ||
+      originalRequest?.url?.includes('/auth/mfa/verify')
 
     const status = error.response?.status
     // El catálogo es público para lecturas normales. Una credencial expirada
@@ -94,6 +95,16 @@ export const authApi = {
   login: (data) => apiClient.post('/auth/login', data),
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
   me: () => apiClient.get('/auth/me'),
+  updateProfile: (data) => apiClient.patch('/auth/me', data),
+  changeEmail: (data) => apiClient.put('/auth/me/email', data),
+  changePassword: (data) => apiClient.put('/auth/me/password', data),
+  mfaStatus: () => apiClient.get('/auth/me/mfa'),
+  mfaSetup: (data) => apiClient.post('/auth/me/mfa/setup', data),
+  mfaConfirm: (data) => apiClient.post('/auth/me/mfa/confirm', data),
+  mfaVerify: (data) => apiClient.post('/auth/mfa/verify', data),
+  revokeSessions: (data) => apiClient.post('/auth/me/sessions/revoke', data),
+  rotateRecovery: (data) => apiClient.post('/auth/me/mfa/recovery/rotate', data),
+  disableMfa: (data) => apiClient.post('/auth/me/mfa/disable', data),
 }
 
 // ─────────────────────────────────────────────────────────

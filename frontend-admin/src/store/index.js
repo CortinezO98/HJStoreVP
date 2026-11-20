@@ -10,24 +10,25 @@ export const useAuthStore = create(
       refreshToken: sessionStorage.getItem('refresh_token'),
       isAuthenticated: !!sessionStorage.getItem('access_token'),
 
-      login: async (email, password) => {
-        const { data } = await authApi.login({ email, password })
+      completeLogin: (data) => {
         if (!['super_admin', 'admin', 'seller'].includes(data.user_role)) {
           throw new Error('No tienes acceso al panel de administración')
         }
         sessionStorage.setItem('access_token', data.access_token)
         sessionStorage.setItem('refresh_token', data.refresh_token)
         set({
-          user: {
-            id: data.user_id,
-            fullName: data.full_name,
-            role: data.user_role,
-          },
+          user: { id: data.user_id, fullName: data.full_name, role: data.user_role },
           accessToken: data.access_token,
           refreshToken: data.refresh_token,
           isAuthenticated: true,
         })
         return data
+      },
+
+      login: async (email, password) => {
+        const { data } = await authApi.login({ email, password })
+        if (data.mfa_required) return data
+        return get().completeLogin(data)
       },
 
       logout: () => {

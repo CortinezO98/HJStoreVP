@@ -1,0 +1,49 @@
+name: Fase B Security CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/api/v1/endpoints/auth.py'
+      - 'backend/app/api/v1/endpoints/users.py'
+      - 'backend/app/core/deps.py'
+      - 'backend/app/models/models.py'
+      - 'backend/app/services/mfa.py'
+      - 'backend/app/services/auth_protection.py'
+      - 'backend/tests/test_profile_mfa.py'
+      - 'backend/tests/test_user_lifecycle.py'
+      - 'backend/alembic/versions/20261120_17_user_mfa.py'
+      - 'frontend-admin/src/**'
+      - '.github/workflows/security-phase-b.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-regressions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Security regressions (isolated SQLite)
+        run: python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py -q
+
+  admin-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - name: Compile admin (includes profile and MFA login)
+        run: npm run build

@@ -3,6 +3,7 @@ import { useAuthStore } from './store'
 
 import AdminLayout from './components/layout/AdminLayout'
 import LoginPage from './pages/LoginPage'
+import MyProfilePage from './pages/MyProfilePage'
 import DashboardPage from './pages/DashboardPage'
 import ProductsPage from './pages/ProductsPage'
 import CategoriesPage from './pages/CategoriesPage'
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/" element={<AdminLayout />}>
           {/* Seller sí puede ver su dashboard operativo */}
           <Route index element={<DashboardPage />} />
+          <Route path="mi-perfil" element={<MyProfilePage />} />
 
           {/* Admin / Super Admin */}
           <Route
