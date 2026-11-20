@@ -20,6 +20,7 @@ def list_security_events(
     actor_id: int | None = Query(None, ge=1),
     action: str | None = Query(None, max_length=64),
     resource: str | None = Query(None, max_length=40),
+    target_id: str | None = Query(None, max_length=70),
     outcome: str | None = Query(None, pattern="^(success|failure)$"),
     from_date: datetime | None = None,
     to_date: datetime | None = None,
@@ -35,6 +36,8 @@ def list_security_events(
         q = q.filter(SecurityAuditEvent.action == action)
     if resource:
         q = q.filter(SecurityAuditEvent.resource == resource)
+    if target_id:
+        q = q.filter(SecurityAuditEvent.target_id == target_id)
     if outcome:
         q = q.filter(SecurityAuditEvent.outcome == outcome)
     if from_date:
@@ -70,6 +73,7 @@ def export_security_events(
     actor_id: int | None = Query(None, ge=1),
     action: str | None = Query(None, max_length=64),
     resource: str | None = Query(None, max_length=40),
+    target_id: str | None = Query(None, max_length=70),
     outcome: str | None = Query(None, pattern="^(success|failure)$"),
     from_date: datetime | None = None,
     to_date: datetime | None = None,
@@ -84,6 +88,8 @@ def export_security_events(
         q = q.filter(SecurityAuditEvent.action == action)
     if resource:
         q = q.filter(SecurityAuditEvent.resource == resource)
+    if target_id:
+        q = q.filter(SecurityAuditEvent.target_id == target_id)
     if outcome:
         q = q.filter(SecurityAuditEvent.outcome == outcome)
     if from_date:
