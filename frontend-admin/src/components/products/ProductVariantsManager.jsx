@@ -259,10 +259,12 @@ export default function ProductVariantsManager({ product, onClose }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-gray-500">Foto {index + 1} de {ordered.length}</span>
                     <button type="button" disabled={imageBusy || index === 0}
-                      className="text-xs text-brand-700 underline"
+                      className="text-xs text-brand-700 underline" title="Mover fotografía antes"
+                      aria-label={`Mover fotografía ${index + 1} de ${item.label} hacia atrás`}
                       onClick={() => reorderVariantPhotos(item.id, ordered, index, -1)}>←</button>
                     <button type="button" disabled={imageBusy || index === ordered.length - 1}
-                      className="text-xs text-brand-700 underline"
+                      className="text-xs text-brand-700 underline" title="Mover fotografía después"
+                      aria-label={`Mover fotografía ${index + 1} de ${item.label} hacia adelante`}
                       onClick={() => reorderVariantPhotos(item.id, ordered, index, 1)}>→</button>
                     {img.is_primary ? <span className="text-xs text-green-700">Principal</span> :
                       <button type="button" disabled={imageBusy}
