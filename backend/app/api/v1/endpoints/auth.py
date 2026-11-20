@@ -150,8 +150,11 @@ def me(current_user: User = Depends(get_current_user)):
 @router.patch("/me", response_model=UserOut)
 def update_my_profile(data: ProfileUpdate, db: Session = Depends(get_db),
                       current_user: User = Depends(get_current_user)):
-    current_user.full_name = data.full_name.strip()
-    current_user.phone = data.phone.strip() or None if data.phone is not None else None
+    cleaned_name = data.full_name.strip()
+    if len(cleaned_name) < 2:
+        raise HTTPException(status_code=422, detail="El nombre debe tener al menos dos caracteres")
+    current_user.full_name = cleaned_name
+    current_user.phone = (data.phone.strip() or None) if data.phone is not None else None
     db.commit()
     db.refresh(current_user)
     return current_user
@@ -220,15 +223,17 @@ def setup_mfa(data: MFAStart, request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/me/mfa/confirm")
-def confirm_mfa(data: MFACode, db: Session = Depends(get_db),
+def confirm_mfa(data: MFACode, request: Request, db: Session = Depends(get_db),
                 current_user: User = Depends(get_current_user)):
     _require_mfa_admin(current_user)
+    check_login_limit(request, current_user.email)
     record = _mfa_record(db, current_user.id, lock=True)
     if not record or not record.pending_secret_ciphertext or record.enabled:
         raise HTTPException(status_code=409, detail="No hay enrolamiento pendiente")
     secret = decrypt_secret(record.pending_secret_ciphertext)
     step = match_totp_step(secret, data.code)
     if step is None:
+        note_login_failure(request, current_user.email)
         raise HTTPException(status_code=400, detail="Código incorrecto")
     plain, hashed = generate_recovery_codes()
     record.secret_ciphertext = record.pending_secret_ciphertext
@@ -239,6 +244,7 @@ def confirm_mfa(data: MFACode, db: Session = Depends(get_db),
     record.recovery_hashes = hashed
     record.updated_at = datetime.utcnow()
     db.commit()
+    clear_login_failures(current_user.email)
     return {"enabled": True, "recovery_codes": plain,
             "message": "Guarda estos códigos ahora. No volverán a mostrarse."}
 
