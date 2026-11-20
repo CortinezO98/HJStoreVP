@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -18,7 +19,8 @@ from app.core.deps import require_super_admin
 from app.core.config import settings
 from app.api.v1.endpoints.images import normalize_image, MAX_SIZE_BYTES
 from app.db.session import get_db
-from app.models.models import StorefrontSettings, User, Product, Category
+from app.models.models import StorefrontSettings, User, Product, Category, StorefrontVisualBlock
+from app.services.storefront_visual_storage import mirror_homepage
 
 router = APIRouter(prefix="/storefront-settings", tags=["Configuración de tienda"])
 ROW_ID = 1
@@ -453,6 +455,53 @@ def resolve_public_destinations(settings_data: dict, db: Session) -> None:
         loyalty["link"] = destination_link(loyalty, db)
 
 
+def sync_visual_layout_if_ready(db: Session, row: StorefrontSettings) -> None:
+    """Keep old JSON compatible before migration; mirror atomically after it.
+
+    Migration 20261119_14 must be applied before relational tracking is enabled.
+    Never alter the published JSON if the new tables do not exist yet.
+    """
+    inspector = inspect(db.get_bind())
+    if not (inspector.has_table("storefront_visual_blocks")
+            and inspector.has_table("storefront_visual_slides")):
+        return
+    db.flush()
+    mirror_homepage(db, row.id, dict(row.settings_data or {}))
+
+
+@router.get("/admin/homepage-storage-health")
+def visual_storage_health(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    inspector = inspect(db.get_bind())
+    ready = inspector.has_table("storefront_visual_blocks") and inspector.has_table("storefront_visual_slides")
+    row = db.get(StorefrontSettings, ROW_ID)
+    stored = dict(row.settings_data or {}) if row else {}
+    if not ready:
+        return {"schema_ready": False, "published_blocks": 0,
+                "draft_blocks": 0, "history_blocks": 0, "in_sync": False}
+    scopes = ["published", "draft"]
+    counts = {}
+    for scope in scopes:
+        counts[scope] = db.query(StorefrontVisualBlock).filter(
+            StorefrontVisualBlock.storefront_id == ROW_ID,
+            StorefrontVisualBlock.scope == scope,
+        ).count()
+    history_count = db.query(StorefrontVisualBlock).filter(
+        StorefrontVisualBlock.storefront_id == ROW_ID,
+        StorefrontVisualBlock.scope.like("history:%"),
+    ).count()
+    from app.services.storefront_visual_storage import iter_visual_entries
+    expected = len(list(iter_visual_entries(stored)))
+    saved = stored.get("_homepage_draft")
+    expected_draft = (len(list(iter_visual_entries(saved["data"])))
+                      if isinstance(saved, dict) and isinstance(saved.get("data"), dict) else 0)
+    return {"schema_ready": True, "published_blocks": counts["published"],
+            "draft_blocks": counts["draft"], "history_blocks": history_count,
+            "in_sync": (counts["published"] == expected and counts["draft"] == expected_draft)}
+
+
 def public_settings(db: Session) -> dict:
     row = db.get(StorefrontSettings, ROW_ID)
     return {**DEFAULTS, **{key: value for key, value in (row.settings_data or {}).items() if not key.startswith('_')}} if row else dict(DEFAULTS)
@@ -509,6 +558,7 @@ def update_admin_settings(
         row.settings_data = {**payload.model_dump(), **{key: value for key, value in (row.settings_data or {}).items() if key.startswith('_')}}
         row.updated_by = current_user.id
         row.updated_at = datetime.utcnow()
+    sync_visual_layout_if_ready(db, row)
     try:
         db.commit()
     except IntegrityError:
@@ -592,6 +642,7 @@ def save_homepage_draft(
         row.settings_data = stored
         row.updated_by = current_user.id
         row.updated_at = datetime.utcnow()
+    sync_visual_layout_if_ready(db, row)
     db.commit()
     return {"saved": True, "draft_base_hash": base_hash, "published_hash": homepage_fingerprint(published)}
 
@@ -624,6 +675,7 @@ def publish_homepage_draft(
     row.settings_data = stored
     row.updated_by = current_user.id
     row.updated_at = datetime.utcnow()
+    sync_visual_layout_if_ready(db, row)
     db.commit()
     return {"published": True, "published_hash": homepage_fingerprint(published_homepage(stored))}
 
@@ -640,6 +692,7 @@ def discard_homepage_draft(
         row.settings_data = stored
         row.updated_by = current_user.id
         row.updated_at = datetime.utcnow()
+        sync_visual_layout_if_ready(db, row)
         db.commit()
     return {"discarded": True}
 
@@ -685,6 +738,7 @@ def restore_homepage_version_as_draft(
     row.settings_data = stored
     row.updated_by = current_user.id
     row.updated_at = datetime.utcnow()
+    sync_visual_layout_if_ready(db, row)
     db.commit()
     return {"restored_as_draft": True, "published_unchanged": True}
 
