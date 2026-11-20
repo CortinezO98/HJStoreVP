@@ -123,3 +123,42 @@ y revisar que el motor de prueba use SQLite.
 
 No ejecutar `docker compose down -v`, no eliminar ni reiniciar
 MariaDB/Redis y no limpiar claves de producción por este fallo.
+
+
+## Ajuste de regresiones posteriores al aislamiento (20/11/2026)
+
+Última ejecución local reportada: **171 correctas, 30 fallidas**.
+Los fallos se concentran en pruebas antiguas que invocan
+`/api/v1/payments/confirm-demo`: el endpoint devuelve HTTP 404 en
+`ENVIRONMENT=testing` como protección intencional. En el fixture
+`setup_db` de `tests/test_main.py`, el entorno se cambia
+**solo para la ejecución pytest** mediante `monkeypatch` a
+`development`. La conexión y archivos siguen en SQLite temporal;
+ninguna ruta demo se habilita en producción con esta corrección.
+
+Las pruebas de carga de imágenes de variantes y branding ahora
+construyen imágenes sintéticas con detalle para respetar la política
+que rechaza fotografías planas. La prueba de permisos del
+Superadministrador se actualiza para exigir HTTP 401 en token
+**revocado por cambio de rol**, después nuevo login como Admin
+y HTTP 403 al intentar editar la portada; al devolver el rol de
+Superadministrador se obtiene un token nuevo. No se relajan
+validaciones ni permisos del sistema.
+
+### Comandos de validación
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git switch main
+git pull --ff-only origin main
+docker compose up -d --build backend frontend-admin
+docker compose exec backend python -m pytest tests/ -q
+docker compose exec frontend-admin node scripts/verify-admin-modules.mjs
+docker compose exec frontend-admin npm run build
+docker compose exec backend alembic current
+docker compose ps
+```
+
+**Nunca** ejecutar `docker compose down -v` ni aplicar tests
+contra la BD de la tienda; `conftest.py` debe seguir bloqueando
+motores distintos de SQLite y los pagos reales durante pytest.
