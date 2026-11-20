@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
  * Se detiene al pasar el cursor, enfocar controles, ocultar la pestaña o
  * cuando el usuario solicita movimiento reducido.
  */
-export default function useAutoCarousel(count, intervalMs = 6000, identity = '') {
+export default function useAutoCarousel(count, intervalMs = 6000, identity = '', autoplay = true) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
 
@@ -15,7 +15,7 @@ export default function useAutoCarousel(count, intervalMs = 6000, identity = '')
   }, [identity])
 
   useEffect(() => {
-    if (count < 2 || paused) return undefined
+    if (count < 2 || paused || !autoplay) return undefined
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -41,7 +41,7 @@ export default function useAutoCarousel(count, intervalMs = 6000, identity = '')
       document.removeEventListener('visibilitychange', refresh)
       reducedMotion.removeEventListener?.('change', refresh)
     }
-  }, [count, intervalMs, paused, identity])
+  }, [count, intervalMs, paused, identity, autoplay])
 
   const goTo = (next) => {
     if (!count) return
