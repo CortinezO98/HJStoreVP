@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../products/ImageCropModal'
 import { BannerPresentationControls } from './PresentationControls'
+import CampaignDestinationEditor from './CampaignDestinationEditor'
 import { categoriesApi, storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 
@@ -157,11 +158,13 @@ export default function HomeMarketingEditor({ tiles = [], loyalty = null, onTile
         onClick={() => updateBanner({ mobile_image_url: '' })}>Quitar imagen móvil</button>}
       {[
         ['eyebrow', 'Texto superior',80], ['title', 'Título',110],
-        ['description', 'Descripción',260], ['button_text','Botón',45], ['link','Enlace interno',300],
+        ['description', 'Descripción',260], ['button_text','Botón',45],
       ].map(([key,label,maxLength]) => <label className="form-label d-block" key={key}>{label}
         <input className="form-control mt-1" maxLength={maxLength} value={banner[key] || ''}
           onChange={e => updateBanner({ [key]: e.target.value })}/>
       </label>)}
+      <CampaignDestinationEditor id="loyalty-destination" value={banner}
+        onChange={onLoyaltyChange}/>
       <div className="row g-2">
         {[['starts_at','Publicar desde (Bogotá)'],['ends_at','Retirar desde (Bogotá)']].map(([key,label]) =>
           <label className="col-12 col-md-6 form-label" key={key}>{label}
