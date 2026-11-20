@@ -107,3 +107,21 @@ def test_api_refuses_admin_and_seller(audit_db):
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_integrity_endpoint_detects_tampered_row(audit_db):
+    from app.api.v1.endpoints.security_audit import verify_security_integrity
+    db, user = audit_db
+    append_audit(db, actor_id=user.id, action="users.updated",
+                 resource="users", target_id=user.id,
+                 details={"changed_fields": ["role"]})
+    db.commit()
+    good = verify_security_integrity(from_date=None, to_date=None, limit=1000, db=db, _=user)
+    assert good["all_checked_valid"]
+    assert good["checked"] == 1
+    row = db.query(SecurityAuditEvent).one()
+    row.action = "users.deleted"
+    db.flush()
+    bad = verify_security_integrity(from_date=None, to_date=None, limit=1000, db=db, _=user)
+    assert not bad["all_checked_valid"]
+    assert bad["invalid_ids"] == [row.id]
