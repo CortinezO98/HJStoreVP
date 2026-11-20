@@ -48,3 +48,10 @@ tests/test_profile_mfa.py tests/test_security_audit.py -v` y
 `npm run build` en frontend-admin. Probar acceso de Super Admin y rechazo
 403 para Admin/Seller. Los tests del CI global permanecen independientes y
 deben abordarse para aprobación productiva.
+
+## Exportación
+
+`GET /api/v1/security-audit/export` acepta los filtros de búsqueda,
+exporta solo 500 entradas recientes y exige SUPER_ADMIN. Las celdas de texto
+se neutralizan para evitar fórmulas al abrir en hojas de cálculo. No incluye
+firmas HMAC ni secretos; los permisos y límites se aplican en el backend.
