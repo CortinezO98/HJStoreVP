@@ -2,6 +2,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
+import ImageCropModal from '../products/ImageCropModal'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const fileSrc = url => url?.startsWith('/') ? `${API_URL}${url}` : url
@@ -18,6 +19,7 @@ const emptyItem = () => ({
 export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyChange = () => {} }) {
   const [uploading, setUploading] = useState('')
   const [preview, setPreview] = useState('desktop')
+  const [cropTask, setCropTask] = useState(null)
   const replaceBlock = (index, patch) => onChange(blocks.map((block, i) =>
     i === index ? { ...block, ...patch } : block))
   const replaceItem = (blockIndex, itemIndex, patch) => {
@@ -39,7 +41,6 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
     }
     const key = `${blocks[blockIndex].id}-${itemIndex}-${field}`
     setUploading(key)
-    onBusyChange(true)
     try {
       const { data } = await storefrontSettingsApi.upload(file)
       await verifyUploadedImage(data.url)
@@ -50,11 +51,47 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
       toast.error(typeof detail === 'string' ? detail : 'No se pudo subir la imagen')
     } finally {
       setUploading('')
-      onBusyChange(false)
+    }
+  }
+
+  const queueCrop = (blockIndex, itemIndex, field, file) => {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Usa una imagen JPG, PNG o WEBP')
+      return
+    }
+    setCropTask({ blockIndex, itemIndex, field, file })
+    onBusyChange(true)
+  }
+  const closeCrop = () => {
+    setCropTask(null)
+    onBusyChange(false)
+  }
+  const confirmCrop = async (file) => {
+    if (!cropTask) return
+    const key = `${blocks[cropTask.blockIndex].id}-${cropTask.itemIndex}-${cropTask.field}`
+    setUploading(key)
+    try {
+      const { data } = await storefrontSettingsApi.upload(file)
+      await verifyUploadedImage(data.url)
+      replaceItem(cropTask.blockIndex, cropTask.itemIndex, { [cropTask.field]: data.url })
+      toast.success('Imagen optimizada. Guarda y publica para mostrarla.')
+      closeCrop()
+    } catch (error) {
+      const detail = error?.response?.data?.detail
+      toast.error(typeof detail === 'string' ? detail : 'No se pudo subir la imagen')
+      throw error
+    } finally {
+      setUploading('')
     }
   }
 
   return <section className="admin-settings-section" id="settings-visual-blocks">
+    {cropTask && <ImageCropModal key={cropTask.file.name + cropTask.field + cropTask.itemIndex}
+      file={cropTask.file} ratio={cropTask.field === 'mobile_image_url' ? 9/16 : 16/9}
+      width={cropTask.field === 'mobile_image_url' ? 720 : 1600}
+      title={cropTask.field === 'mobile_image_url' ? 'Encuadrar imagen móvil' : 'Encuadrar imagen de escritorio'}
+      onCancel={closeCrop} onConfirm={confirmCrop} />}
     <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
       <div>
         <h2 className="admin-settings-section-title">Bloques visuales personalizados</h2>
@@ -64,9 +101,9 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
         </p>
       </div>
       <button type="button" className="btn btn-outline-primary btn-sm"
-        disabled={blocks.length >= 6 || !!uploading}
+        disabled={blocks.length >= 6 || !!uploading || !!cropTask}
         onClick={() => onChange([...blocks, {
-          id: crypto.randomUUID(), type: 'mosaic', title: '', active: false, items: [emptyItem()],
+          id: crypto.randomUUID(), type: 'mosaic', title: '', active: false, starts_at: '', ends_at: '', items: [emptyItem()],
         }])}>+ Crear bloque</button>
     </div>
     <div className="d-flex align-items-center gap-2 mb-3">
@@ -86,7 +123,7 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           <button type="button" className="btn btn-outline-secondary btn-sm" aria-label="Bajar bloque"
             disabled={blockIndex === blocks.length - 1 || !!uploading}
             onClick={() => onChange(move(blocks, blockIndex, 1))}>↓</button>
-          <button type="button" className="btn btn-outline-danger btn-sm" disabled={!!uploading}
+          <button type="button" className="btn btn-outline-danger btn-sm" disabled={!!uploading || !!cropTask}
             onClick={() => onChange(blocks.filter((_, i) => i !== blockIndex))}>Eliminar</button>
         </div>
       </div>
@@ -102,6 +139,17 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           <label className="form-label" htmlFor={`visual-title-${block.id}`}>Encabezado (opcional)</label>
           <input id={`visual-title-${block.id}`} className="form-control" maxLength={90}
             value={block.title || ''} onChange={event => replaceBlock(blockIndex, { title: event.target.value })}/>
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label" htmlFor={`visual-start-${block.id}`}>Publicar desde (hora Colombia)</label>
+          <input id={`visual-start-${block.id}`} type="datetime-local" className="form-control"
+            value={block.starts_at || ''} onChange={e => replaceBlock(blockIndex, { starts_at: e.target.value })}/>
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label" htmlFor={`visual-end-${block.id}`}>Retirar desde (hora Colombia)</label>
+          <input id={`visual-end-${block.id}`} type="datetime-local" className="form-control"
+            min={block.starts_at || undefined} value={block.ends_at || ''}
+            onChange={e => replaceBlock(blockIndex, { ends_at: e.target.value })}/>
         </div>
         <div className="col-12">
           <label className="d-inline-flex align-items-center gap-2">
@@ -151,7 +199,7 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
             <input id={`visual-${block.id}-${itemIndex}-${field}`} className="form-control"
               type="file" accept="image/jpeg,image/png,image/webp" disabled={!!uploading}
               onChange={event => {
-                uploadImage(blockIndex, itemIndex, field, event.target.files?.[0])
+                queueCrop(blockIndex, itemIndex, field, event.target.files?.[0])
                 event.target.value = ''
               }}/>
             {field === 'mobile_image_url' && item.mobile_image_url &&
