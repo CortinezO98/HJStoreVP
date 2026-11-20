@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 import ImageCropModal from '../products/ImageCropModal'
+import { BannerPresentationControls, CarouselPlaybackControls } from './PresentationControls'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const fileSrc = url => url?.startsWith('/') ? `${API_URL}${url}` : url
@@ -144,6 +145,10 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           </label>
         </div>
       </div>
+      {block.type === 'carousel' && <CarouselPlaybackControls
+        value={{ autoplay: block.autoplay ?? false, interval_ms: block.interval_ms ?? 6000,
+          show_navigation: block.show_navigation ?? true }}
+        onChange={settings => replaceBlock(blockIndex, settings)} />}
       {block.items.map((item, itemIndex) => <div className="border rounded p-3 mb-3" key={itemIndex}>
         <div className="d-flex justify-content-between align-items-center gap-2 mb-3">
           <strong className="small">Imagen {itemIndex + 1}</strong>
@@ -170,6 +175,8 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
             </div>
           </div>
         </div>}
+        <BannerPresentationControls value={item}
+          onChange={next => replaceItem(blockIndex, itemIndex, next)} />
         <div className="row g-3">
           {['image_url', 'mobile_image_url'].map(field => <div className="col-12 col-md-6" key={field}>
             <label className="form-label" htmlFor={`visual-${block.id}-${itemIndex}-${field}`}>
