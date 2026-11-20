@@ -1,5 +1,6 @@
 """Phase C commercial audit: reads existing ledgers without modifying operations."""
 from datetime import datetime, timedelta
+import asyncio
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -89,7 +90,12 @@ def test_commercial_export_is_sanitized_and_bounded():
             source=None, actor_id=None, resource=None, action=None,
             from_date=None, to_date=None, db=db, _=actor,
         )
-        body = "".join(response.body_iterator)
+        async def collect():
+            parts = []
+            async for part in response.body_iterator:
+                parts.append(part.decode() if isinstance(part, bytes) else part)
+            return "".join(parts)
+        body = asyncio.run(collect())
         assert "'=COMMAND" in body
         assert "secret" not in body
         assert "source_id" in body
