@@ -1,13 +1,20 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import useAutoCarousel from '../../hooks/useAutoCarousel'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const sourceUrl = value => value?.startsWith('/') ? `${API_URL}${value}` : value
 
+const presentation = item => ({
+  '--visual-shade': String((item.overlay_opacity ?? 65) / 100),
+  '--visual-align': item.text_align || 'left',
+  '--visual-position': item.text_position || 'bottom',
+})
+
 function VisualTile({ item, priority = false }) {
   return (
-    <Link to={item.link || '/catalogo'} className="home-visual-tile group" aria-label={item.title || 'Ver colección'}>
+    <Link to={item.link || '/catalogo'} className="home-visual-tile group" style={presentation(item)} aria-label={item.title || 'Ver colección'}>
       <picture>
         {item.mobile_image_url && <source media="(max-width: 767px)" srcSet={sourceUrl(item.mobile_image_url)} />}
         <img src={sourceUrl(item.image_url)} alt={item.title || 'Campaña HJStoreVP'}
@@ -25,23 +32,38 @@ function VisualTile({ item, priority = false }) {
 
 function CarouselBlock({ block }) {
   const track = useRef(null)
-  const move = (direction) => {
+  const carousel = useAutoCarousel(block.items.length, block.interval_ms ?? 6000,
+    block.id + ':' + block.items.map(item => item.image_url).join('|'),
+    block.autoplay ?? false)
+
+  useEffect(() => {
     const el = track.current
-    if (!el) return
-    el.scrollBy({ left: direction * el.clientWidth * 0.85, behavior:
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
-  }
+    const slide = el?.children[carousel.index]
+    if (!el || !slide) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ left: slide.offsetLeft - el.offsetLeft,
+      behavior: reduced ? 'auto' : 'smooth' })
+  }, [carousel.index, block.items.length])
+
   return (
-    <div className="home-visual-carousel">
+    <div className="home-visual-carousel"
+      onMouseEnter={() => carousel.setPaused(true)}
+      onMouseLeave={() => carousel.setPaused(false)}
+      onFocusCapture={() => carousel.setPaused(true)}
+      onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget)) carousel.setPaused(false) }}>
       <div className="home-visual-carousel-track" ref={track}
-        role="region" tabIndex={0} aria-label={block.title || 'Carrusel de campañas'}>
+        role="region" aria-roledescription="carrusel" tabIndex={0}
+        aria-label={block.title || 'Carrusel de campañas'}>
         {block.items.map((item, index) => <div className="home-visual-carousel-slide" key={index}>
           <VisualTile item={item} />
         </div>)}
       </div>
-      {block.items.length > 1 && <div className="home-visual-carousel-controls">
-        <button type="button" aria-label="Desplazar a la izquierda" onClick={() => move(-1)}><ChevronLeft size={22}/></button>
-        <button type="button" aria-label="Desplazar a la derecha" onClick={() => move(1)}><ChevronRight size={22}/></button>
+      {block.items.length > 1 && (block.show_navigation ?? true) && <div className="home-visual-carousel-controls">
+        <button type="button" aria-label="Imagen anterior"
+          onClick={() => carousel.goTo(carousel.index - 1)}><ChevronLeft size={22}/></button>
+        <span aria-live="off">{carousel.index + 1} / {block.items.length}</span>
+        <button type="button" aria-label="Imagen siguiente"
+          onClick={() => carousel.goTo(carousel.index + 1)}><ChevronRight size={22}/></button>
       </div>}
     </div>
   )
