@@ -173,14 +173,15 @@ def test_disabled_mfa_requires_reauthentication_and_revokes_tokens(mfa_db, monke
     request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
     setup_mfa(MFAStart(current_password="RootSecurePassword123!"), request, db, user)
     monkeypatch.setattr(auth, "match_totp_step", lambda secret, code: 100 if code == "123456" else None)
-    confirm_mfa(MFACode(code="123456"), request, db, user)
+    activated = confirm_mfa(MFACode(code="123456"), request, db, user)
+    recovery_code = activated["recovery_codes"][0]
     record = db.query(UserMFASettings).filter_by(user_id=user.id).one()
     original_version = record.version
     with pytest.raises(HTTPException) as exc:
-        auth.disable_mfa(auth.MFASensitiveAction(current_password="wrong", code="123456"), request, db, user)
+        auth.disable_mfa(auth.MFASensitiveAction(current_password="wrong", code=recovery_code), request, db, user)
     assert exc.value.status_code == 403
     auth.disable_mfa(auth.MFASensitiveAction(current_password="RootSecurePassword123!",
-                                            code="123456"), request, db, user)
+                                            code=recovery_code), request, db, user)
     assert record.enabled is False
     assert record.secret_ciphertext is None
     assert record.recovery_hashes == []
