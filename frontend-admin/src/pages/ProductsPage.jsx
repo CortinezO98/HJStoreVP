@@ -24,6 +24,7 @@ import toast from 'react-hot-toast'
 import ProductVariantsManager from '../components/products/ProductVariantsManager'
 import ImageCropModal from '../components/products/ImageCropModal'
 import ProductPhotoQuality from '../components/products/ProductPhotoQuality'
+import CatalogQualityPanel from '../components/products/CatalogQualityPanel'
 import AdminTableMessage from '../components/AdminTableMessage'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
@@ -777,6 +778,8 @@ export default function ProductsPage() {
           </div>
         </div>)}
       </div>
+
+      <CatalogQualityPanel products={products} onEdit={setSelectedProduct}/>
 
       {/* Búsqueda, filtros y ordenación sin modificar las consultas existentes. */}
       <section className="admin-catalog-filter card" aria-label="Filtros de productos">
