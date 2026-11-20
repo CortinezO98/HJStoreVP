@@ -125,3 +125,31 @@ def test_integrity_endpoint_detects_tampered_row(audit_db):
     bad = verify_security_integrity(from_date=None, to_date=None, limit=1000, db=db, _=user)
     assert not bad["all_checked_valid"]
     assert bad["invalid_ids"] == [row.id]
+
+
+def test_price_and_status_metadata_rejects_untrusted_fields(audit_db):
+    db, user = audit_db
+    with pytest.raises(ValueError):
+        append_audit(db, actor_id=user.id, action="catalog.prices.changed",
+                     details={"price_changes": {"sale_price": {"before": "10", "after": "20", "secret": "bad"}}})
+    with pytest.raises(ValueError):
+        append_audit(db, actor_id=user.id, action="orders.status.changed",
+                     details={"old_status": "pending", "new_status": "paid", "token": "forbidden"})
+    append_audit(db, actor_id=user.id, action="orders.status.changed",
+                 resource="orders", target_id=8,
+                 details={"old_status": "pending", "new_status": "paid", "origin": "system"})
+    db.commit()
+    row = db.query(SecurityAuditEvent).filter_by(action="orders.status.changed").one()
+    assert is_signature_valid(row)
+    matching = list_security_events(
+        actor_id=None, action="orders.status.changed", resource="orders",
+        target_id="8", outcome=None, from_date=None, to_date=None, page=1,
+        per_page=30, db=db, _=user,
+    )
+    assert matching["total"] == 1
+    missing = list_security_events(
+        actor_id=None, action=None, resource=None, target_id="999",
+        outcome=None, from_date=None, to_date=None, page=1,
+        per_page=30, db=db, _=user,
+    )
+    assert missing["total"] == 0
