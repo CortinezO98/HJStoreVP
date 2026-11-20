@@ -4,6 +4,7 @@ import { storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 import ImageCropModal from '../products/ImageCropModal'
 import { BannerPresentationControls, CarouselPlaybackControls } from './PresentationControls'
+import CampaignDestinationEditor from './CampaignDestinationEditor'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const fileSrc = url => url?.startsWith('/') ? `${API_URL}${url}` : url
@@ -194,7 +195,7 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           </div>)}
           {[
             ['title', 'Título', 80], ['subtitle', 'Descripción corta', 160],
-            ['button_text', 'Texto del botón', 40], ['link', 'Enlace interno', 300],
+            ['button_text', 'Texto del botón', 40],
           ].map(([field, label, maxLength]) => <div className="col-12 col-md-6" key={field}>
             <label className="form-label" htmlFor={`visual-${block.id}-${itemIndex}-${field}`}>{label}</label>
             <input id={`visual-${block.id}-${itemIndex}-${field}`} className="form-control"
@@ -202,6 +203,8 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
               onChange={event => replaceItem(blockIndex, itemIndex, { [field]: event.target.value })}/>
           </div>)}
         </div>
+        <CampaignDestinationEditor id={`visual-destination-${block.id}-${itemIndex}`}
+          value={item} onChange={next => replaceItem(blockIndex, itemIndex, next)}/>
       </div>)}
       <button type="button" className="btn btn-outline-secondary btn-sm" disabled={block.items.length >= 8 || !!uploading}
         onClick={() => replaceBlock(blockIndex, { active: false, items: [...block.items, emptyItem()] })}>+ Agregar imagen</button>
