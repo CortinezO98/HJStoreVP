@@ -317,6 +317,10 @@ export const cashApi = {
 // ── IDENTIDAD Y CONTENIDO COMERCIAL (SOLO SUPERADMIN) ────────────────────────
 export const storefrontSettingsApi = {
   read: () => apiClient.get('/storefront-settings/admin'),
+  readHomepageDraft: () => apiClient.get('/storefront-settings/admin/homepage-draft'),
+  saveHomepageDraft: (draft) => apiClient.put('/storefront-settings/admin/homepage-draft', { draft }),
+  publishHomepageDraft: () => apiClient.post('/storefront-settings/admin/homepage-publish'),
+  discardHomepageDraft: () => apiClient.delete('/storefront-settings/admin/homepage-draft'),
   save: (data) => apiClient.put('/storefront-settings/admin', data),
   upload: (file) => {
     const form = new FormData()
