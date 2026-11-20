@@ -117,6 +117,27 @@ class User(Base, TimestampMixin):
         return f"<User {self.email} ({self.role})>"
 
 
+class SecurityAuditEvent(Base):
+    __tablename__ = "security_audit_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    actor_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource: Mapped[str] = mapped_column(String(40), nullable=False)
+    target_id: Mapped[Optional[str]] = mapped_column(String(70), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    details: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    signature: Mapped[str] = mapped_column(String(64), nullable=False)
+    __table_args__ = (
+        Index("ix_security_audit_time", "created_at", "id"),
+        Index("ix_security_audit_actor_time", "actor_id", "created_at"),
+        Index("ix_security_audit_action_time", "action", "created_at"),
+    )
+
+
 class UserMFASettings(Base):
     __tablename__ = "user_mfa_settings"
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
