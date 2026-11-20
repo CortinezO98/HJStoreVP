@@ -28,6 +28,7 @@ def mfa_db(monkeypatch):
     monkeypatch.setattr(auth, "check_login_limit", lambda *args: None)
     monkeypatch.setattr(auth, "note_login_failure", lambda *args: None)
     monkeypatch.setattr(auth, "clear_login_failures", lambda *args: None)
+    monkeypatch.setattr(auth, "consume_mfa_challenge", lambda *args: None)
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     with Session(engine) as db:
@@ -80,6 +81,7 @@ def test_mfa_enrollment_creates_challenge_and_invalidates_legacy_tokens(mfa_db, 
     tokens = verify_mfa_challenge(MFAChallenge(challenge_token=pending["challenge_token"],
                                   code=activated["recovery_codes"][0]), request, db)
     assert decode_token(tokens.access_token)["mfa_v"] == 1
+    assert decode_token(tokens.access_token)["sec_v"] == 1
     with pytest.raises(HTTPException) as exc:
         verify_mfa_challenge(MFAChallenge(challenge_token=pending["challenge_token"],
                              code=activated["recovery_codes"][0]), request, db)
@@ -103,3 +105,34 @@ def test_pending_challenge_is_not_access_token():
     payload = {"sub": "1", "type": "mfa_pending", "exp": datetime.utcnow() + timedelta(minutes=5)}
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     assert decode_token(token)["type"] != "access"
+
+
+def test_sessions_revoked_by_version_without_disabling_account(mfa_db):
+    import app.api.v1.endpoints.auth as auth
+    from app.core.deps import get_current_user
+    from fastapi.security import HTTPAuthorizationCredentials
+    db, user = mfa_db
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    original = login(LoginRequest(email=user.email, password="RootSecurePassword123!"), request, db)
+    assert get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=original.access_token), db).id == user.id
+    auth.revoke_my_sessions(auth.MFASensitiveAction(current_password="RootSecurePassword123!"), request, db, user)
+    with pytest.raises(HTTPException) as exc:
+        get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=original.access_token), db)
+    assert exc.value.status_code == 401
+    renewed = login(LoginRequest(email=user.email, password="RootSecurePassword123!"), request, db)
+    assert decode_token(renewed.access_token)["sec_v"] == 1
+
+
+def test_challenge_token_cannot_be_used_as_access_token(mfa_db, monkeypatch):
+    from app.core.deps import get_current_user
+    from fastapi.security import HTTPAuthorizationCredentials
+    db, user = mfa_db
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
+    setup_mfa(MFAStart(current_password="RootSecurePassword123!"), request, db, user)
+    import app.api.v1.endpoints.auth as auth
+    monkeypatch.setattr(auth, "match_totp_step", lambda secret, code: 100 if code == "123456" else None)
+    confirm_mfa(MFACode(code="123456"), request, db, user)
+    challenge = login(LoginRequest(email=user.email, password="RootSecurePassword123!"), request, db)["challenge_token"]
+    with pytest.raises(HTTPException) as exc:
+        get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=challenge), db)
+    assert exc.value.status_code == 401
