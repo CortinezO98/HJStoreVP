@@ -23,6 +23,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
+      - run: python -m pip check
       - name: Ejecutar pruebas funcionales y de seguridad
         run: python -m pytest tests/ -q
 
@@ -37,7 +38,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
+      - run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit; else npm install --no-audit; fi
       - name: Verificar contratos administrativos
         run: node scripts/verify-admin-modules.mjs
       - name: Compilar panel
@@ -59,13 +61,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Instalar dependencias sin scripts
+      - name: Instalar dependencias para compilar
         run: |
           if [ -f package-lock.json ]; then
-            npm ci --ignore-scripts --no-audit
+            npm ci --no-audit
           else
             echo "::warning::Tienda publica sin lockfile versionado."
-            npm install --ignore-scripts --no-audit
+            npm install --no-audit
           fi
       - name: Compilar tienda publica
         run: npm run build
