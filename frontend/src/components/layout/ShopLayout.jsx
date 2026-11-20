@@ -10,6 +10,7 @@ import { useCartStore, useAuthStore, useWishlistStore } from '../../store'
 
 export default function ShopLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [headerScrolled, setHeaderScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 24)
   const [cartOpen, setCartOpen] = useState(false)
   const closeCart = useCallback(() => setCartOpen(false), [])
   const [searchOpen, setSearchOpen] = useState(false)
@@ -35,6 +36,18 @@ export default function ShopLayout() {
   const { isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
+  // Header superpuesto únicamente en inicio con fotografía de portada publicada.
+  const hasPublishedHero = Array.isArray(storeSettings.hero_images)
+    && storeSettings.hero_images.some((url) => typeof url === 'string' && url.trim())
+  const immersiveHeader = location.pathname === '/' && hasPublishedHero
+  const headerTransparent = immersiveHeader && !headerScrolled && !menuOpen && !searchOpen
+
+  useEffect(() => {
+    const onScroll = () => setHeaderScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [location.pathname])
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus()
@@ -98,7 +111,7 @@ export default function ShopLayout() {
         {storeSettings.announcement || 'DESCUBRE LA NUEVA COLECCIÓN · ENVÍOS A TODO COLOMBIA'}
       </div>
 
-      <header className="editorial-header">
+      <header className={`editorial-header ${headerTransparent ? "store-header-overlay" : ""} ${immersiveHeader ? "store-header-immersive" : ""}`}>
         <div className="editorial-header-inner">
           <Link to="/" className="editorial-logo store-brand-lockup" aria-label={`${storeName}, inicio`}>
             {logoSrc ? <img src={logoSrc} alt={storeName} className="store-custom-header-logo" /> : (
