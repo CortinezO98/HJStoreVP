@@ -13,6 +13,7 @@ from app.db.session import Base
 # Importar todos los modelos para que Alembic los detecte
 from app.models.models import (
     Location, User, Address, Category, Product, ProductImage,
+    StorefrontSettings, StorefrontVisualBlock, StorefrontVisualSlide,
     Inventory, StockMovement, Order, OrderItem, OrderStockReservation, ShippingRate, Shipment, ShipmentEvent, CustomerNotification, PostSaleCase, PostSaleEvent, CommercialDocument, CommercialDocumentEvent, TaxIssuerProfile, ProductTaxProfile, PromotionCoupon, CouponRedemption, CustomerEngagementPreference, SavedCustomerCart, CartRecoveryNotice, LoyaltyLedger, CashSession, CashMovement
 )
 
