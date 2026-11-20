@@ -142,6 +142,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
       setFiles([])
       queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
       onUploaded?.()
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'Error subiendo imágenes')
@@ -156,6 +157,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
       toast.success('Imagen principal actualizada')
       queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
       onUploaded?.()
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'No se pudo actualizar la imagen principal')
@@ -178,6 +180,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
       })
       queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
       onUploaded?.()
       toast.success('Orden de galería actualizado')
     } catch (error) {
@@ -194,6 +197,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
       toast.success('Imagen eliminada')
       queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
       onUploaded?.()
     } catch (error) {
       toast.error(error?.response?.data?.detail || 'No se pudo eliminar la imagen')
@@ -323,6 +327,7 @@ function ProductImagesManager({ product, onClose, onUploaded }) {
                       <ImageAltEditor key={`${img.id}-${img.alt_text || ''}`} image={img} productId={product.id}
                         onSaved={() => {
                           queryClient.invalidateQueries({ queryKey: ['product-images', product.id] })
+                          queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
                           onUploaded?.()
                         }}/>
                       <button
@@ -410,6 +415,7 @@ function ProductFormModal({ product, categories, onClose }) {
     onSuccess: (data) => {
       toast.success(isEdit ? 'Producto actualizado' : 'Producto creado')
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
       if (!isEdit) {
         onClose()
       } else {
@@ -431,6 +437,7 @@ function ProductFormModal({ product, categories, onClose }) {
     onSuccess: () => {
       toast.success('Producto desactivado')
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-catalog-quality'] })
       onClose()
     },
     onError: (error) => {
