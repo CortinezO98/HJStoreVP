@@ -281,6 +281,8 @@ export default function HomeStudioPage() {
                 onChange={e => update(key,e.target.value)}/>
             </div>)}
             <div className="col-12">
+              <BannerPresentationControls value={draft.hero_presentation}
+                onChange={next => update('hero_presentation', next)}/>
               <CarouselPlaybackControls title="Carrusel principal" value={draft.hero_carousel_settings}
                 onChange={next => update('hero_carousel_settings', next)}/>
             </div>
@@ -297,9 +299,13 @@ export default function HomeStudioPage() {
                 onClick={() => update('hero_images',draft.hero_images.filter((_,j)=>i!==j))}>Quitar</button>
             </div>)}
           </div>}
-          {selected === 'statement' && <CarouselPlaybackControls
-            title="Carrusel de campaña de estilo" value={draft.statement_carousel_settings}
-            onChange={next => update('statement_carousel_settings', next)}/>}
+          {selected === 'statement' && <div>
+            <BannerPresentationControls value={draft.statement_presentation}
+              onChange={next => update('statement_presentation', next)}/>
+            <CarouselPlaybackControls title="Carrusel de campaña de estilo"
+              value={draft.statement_carousel_settings}
+              onChange={next => update('statement_carousel_settings', next)}/>
+          </div>}
           {selected === 'campaigns' && <div className="d-flex flex-column gap-3">
             <p className="small text-secondary">Campañas con enlace, fotografía para celular y fechas de publicación.</p>
             <button className="btn btn-outline-primary btn-sm" type="button" onClick={addBanner}
