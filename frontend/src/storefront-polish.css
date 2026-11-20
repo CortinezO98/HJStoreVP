@@ -1645,3 +1645,7 @@
 @media (prefers-reduced-motion: reduce) {
   .editorial-header { transition: none; }
 }
+
+/* Orden editorial configurable desde el superadministrador. */
+.editorial-home { display: flex; flex-direction: column; min-width: 0; }
+.editorial-home > .store-home-hero { order: 0; flex-shrink: 0; }
