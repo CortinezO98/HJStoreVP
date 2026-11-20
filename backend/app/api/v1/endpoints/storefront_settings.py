@@ -56,7 +56,7 @@ def campaign_in_window(item: dict, now: datetime) -> bool:
 
 HOMEPAGE_SECTION_IDS = (
     "newest", "statement", "featured", "campaigns", "personalized",
-    "visual", "categories", "services", "faq", "closing",
+    "visual", "categories", "loyalty", "services", "faq", "closing",
 )
 
 DEFAULTS = {
@@ -72,6 +72,8 @@ DEFAULTS = {
     "statement_images": [],
     "homepage_banners": [],
     "homepage_visual_blocks": [],
+    "homepage_category_tiles": [],
+    "homepage_loyalty_banner": None,
     "homepage_section_order": list(HOMEPAGE_SECTION_IDS),
     "homepage_hidden_sections": [],
     "logo_url": "",
@@ -178,6 +180,54 @@ class HomepageVisualBlock(BaseModel):
         return self
 
 
+
+class HomepageCategoryTile(BaseModel):
+    category_slug: str = Field(min_length=1, max_length=120, pattern=r"^[a-zA-Z0-9_-]+$")
+    image_url: str = Field(min_length=1, max_length=500)
+    mobile_image_url: str = Field(default="", max_length=500)
+    title: str = Field(default="", max_length=80)
+
+    @field_validator("image_url", "mobile_image_url")
+    @classmethod
+    def valid_image(cls, value: str) -> str:
+        return HomepageBanner.image_is_safe(value)
+
+
+class HomepageLoyaltyBanner(BaseModel):
+    image_url: str = Field(default="", max_length=500)
+    mobile_image_url: str = Field(default="", max_length=500)
+    eyebrow: str = Field(default="HJSTOREVP / CLUB", max_length=80)
+    title: str = Field(default="TU ESTILO TIENE BENEFICIOS", max_length=110)
+    description: str = Field(default="", max_length=260)
+    button_text: str = Field(default="DESCUBRIR BENEFICIOS", max_length=45)
+    link: str = Field(default="/mi-cuenta", max_length=300)
+    active: bool = False
+    starts_at: str = Field(default="", max_length=16)
+    ends_at: str = Field(default="", max_length=16)
+
+    @field_validator("image_url", "mobile_image_url")
+    @classmethod
+    def valid_image(cls, value: str) -> str:
+        return HomepageBanner.image_is_safe(value)
+
+    @field_validator("link")
+    @classmethod
+    def valid_link(cls, value: str) -> str:
+        value = value.strip()
+        if value in ("/mi-cuenta", "/registro"):
+            return value
+        return HomepageBanner.link_is_internal(value)
+
+    @model_validator(mode="after")
+    def check_banner(self):
+        validate_campaign_schedule(self.starts_at, self.ends_at)
+        if self.mobile_image_url and not self.image_url:
+            raise ValueError("La imagen móvil requiere una imagen de escritorio")
+        if self.active and (not self.image_url or not self.title.strip()):
+            raise ValueError("Un banner de fidelización activo necesita imagen y título")
+        return self
+
+
 class SettingsPayload(BaseModel):
     store_name: str = Field(min_length=1, max_length=100)
     tagline: str = Field(max_length=180)
@@ -191,6 +241,16 @@ class SettingsPayload(BaseModel):
     statement_images: list[str] = Field(default_factory=list, max_length=8)
     homepage_banners: list[HomepageBanner] = Field(default_factory=list, max_length=6)
     homepage_visual_blocks: list[HomepageVisualBlock] = Field(default_factory=list, max_length=6)
+    homepage_category_tiles: list[HomepageCategoryTile] = Field(default_factory=list, max_length=10)
+    homepage_loyalty_banner: Optional[HomepageLoyaltyBanner] = None
+
+    @field_validator("homepage_category_tiles")
+    @classmethod
+    def unique_categories(cls, items: list[HomepageCategoryTile]) -> list[HomepageCategoryTile]:
+        if len({item.category_slug for item in items}) != len(items):
+            raise ValueError("No repitas una categoría en la galería")
+        return items
+
 
     @field_validator("homepage_visual_blocks")
     @classmethod
@@ -205,12 +265,14 @@ class SettingsPayload(BaseModel):
     @field_validator("homepage_section_order")
     @classmethod
     def validate_section_order(cls, sections: list[str]) -> list[str]:
-        legacy = set(HOMEPAGE_SECTION_IDS) - {"visual"}
-        if len(sections) == len(legacy) and set(sections) == legacy:
-            sections = [*sections]
-            sections.insert(sections.index("campaigns") + 1, "visual")
-        if len(sections) != len(HOMEPAGE_SECTION_IDS) or set(sections) != set(HOMEPAGE_SECTION_IDS):
-            raise ValueError("El orden debe incluir cada sección del inicio una sola vez")
+        if len(sections) != len(set(sections)) or any(item not in HOMEPAGE_SECTION_IDS for item in sections):
+            raise ValueError("La lista de secciones contiene elementos repetidos o desconocidos")
+        sections = [*sections]
+        for added, after in (("visual", "campaigns"), ("loyalty", "categories")):
+            if added not in sections:
+                sections.insert(sections.index(after) + 1 if after in sections else len(sections), added)
+        if set(sections) != set(HOMEPAGE_SECTION_IDS):
+            raise ValueError("El orden debe incluir todas las secciones")
         return sections
 
     @field_validator("homepage_hidden_sections")
@@ -298,6 +360,13 @@ def get_public_settings(db: Session = Depends(get_db)):
         banner for banner in data.get("homepage_banners", [])
         if banner.get("image_url") and campaign_in_window(banner, now)
     ]
+    data["homepage_loyalty_banner"] = (
+        data["homepage_loyalty_banner"]
+        if isinstance(data.get("homepage_loyalty_banner"), dict)
+        and data["homepage_loyalty_banner"].get("image_url")
+        and campaign_in_window(data["homepage_loyalty_banner"], now)
+        else None
+    )
     data["homepage_visual_blocks"] = [
         block for block in data.get("homepage_visual_blocks", [])
         if block.get("items") and campaign_in_window(block, now)
@@ -346,6 +415,7 @@ def update_admin_settings(
 HOMEPAGE_EDIT_FIELDS = (
     "hero_eyebrow", "hero_title", "hero_description", "hero_button",
     "hero_images", "statement_images", "homepage_banners", "homepage_visual_blocks",
+    "homepage_category_tiles", "homepage_loyalty_banner",
     "homepage_section_order", "homepage_hidden_sections",
 )
 DRAFT_KEY = "_homepage_draft"
@@ -362,7 +432,7 @@ def homepage_fingerprint(homepage: dict) -> str:
 
 
 def validated_homepage(data: dict, base: dict) -> dict:
-    if set(data) != set(HOMEPAGE_EDIT_FIELDS):
+    if not set(data).issubset(set(HOMEPAGE_EDIT_FIELDS)) or not data:
         raise HTTPException(status_code=422, detail="El borrador debe contener exactamente los campos visuales permitidos")
     merged = SettingsPayload.model_validate({**DEFAULTS, **{k: v for k, v in base.items() if not k.startswith("_")}, **data})
     dump = merged.model_dump()
