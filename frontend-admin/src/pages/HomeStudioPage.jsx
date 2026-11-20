@@ -7,6 +7,7 @@ import HomeStudioPreview from '../components/storefront/HomeStudioPreview'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
+import CampaignDestinationEditor from '../components/storefront/CampaignDestinationEditor'
 import ImageCropModal from '../components/products/ImageCropModal'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 
@@ -328,10 +329,13 @@ export default function HomeStudioPage() {
               {b.image_url && <img src={imageSrc(b.image_url)} alt={b.title} className="w-100 rounded mb-2"
                 style={{ aspectRatio:'16/7',objectFit:'cover' }}/>}
               {[
-                ['title','Título',80],['subtitle','Subtítulo',160],['button_text','Botón',40],['link','Enlace interno',300],
+                ['title','Título',80],['subtitle','Subtítulo',160],['button_text','Botón',40],
               ].map(([key,label,maxLength]) => <label className="form-label d-block" key={key}>{label}
                 <input className="form-control" maxLength={maxLength} value={b[key] || ''}
                   onChange={e => updateBanner(i,key,e.target.value)}/></label>)}
+              <CampaignDestinationEditor id={`studio-campaign-${i}`} value={b}
+                onChange={next => update('homepage_banners',
+                  draft.homepage_banners.map((item,j) => j === i ? next : item))}/>
               {['image_url','mobile_image_url'].map(field => <label className="form-label d-block" key={field}>
                 {field==='image_url'?'Imagen escritorio':'Imagen celular (opcional)'}
                 <input type="file" className="form-control" accept="image/png,image/jpeg,image/webp"
