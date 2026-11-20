@@ -14,20 +14,34 @@ depends_on = None
 
 def upgrade():
     bind = op.get_bind()
-    if sa.inspect(bind).has_table("product_quality_reviews"):
-        # Development may create ORM tables before Alembic runs.
-        return
-    op.create_table(
-        "product_quality_reviews",
-        sa.Column("product_id", sa.Integer(), sa.ForeignKey("products.id", ondelete="CASCADE"),
-                  nullable=False, primary_key=True),
-        sa.Column("status", sa.String(24), nullable=False),
-        sa.Column("note", sa.Text(), nullable=False),
-        sa.Column("snapshot_hash", sa.String(64), nullable=False),
-        sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL"),
-                  nullable=True),
-        sa.Column("reviewed_at", sa.DateTime(), nullable=False),
-    )
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("product_quality_reviews"):
+        op.create_table(
+            "product_quality_reviews",
+            sa.Column("product_id", sa.Integer(), sa.ForeignKey("products.id", ondelete="CASCADE"),
+                      nullable=False, primary_key=True),
+            sa.Column("status", sa.String(24), nullable=False),
+            sa.Column("note", sa.Text(), nullable=False),
+            sa.Column("snapshot_hash", sa.String(64), nullable=False),
+            sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL"),
+                      nullable=True),
+            sa.Column("reviewed_at", sa.DateTime(), nullable=False),
+        )
+    if not inspector.has_table("product_quality_review_events"):
+        op.create_table(
+            "product_quality_review_events",
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("product_id", sa.Integer(), sa.ForeignKey("products.id", ondelete="CASCADE"),
+                      nullable=False),
+            sa.Column("status", sa.String(24), nullable=False),
+            sa.Column("note", sa.Text(), nullable=False),
+            sa.Column("snapshot_hash", sa.String(64), nullable=False),
+            sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL"),
+                      nullable=True),
+            sa.Column("reviewed_at", sa.DateTime(), nullable=False),
+        )
+        op.create_index("ix_quality_events_product_time", "product_quality_review_events",
+                        ["product_id", "reviewed_at"])
 
 
 def downgrade():
