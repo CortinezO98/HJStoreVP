@@ -76,10 +76,11 @@ def _token_bundle(user: User, mfa: UserMFASettings | None = None):
     )
 
 
-def _mfa_challenge(user: User):
+def _mfa_challenge(user: User, record: UserMFASettings):
     token = jwt.encode({
         "sub": str(user.id), "type": "mfa_pending", "jti": uuid.uuid4().hex,
         "ver": credential_version(user.hashed_password),
+        "mfa_v": record.version,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
     }, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return {"mfa_required": True, "challenge_token": token}
@@ -149,7 +150,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     mfa = _mfa_record(db, user.id)
     if mfa and mfa.enabled:
-        return _mfa_challenge(user)
+        return _mfa_challenge(user, mfa)
     clear_login_failures(data.email)
     return _token_bundle(user, mfa)
 
@@ -304,8 +305,8 @@ def verify_mfa_challenge(data: MFAChallenge, request: Request, db: Session = Dep
     if not user or not credential_version_matches(payload, user.hashed_password):
         raise HTTPException(status_code=401, detail="Desafío inválido o revocado")
     record = _mfa_record(db, user.id, lock=True)
-    if not record or not record.enabled:
-        raise HTTPException(status_code=401, detail="Segundo factor no disponible")
+    if not record or not record.enabled or payload.get("mfa_v") != record.version:
+        raise HTTPException(status_code=401, detail="Desafío de segundo factor vencido o revocado")
     check_login_limit(request, user.email)
     if not _verify_mfa_code(record, data.code):
         note_login_failure(request, user.email)
