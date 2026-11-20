@@ -393,6 +393,10 @@ export default function StorefrontSettingsPage() {
               </div>
             )))}
             {index === 1 && <div className="mt-4">
+              <BannerPresentationControls value={form.hero_presentation}
+                onChange={next => change('hero_presentation', next)}/>
+              <BannerPresentationControls value={form.statement_presentation}
+                onChange={next => change('statement_presentation', next)}/>
               <CarouselPlaybackControls title="Carrusel principal"
                 value={form.hero_carousel_settings}
                 onChange={next => change('hero_carousel_settings', next)}/>
