@@ -18,6 +18,10 @@ from app.models.models import StorefrontSettings, User
 
 router = APIRouter(prefix="/storefront-settings", tags=["Configuración de tienda"])
 ROW_ID = 1
+HOMEPAGE_SECTION_IDS = (
+    "newest", "statement", "featured", "campaigns", "personalized",
+    "categories", "services", "faq", "closing",
+)
 
 DEFAULTS = {
     "store_name": "HJStoreVP",
@@ -31,6 +35,8 @@ DEFAULTS = {
     "hero_images": [],
     "statement_images": [],
     "homepage_banners": [],
+    "homepage_section_order": list(HOMEPAGE_SECTION_IDS),
+    "homepage_hidden_sections": [],
     "logo_url": "",
     "contact_email": "",
     "contact_phone": "",
@@ -48,16 +54,19 @@ DEFAULTS = {
 class HomepageBanner(BaseModel):
     """Campaña fotográfica publicada en el inicio."""
     image_url: str = Field(min_length=1, max_length=500)
+    mobile_image_url: str = Field(default="", max_length=500)
     title: str = Field(min_length=1, max_length=80)
     subtitle: str = Field(default="", max_length=160)
     button_text: str = Field(default="DESCUBRIR", max_length=40)
     link: str = Field(default="/catalogo", max_length=300)
     active: bool = True
 
-    @field_validator("image_url")
+    @field_validator("image_url", "mobile_image_url")
     @classmethod
     def image_is_safe(cls, value: str) -> str:
         value = value.strip()
+        if not value:
+            return value
         if value.startswith("/uploads/branding/"):
             name = value.removeprefix("/uploads/branding/")
             if not name or any(c in name for c in ("/", chr(92), "?", "#")) or ".." in name:
@@ -92,6 +101,23 @@ class SettingsPayload(BaseModel):
     hero_images: list[str] = Field(default_factory=list, max_length=8)
     statement_images: list[str] = Field(default_factory=list, max_length=8)
     homepage_banners: list[HomepageBanner] = Field(default_factory=list, max_length=6)
+    homepage_section_order: list[str] = Field(default_factory=lambda: list(HOMEPAGE_SECTION_IDS))
+    homepage_hidden_sections: list[str] = Field(default_factory=list)
+
+    @field_validator("homepage_section_order")
+    @classmethod
+    def validate_section_order(cls, sections: list[str]) -> list[str]:
+        if len(sections) != len(HOMEPAGE_SECTION_IDS) or set(sections) != set(HOMEPAGE_SECTION_IDS):
+            raise ValueError("El orden debe incluir cada sección del inicio una sola vez")
+        return sections
+
+    @field_validator("homepage_hidden_sections")
+    @classmethod
+    def validate_hidden_sections(cls, sections: list[str]) -> list[str]:
+        if len(sections) != len(set(sections)) or any(section not in HOMEPAGE_SECTION_IDS for section in sections):
+            raise ValueError("Lista de secciones ocultas no válida")
+        return sections
+
     logo_url: str = Field(max_length=500)
     contact_email: str = Field(max_length=254)
     contact_phone: str = Field(max_length=50)
