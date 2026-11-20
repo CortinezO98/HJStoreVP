@@ -317,6 +317,24 @@ class ProductQualityReview(Base):
     reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class ProductQualityReviewEvent(Base):
+    """Append-only editorial decision trail for accountability."""
+    __tablename__ = "product_quality_review_events"
+    __table_args__ = (Index("ix_quality_events_product_time", "product_id", "reviewed_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    product_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    reviewed_by: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 # ─── INVENTORY ──────────────────────────────────────────────────────────────
 
 class Inventory(Base, TimestampMixin):
