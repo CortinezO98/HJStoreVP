@@ -126,3 +126,42 @@ El Diseñador consulta `/admin/homepage-storage-health` y compara las
 configuraciones completas y las diapositivas, no solamente los recuentos.
 No cambiar las lecturas públicas al almacenamiento relacional hasta tener
 `in_sync=true` y validar el comportamiento del editor y la tienda.
+
+
+## Inicialización segura del primer borrador y secciones independientes
+
+Para una tienda con `source_exists=false`, abrir
+`http://localhost:5174/estudio-inicio` con una cuenta superadministradora.
+
+1. Pulsar **Inicializar borrador privado** aunque todavía no se hayan
+   modificado campos. El backend guarda únicamente `_homepage_draft`
+   y genera el espejo relacional de `published` y `draft`.
+   **Esto no publica la portada y no crea campañas o fotos de muestra**.
+2. Revisar que `source_exists=true` y `in_sync=true` en el diagnóstico.
+3. Para crear secciones independientes, seleccionar **Crear banner**,
+   **Crear mosaico** o **Crear carrusel**. Se crea una sección inactiva;
+   agregar imágenes y configurar su visibilidad y activación.
+4. Usar las flechas para ordenar, casilla para ocultar y papelera para
+   eliminar las secciones personalizadas. La eliminación solo afecta
+   el borrador hasta publicarlo y no elimina archivos del volumen de imágenes.
+5. Las secciones estructurales (productos, pagos, FAQ, etc.) se pueden
+   ocultar, pero no se borran sus datos comerciales.
+6. **Guardar borrador** y comprobar `in_sync=true`. Solo al seleccionar
+   **Publicar portada** se expone la nueva disposición a clientes.
+
+Las secciones independientes se guardan en `homepage_custom_sections`
+y `homepage_section_order`, con máximo 12 secciones y 8 imágenes por
+sección. Se reflejan en las tablas creadas por Alembic `20261120_15`,
+sin nuevas migraciones ni alteraciones de catálogo.
+
+**Revisión visual:** la cuadrícula de fotografías de categorías solo
+muestra las fotos que el administrador elige. Un producto con una imagen
+incorrecta (por ejemplo, documentos o diagramas) debe corregirse en el
+catálogo; este cambio no lo elimina ni altera de manera silenciosa.
+El simulador del Diseñador es orientativo, no sustituye la inspección
+visual real en escritorio y móvil.
+
+No confundir inicializar un borrador con publicar la tienda. Evitar
+usar el formulario general de configuración para cambios de la portada
+si existe un borrador no publicado, pues ese formulario opera sobre
+configuración pública. Usar el Estudio visual como flujo principal.
