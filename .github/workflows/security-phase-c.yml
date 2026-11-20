@@ -6,6 +6,10 @@ on:
     paths:
       - 'backend/app/api/v1/endpoints/security_audit.py'
       - 'backend/app/api/v1/endpoints/commercial_audit.py'
+      - 'backend/app/services/commercial_change_audit.py'
+      - 'backend/app/models/models.py'
+      - 'backend/app/core/deps.py'
+      - 'backend/tests/test_commercial_change_audit.py'
       - 'backend/app/api/v1/router.py'
       - 'backend/scripts/export_audit_snapshot.py'
       - 'backend/tests/test_commercial_audit.py'
@@ -31,7 +35,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - name: Security audit isolated tests
-        run: python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py tests/test_security_audit.py tests/test_commercial_audit.py -q
+        run: python -m pytest tests/test_user_lifecycle.py tests/test_profile_mfa.py tests/test_security_audit.py tests/test_commercial_audit.py tests/test_commercial_change_audit.py -q
   admin-build:
     runs-on: ubuntu-latest
     defaults:
