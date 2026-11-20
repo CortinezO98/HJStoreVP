@@ -1997,3 +1997,76 @@
   .store-loyalty-campaign-copy h2 { font-size: clamp(43px,11vw,70px); }
   .store-loyalty-campaign-copy a { padding: 15px 18px; }
 }
+
+
+/* Presentación configurable desde Estudio de Inicio: no altera enlaces ni imágenes. */
+.home-visual-tile-shade,
+.store-campaign-presentation-shade {
+  background: linear-gradient(to top,
+    rgb(0 0 0 / var(--visual-shade, .65)),
+    transparent 84%);
+}
+.home-visual-tile-copy {
+  top: auto;
+  bottom: clamp(24px, 5vw, 70px);
+  left: clamp(20px, 5vw, 70px);
+  right: clamp(20px, 5vw, 70px);
+  text-align: var(--visual-align, left);
+  align-items: var(--visual-align, left);
+}
+.home-visual-tile[style*="--visual-align: center"] .home-visual-tile-copy { align-items: center; }
+.home-visual-tile[style*="--visual-align: right"] .home-visual-tile-copy { align-items: flex-end; }
+.home-visual-tile[style*="--visual-position: top"] .home-visual-tile-copy { top: 28px; bottom: auto; }
+.home-visual-tile[style*="--visual-position: center"] .home-visual-tile-copy {
+  top: 50%; bottom: auto; transform: translateY(-50%);
+}
+.store-campaign-presentation-copy {
+  top: auto; bottom: 0; text-align: var(--visual-align, left);
+}
+.store-campaign-presentation[style*="--visual-position: top"] .store-campaign-presentation-copy {
+  top: 0; bottom: auto;
+}
+.store-campaign-presentation[style*="--visual-position: center"] .store-campaign-presentation-copy {
+  top: 50%; bottom: auto; transform: translateY(-50%);
+}
+.store-campaign-presentation[style*="--visual-align: center"] .store-campaign-presentation-copy {
+  text-align: center;
+}
+.store-campaign-presentation[style*="--visual-align: center"] .store-campaign-presentation-copy > span {
+  margin-left: auto; margin-right: auto;
+}
+.store-campaign-presentation[style*="--visual-align: right"] .store-campaign-presentation-copy {
+  text-align: right;
+}
+.store-campaign-presentation[style*="--visual-align: right"] .store-campaign-presentation-copy > span {
+  margin-left: auto;
+}
+.store-loyalty-campaign-shade {
+  background: linear-gradient(90deg,
+    rgb(0 0 0 / var(--visual-shade, .65)), rgb(0 0 0 / .12));
+}
+.store-loyalty-campaign {
+  justify-content: flex-start;
+  text-align: var(--visual-align, left);
+}
+.store-loyalty-campaign[style*="--visual-align: center"] {
+  justify-content: center;
+}
+.store-loyalty-campaign[style*="--visual-align: right"] {
+  justify-content: flex-end;
+}
+.store-loyalty-campaign[style*="--visual-position: top"] { align-items: flex-start; }
+.store-loyalty-campaign[style*="--visual-position: center"] { align-items: center; }
+.store-loyalty-campaign[style*="--visual-position: bottom"] { align-items: flex-end; }
+.store-loyalty-campaign[style*="--visual-align: center"] .store-loyalty-campaign-copy a {
+  margin-inline: auto;
+}
+.store-loyalty-campaign[style*="--visual-align: right"] .store-loyalty-campaign-copy a {
+  margin-left: auto;
+}
+@media (max-width:767px) {
+  .home-visual-tile[style*="--visual-position: top"] .home-visual-tile-copy { top: 22px; bottom: auto; }
+  .home-visual-tile[style*="--visual-position: center"] .home-visual-tile-copy {
+    top: 50%; bottom: auto;
+  }
+}
