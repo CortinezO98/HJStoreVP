@@ -1875,7 +1875,7 @@
 .store-photo-category-title p { color: #666; margin-top: 16px; line-height: 1.6; }
 .store-photo-category-tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--category-photo-columns, 4), minmax(0, 1fr));
   gap: 6px;
 }
 .store-photo-category-tile {
