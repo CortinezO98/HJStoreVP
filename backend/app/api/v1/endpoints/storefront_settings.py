@@ -75,6 +75,7 @@ DEFAULTS = {
     "statement_images": [],
     "homepage_banners": [],
     "homepage_visual_blocks": [],
+    "homepage_custom_sections": [],
     "homepage_category_tiles": [],
     "hero_presentation": {"text_align": "left", "text_position": "center", "overlay_opacity": 65},
     "statement_presentation": {"text_align": "left", "text_position": "center", "overlay_opacity": 65},
@@ -281,6 +282,7 @@ class SettingsPayload(BaseModel):
     statement_images: list[str] = Field(default_factory=list, max_length=8)
     homepage_banners: list[HomepageBanner] = Field(default_factory=list, max_length=6)
     homepage_visual_blocks: list[HomepageVisualBlock] = Field(default_factory=list, max_length=6)
+    homepage_custom_sections: list[HomepageVisualBlock] = Field(default_factory=list, max_length=12)
     homepage_category_tiles: list[HomepageCategoryTile] = Field(default_factory=list, max_length=10)
     homepage_loyalty_banner: Optional[HomepageLoyaltyBanner] = None
     hero_presentation: BannerPresentation = Field(default_factory=BannerPresentation)
@@ -303,28 +305,53 @@ class SettingsPayload(BaseModel):
             raise ValueError("Cada bloque debe tener un ID único")
         return blocks
 
+    @field_validator("homepage_custom_sections")
+    @classmethod
+    def unique_custom_sections(cls, blocks: list[HomepageVisualBlock]) -> list[HomepageVisualBlock]:
+        if len({block.id for block in blocks}) != len(blocks):
+            raise ValueError("Las secciones personalizadas deben tener identificadores únicos")
+        return blocks
+
     homepage_section_order: list[str] = Field(default_factory=lambda: list(HOMEPAGE_SECTION_IDS))
     homepage_hidden_sections: list[str] = Field(default_factory=list)
 
     @field_validator("homepage_section_order")
     @classmethod
     def validate_section_order(cls, sections: list[str]) -> list[str]:
-        if len(sections) != len(set(sections)) or any(item not in HOMEPAGE_SECTION_IDS for item in sections):
-            raise ValueError("La lista de secciones contiene elementos repetidos o desconocidos")
-        sections = [*sections]
+        if len(sections) != len(set(sections)):
+            raise ValueError("El orden de secciones contiene duplicados")
+        if any(item not in HOMEPAGE_SECTION_IDS and not item.startswith("custom:") for item in sections):
+            raise ValueError("El orden incluye secciones desconocidas")
+        sections = list(sections)
         for added, after in (("visual", "campaigns"), ("loyalty", "categories")):
             if added not in sections:
-                sections.insert(sections.index(after) + 1 if after in sections else len(sections), added)
-        if set(sections) != set(HOMEPAGE_SECTION_IDS):
-            raise ValueError("El orden debe incluir todas las secciones")
+                position = sections.index(after) + 1 if after in sections else len(sections)
+                sections.insert(position, added)
+        if not set(HOMEPAGE_SECTION_IDS).issubset(sections):
+            raise ValueError("El orden debe mantener las secciones estructurales")
         return sections
 
     @field_validator("homepage_hidden_sections")
     @classmethod
     def validate_hidden_sections(cls, sections: list[str]) -> list[str]:
-        if len(sections) != len(set(sections)) or any(section not in HOMEPAGE_SECTION_IDS for section in sections):
+        if len(sections) != len(set(sections)):
+            raise ValueError("Lista de secciones ocultas repetida")
+        if any(item not in HOMEPAGE_SECTION_IDS and not item.startswith("custom:") for item in sections):
             raise ValueError("Lista de secciones ocultas no válida")
         return sections
+
+    @model_validator(mode="after")
+    def validate_custom_section_references(self):
+        expected = {"custom:" + block.id for block in self.homepage_custom_sections}
+        actual = {key for key in self.homepage_section_order if key.startswith("custom:")}
+        if expected != actual:
+            raise ValueError("El orden debe incluir exactamente las secciones creadas")
+        if any(key.startswith("custom:") and key not in expected
+               for key in self.homepage_hidden_sections):
+            raise ValueError("Hay referencias ocultas a secciones eliminadas")
+        if expected.intersection({"custom:" + block.id for block in self.homepage_visual_blocks}):
+            raise ValueError("No reutilices identificadores de otros bloques")
+        return self
 
     logo_url: str = Field(max_length=500)
     contact_email: str = Field(max_length=254)
@@ -435,7 +462,7 @@ def validate_published_destinations(settings_data: dict, db: Session) -> None:
     for banner in settings_data.get("homepage_banners", []):
         if banner.get("active") and banner.get("image_url"):
             validate_destination(banner, db)
-    for block in settings_data.get("homepage_visual_blocks", []):
+    for block in [*settings_data.get("homepage_visual_blocks", []), *settings_data.get("homepage_custom_sections", [])]:
         if block.get("active"):
             for item in block.get("items", []):
                 validate_destination(item, db)
@@ -447,7 +474,7 @@ def validate_published_destinations(settings_data: dict, db: Session) -> None:
 def resolve_public_destinations(settings_data: dict, db: Session) -> None:
     for banner in settings_data.get("homepage_banners", []):
         banner["link"] = destination_link(banner, db)
-    for block in settings_data.get("homepage_visual_blocks", []):
+    for block in [*settings_data.get("homepage_visual_blocks", []), *settings_data.get("homepage_custom_sections", [])]:
         for item in block.get("items", []):
             item["link"] = destination_link(item, db)
     loyalty = settings_data.get("homepage_loyalty_banner")
@@ -522,6 +549,10 @@ def get_public_settings(db: Session = Depends(get_db)):
         and campaign_in_window(data["homepage_loyalty_banner"], now)
         else None
     )
+    data["homepage_custom_sections"] = [
+        block for block in data.get("homepage_custom_sections", [])
+        if block.get("items") and campaign_in_window(block, now)
+    ]
     data["homepage_visual_blocks"] = [
         block for block in data.get("homepage_visual_blocks", [])
         if block.get("items") and campaign_in_window(block, now)
@@ -573,6 +604,7 @@ def update_admin_settings(
 HOMEPAGE_EDIT_FIELDS = (
     "hero_eyebrow", "hero_title", "hero_description", "hero_button",
     "hero_images", "statement_images", "homepage_banners", "homepage_visual_blocks",
+    "homepage_custom_sections",
     "homepage_category_tiles", "homepage_loyalty_banner",
     "hero_carousel_settings", "statement_carousel_settings",
     "hero_presentation", "statement_presentation",
