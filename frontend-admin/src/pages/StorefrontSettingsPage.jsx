@@ -58,19 +58,16 @@ const HOME_SECTIONS = [
   ['services', 'Beneficios'], ['faq', 'Preguntas frecuentes'], ['closing', 'Cierre editorial'],
 ]
 const DEFAULT_HOME_ORDER = HOME_SECTIONS.map(([id]) => id)
-const normalizedHomeOrder = value =>
-  Array.isArray(value)
-    ? (() => {
-      const sections = [...value]
-      for (const [id, after] of [['visual','campaigns'], ['loyalty','categories']]) {
-        if (!sections.includes(id)) sections.splice(sections.indexOf(after) + 1, 0, id)
-      }
-      return sections
-    })() : value
-const validHomeOrder = (value) => Array.isArray(value) &&
-  value.length === DEFAULT_HOME_ORDER.length &&
-  new Set(value).size === DEFAULT_HOME_ORDER.length &&
-  DEFAULT_HOME_ORDER.every(id => value.includes(id))
+const normalizedHomeOrder = (value, custom = []) => {
+  const allowed = [...DEFAULT_HOME_ORDER, ...custom.map(block => 'custom:' + block.id)]
+  const sections = [...new Set((Array.isArray(value) ? value : DEFAULT_HOME_ORDER)
+    .filter(id => allowed.includes(id)))]
+  for (const [id, after] of [['visual','campaigns'], ['loyalty','categories']]) {
+    if (!sections.includes(id)) sections.splice(sections.indexOf(after) + 1, 0, id)
+  }
+  for (const id of allowed) if (!sections.includes(id)) sections.push(id)
+  return sections
+}
 
 const POLICY_FIELDS = new Set(['shipping_policy', 'returns_policy', 'privacy_policy', 'terms_policy'])
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -91,13 +88,13 @@ export default function StorefrontSettingsPage() {
   const [campaignCrop, setCampaignCrop] = useState(null)
   const [previewDevice, setPreviewDevice] = useState('desktop')
   const [visualUploading, setVisualUploading] = useState(false)
-  const currentHomeOrder = normalizedHomeOrder(form?.homepage_section_order)
-  const homeOrder = validHomeOrder(currentHomeOrder) ? currentHomeOrder : DEFAULT_HOME_ORDER
+  const homeOrder = normalizedHomeOrder(form?.homepage_section_order,
+    form?.homepage_custom_sections || [])
   const hiddenHomeSections = Array.isArray(form?.homepage_hidden_sections)
     ? form.homepage_hidden_sections : []
   const moveHomeSection = (index, direction) => setForm((current) => {
-    const normalized = normalizedHomeOrder(current.homepage_section_order)
-    const items = [...(validHomeOrder(normalized) ? normalized : DEFAULT_HOME_ORDER)]
+    const items = normalizedHomeOrder(current.homepage_section_order,
+      current.homepage_custom_sections || [])
     const target = index + direction
     if (target < 0 || target >= items.length) return current
     ;[items[index], items[target]] = [items[target], items[index]]
@@ -425,7 +422,9 @@ export default function StorefrontSettingsPage() {
                 <span className="badge text-bg-dark">Banner principal</span>
                 {homeOrder.filter(id => !hiddenHomeSections.includes(id)).map(id =>
                   <span className="badge text-bg-light border text-dark" key={id}>
-                    {HOME_SECTIONS.find(([key]) => key === id)?.[1] || id}
+                    {HOME_SECTIONS.find(([key]) => key === id)?.[1] ||
+                      (form.homepage_custom_sections || []).find(block =>
+                        'custom:' + block.id === id)?.title || id}
                   </span>)}
               </div>
               <p className="form-text mb-0 mt-2">Esta vista resume el orden y la visibilidad configurados;
