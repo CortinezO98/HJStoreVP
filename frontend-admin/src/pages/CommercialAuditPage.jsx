@@ -8,6 +8,7 @@ const SOURCE_NAMES = {
   post_sale_events: 'Eventos de posventa',
   commercial_document_events: 'Comprobantes internos',
   product_quality_review_events: 'Revisión de catálogo',
+  security_audit_events: 'Cambios firmados de precios y pedidos',
 }
 
 export default function CommercialAuditPage() {
@@ -98,7 +99,7 @@ export default function CommercialAuditPage() {
         <thead className="bg-gray-50 text-gray-600"><tr>
           <th className="p-3">Fecha UTC</th><th className="p-3">Origen</th>
           <th className="p-3">Actor</th><th className="p-3">Acción</th><th className="p-3">Recurso / ID</th>
-          <th className="p-3">Integridad</th>
+          <th className="p-3">Integridad</th><th className="p-3">Detalle del cambio</th>
         </tr></thead>
         <tbody>{data.items.map(row => <tr key={`${row.source}-${row.source_id}`} className="border-t border-gray-100">
           <td className="p-3 whitespace-nowrap">{row.created_at?.replace('T', ' ') || '—'}</td>
@@ -106,9 +107,14 @@ export default function CommercialAuditPage() {
           <td className="p-3">{row.actor_id ?? '—'}</td>
           <td className="p-3 font-mono">{row.action}</td>
           <td className="p-3">{row.resource} / {row.target_id}</td>
-          <td className="p-3 text-amber-700">Historial de origen (sin firma central)</td>
+          <td className="p-3">{row.integrity === 'signed_valid'
+            ? <span className="text-green-700">Firma válida</span>
+            : row.integrity === 'signed_invalid'
+              ? <span className="text-red-700">Firma inválida</span>
+              : <span className="text-amber-700">Origen sin firma central</span>}</td>
+          <td className="p-3 max-w-xs"><pre className="whitespace-pre-wrap break-words text-xs">{Object.keys(row.details || {}).length ? JSON.stringify(row.details) : '—'}</pre></td>
         </tr>)}
-        {!loading && data.items.length === 0 && <tr><td className="p-6 text-gray-500" colSpan={6}>Sin eventos para los filtros elegidos.</td></tr>}</tbody>
+        {!loading && data.items.length === 0 && <tr><td className="p-6 text-gray-500" colSpan={7}>Sin eventos para los filtros elegidos.</td></tr>}</tbody>
       </table>
       <footer className="p-4 flex justify-end items-center gap-3 border-t text-sm">
         <button className="rounded-lg border px-3 py-2 disabled:opacity-40" disabled={loading || page === 1} onClick={() => setPage(page - 1)}>Anterior</button>
