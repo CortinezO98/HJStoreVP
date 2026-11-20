@@ -140,3 +140,15 @@ def consume_refresh_token(token: str, expires_at: int) -> None:
             status_code=401,
             detail="Refresh token ya utilizado; inicia sesión nuevamente",
         )
+
+
+def consume_mfa_challenge(token: str, expires_at: int) -> None:
+    """Evitar el reuso de un desafío válido, incluso con otro código correcto."""
+    seconds_left = max(1, int(expires_at - time.time()))
+    try:
+        claimed = _client().set(_key("used-mfa-challenge", token), "1", ex=seconds_left, nx=True)
+    except RedisError as exc:
+        _redis_failure("consumir desafío MFA", exc)
+        return
+    if not claimed:
+        raise HTTPException(status_code=401, detail="Desafío ya utilizado; inicia sesión nuevamente")
