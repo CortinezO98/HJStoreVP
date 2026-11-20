@@ -79,21 +79,15 @@ export default function HomePage() {
   const featuredWithPhotos = featured.filter(product => product?.primary_image)
   const savedCategoryPhotos = Array.isArray(storeSettings.homepage_category_tiles)
     ? storeSettings.homepage_category_tiles : []
-  const categoriesWithPhotos = (
-    savedCategoryPhotos.some(tile => tile.image_url)
-      ? savedCategoryPhotos.filter(tile => tile.image_url).map(tile => {
-          const category = featuredCategories.find(item => item.slug === tile.category_slug)
-          return category ? { ...category, title: tile.title || category.name,
-            image_url: tile.image_url, mobile_image_url: tile.mobile_image_url } : null
-        }).filter(Boolean)
-      : featuredCategories.map(category => ({
-          ...category,
-          title: category.name,
-          image_url: [...newest, ...featured].find(product =>
-            product.primary_image && (product.category_name || '').toLocaleLowerCase('es') ===
-              category.name.toLocaleLowerCase('es'))?.primary_image,
-        })).filter(category => category.image_url).slice(0, 4)
-  )
+  // Solo fotografías elegidas por el superadministrador para uso editorial.
+  // Nunca promocionar automáticamente un archivo de producto como imagen de categoría.
+  const categoriesWithPhotos = savedCategoryPhotos
+    .filter(tile => tile.image_url)
+    .map(tile => {
+      const category = featuredCategories.find(item => item.slug === tile.category_slug)
+      return category ? { ...category, title: tile.title || category.name,
+        image_url: tile.image_url, mobile_image_url: tile.mobile_image_url } : null
+    }).filter(Boolean)
   const loyalty = storeSettings.homepage_loyalty_banner
   const DEFAULT_ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
     'visual', 'categories', 'loyalty', 'services', 'faq', 'closing']
