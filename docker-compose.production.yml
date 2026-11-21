@@ -1,0 +1,116 @@
+# E.5.2 — CANDIDATO NO HABILITADO, separado del compose de desarrollo.
+# Sólo inspeccionar configuración en esta fase; NO ejecutar 'up'.
+# Requiere variables externas PROD_* y hosts HTTPS aprobados.
+name: hjstorevp-prod-candidate
+
+x-backend-env: &backend-env
+  ENVIRONMENT: production
+  DEBUG: "false"
+  DATABASE_URL: "mysql+pymysql://hjstore_app:${PROD_DB_PASSWORD:?Configurar PROD_DB_PASSWORD URL-encoded}@db:3306/hjstore_prod"
+  REDIS_URL: redis://redis:6379/0
+  SECRET_KEY: "${PROD_SECRET_KEY:?Configurar PROD_SECRET_KEY}"
+  FIRST_ADMIN_PASSWORD: "${PROD_FIRST_ADMIN_PASSWORD:?Configurar PROD_FIRST_ADMIN_PASSWORD}"
+  FIRST_ADMIN_EMAIL: "${PROD_FIRST_ADMIN_EMAIL:?Configurar PROD_FIRST_ADMIN_EMAIL}"
+  API_BASE_URL: "${PROD_API_URL:?Configurar PROD_API_URL_HTTPS}"
+  STORE_PUBLIC_URL: "${PROD_STORE_URL:?Configurar PROD_STORE_URL_HTTPS}"
+  ALLOWED_ORIGINS: '["${PROD_STORE_URL:?Configurar PROD_STORE_URL_HTTPS}","${PROD_ADMIN_URL:?Configurar PROD_ADMIN_URL_HTTPS}"]'
+  AUTH_RATE_LIMIT_ENABLED: "true"
+  AUTH_REFRESH_REPLAY_PROTECTION_ENABLED: "true"
+  EMAIL_NOTIFICATIONS_ENABLED: "false"
+  EMAIL_LIVE_DELIVERY_ALLOWED: "false"
+  CART_RECOVERY_DELIVERY_ENABLED: "false"
+  CART_RECOVERY_LIVE_ALLOWED: "false"
+  WOMPI_ENV: sandbox
+  WOMPI_ALLOW_LIVE_PAYMENTS: "false"
+  STORAGE_BACKEND: local
+  UPLOAD_DIR: /app/uploads
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${PROD_DB_ROOT_PASSWORD:?Configurar PROD_DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: hjstore_prod
+      MYSQL_USER: hjstore_app
+      MYSQL_PASSWORD: "${PROD_DB_PASSWORD:?Configurar PROD_DB_PASSWORD}"
+    volumes:
+      - prod_db_data:/var/lib/mysql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # No publish ports.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - prod_redis_data:/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.production
+    restart: unless-stopped
+    environment: *backend-env
+    volumes:
+      - prod_uploads:/app/uploads
+    networks: [internal, edge]
+    ports:
+      - "127.0.0.1:28000:8000"
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    # NO create_all y NO alembic upgrade automático. Requiere migración
+    # revisada y restauración comprobada antes de habilitar servicio.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
+      args:
+        VITE_API_URL: "${PROD_API_URL:?Configurar PROD_API_URL_HTTPS}"
+    restart: unless-stopped
+    networks: [edge]
+    ports:
+      - "127.0.0.1:28080:8080"
+    depends_on: [backend]
+
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile.production
+      args:
+        VITE_API_URL: "${PROD_API_URL:?Configurar PROD_API_URL_HTTPS}"
+        VITE_STORE_URL: "${PROD_STORE_URL:?Configurar PROD_STORE_URL_HTTPS}"
+    restart: unless-stopped
+    networks: [edge]
+    ports:
+      - "127.0.0.1:28081:8080"
+    depends_on: [backend]
+
+networks:
+  internal:
+    internal: true
+  edge: {}
+
+volumes:
+  prod_db_data: {}
+  prod_redis_data: {}
+  prod_uploads: {}
