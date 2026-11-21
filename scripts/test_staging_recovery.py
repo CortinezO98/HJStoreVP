@@ -87,3 +87,27 @@ def test_compose_dedicated_to_recovery():
     assert "ports:" not in compose.replace("# No puertos", "")
     assert "hjstore_recovery_fixture" in compose
     assert "volumes:" not in compose
+
+
+def test_rehearsal_blocks_unhealthy_container(tmp_path, monkeypatch):
+    """No se importa SQL si MariaDB todavía inicializa InnoDB."""
+    from unittest.mock import Mock
+
+    manifest = module.create_fixture(tmp_path)
+    monkeypatch.setattr(module, "FIXTURES", tmp_path)
+    monkeypatch.setattr(module, "COMPOSE", module.ROOT / "docker-compose.staging-recovery.yml")
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if "ps" in cmd:
+            return Mock(returncode=0, stdout="db-recovery\\n")
+        if "healthcheck.sh" in cmd:
+            return Mock(returncode=1, stdout="")
+        raise AssertionError("No se debe enviar SQL si MariaDB no está saludable")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="todavía no está saludable"):
+        module.rehearse(manifest)
+    assert len(calls) == 2
+    assert "healthcheck.sh" in calls[1]
