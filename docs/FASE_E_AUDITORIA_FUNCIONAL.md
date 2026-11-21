@@ -1142,3 +1142,93 @@ de E.5.1 siguen siendo bloqueantes para el Compose de desarrollo.
 El monitor no se ejecuta automáticamente ni queda activado en
 ningún contenedor. Las pruebas se deben ejecutar en el equipo del
 usuario antes de dar la fase por validada.
+
+
+## Fase E.5.5 — Historial, alertas persistentes y tablero técnico protegido
+
+Implementación lista en el repositorio, **pendiente de validación local**.
+
+### Componentes
+
+- `scripts/operations_history.py`: toma una muestra con el monitor
+  pasivo E.5.4, aplica una lista blanca de 11 controles y cuatro
+  métricas numéricas; guarda `backend/monitoring/snapshots.jsonl`
+  (máximo 720 filas y 30 días) y `backend/monitoring/summary.json`.
+  Ambos están excluidos de Git. No guarda nombres de clientes,
+  correos, tokens, URL consultadas, stderr de Docker ni SQL.
+- Una condición no OK se considera **persistente después de tres
+  muestras consecutivas** (modificable entre 2 y 20). La
+  disponibilidad mostrada es sólo porcentaje de **muestras** OK;
+  no equivale a disponibilidad por tiempo ni SLA. p50/p95 se calculan
+  sobre observaciones HTTP no críticas; con pocas muestras no
+  representan percentiles estables.
+- `GET /api/v1/operations-monitoring`: ruta del backend que exige
+  `require_super_admin`, abre únicamente la ruta fija
+  `/app/monitoring/summary.json`, valida un tamaño máximo y sanea
+  de nuevo cada campo. Rechaza consulta en cualquier entorno que
+  no sea `development` y marca el reporte como obsoleto después
+  de 15 minutos. Respuestas `Cache-Control: no-store`.
+- `frontend-admin/src/pages/OperationsMonitoringPage.jsx`:
+  interfaz responsive privada en `/monitoreo-tecnico`, con
+  alertas persistentes, métricas recientes, latencias y
+  hasta 60 estados históricos; sólo aparece a superadministradores
+  en menú/buscador. La protección del backend es independiente.
+- `scripts/monitor_schedule.ps1`: herramienta Windows de
+  instalación **optativa** de tarea cada 10 minutos, bajo usuario
+  interactivo, sin guardar contraseña, evitando concurrencia.
+  Por defecto `-Action Status` no instala absolutamente nada;
+  nunca se activa una tarea mediante `git pull`.
+- `scripts/test_operations_history.py`: pruebas offline de
+  saneamiento, duplicados, persistencia, retención, alertas y bloqueos.
+  `backend/tests/test_operations_monitoring.py`: ruta protegida
+  ensayada con SQLite temporal, sin conectar a BD comercial.
+
+### Pruebas (Windows CMD, sin crear tareas)
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_operations_monitor.py scripts\test_operations_history.py -q
+docker compose exec -T backend python -m pytest tests/test_operations_monitoring.py -q
+.venv-e2e\Scripts\python.exe scripts\operations_history.py
+.venv-e2e\Scripts\python.exe scripts\operations_history.py --json
+git status --short
+```
+
+**Atención:** la prueba backend se debe ejecutar con aislamiento
+SQLite como `backend/tests/conftest.py`; si el contenedor backend
+instalado no incluye el código/tests actualizado o falta `pytest`,
+ejecutarla mediante el entorno virtual de pruebas backend existente,
+desde el directorio `backend`. No habilitar servicios productivos.
+El recolector requiere el Python del host y Docker Desktop; el
+`backend` de desarrollo monta `./backend:/app`, por lo que
+lee el mismo archivo de resumen. Abrir
+`http://localhost:5174/monitoreo-tecnico` con superadministrador
+después de registrar al menos una muestra.
+Si sólo se registra una muestra, las alertas persistentes no se
+dispararán aún, por diseño.
+
+### Tarea programada (SOLO después de aprobar pruebas y autorizar)
+
+```powershell
+powershell -NoProfile -File scripts\monitor_schedule.ps1 -Action Status
+powershell -NoProfile -File scripts\monitor_schedule.ps1 -Action Install
+powershell -NoProfile -File scripts\monitor_schedule.ps1 -Action Remove
+```
+
+`Install` es opcional y **cambia la configuración del Programador
+de tareas de Windows**; debe ejecutarse sólo por decisión del
+operador. `Remove` detiene ejecuciones futuras y conserva
+el historial. No se configuran correo, WhatsApp, webhooks,
+notificaciones de navegador ni alertas remotas.
+
+### Límites y pendientes
+
+Sin base de monitoreo independiente, verificación de permisos de
+archivos productivos, panel productivo central, métricas continuas,
+alertas externas, observabilidad de los procesos internos ni
+correlación de trazas. El modo `production` devuelve 503 para
+esta ruta local. Se requiere diseñar una ingesta segura para
+producción y completar restauración realista de staging, TLS,
+migraciones y pruebas de carga antes de desplegar.
