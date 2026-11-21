@@ -296,3 +296,19 @@ python -m venv .venv-e2e
 Si el nuevo puerto tampoco está disponible, inspeccionar su
 ocupación y resolver el conflicto antes de correr las pruebas;
 no detener servicios desconocidos ni los de HJStoreVP comercial.
+
+
+### Resultados de primera ejecución E.2.2 (21/11/2026)
+
+- Entorno Docker E2E aislado y puertos 25173/18000 iniciados.
+- Python 3.12.10, venv, Playwright 1.56.0 y Chromium instalados.
+- Concurrencia MariaDB: **1 passed**. La prueba consumió el stock
+  sintético de `E2E-RACE-001`; no debe repetirse en ese mismo stack.
+- Navegador: el registro llegó exitosamente a
+  `http://127.0.0.1:25173/mi-cuenta`. Una aserción de Playwright
+  interpretó `**/mi-cuenta` como un patrón que exige otra barra,
+  de modo que rechazó la URL correcta. Se sustituyeron tres
+  aserciones por URLs exactas `STORE + ruta` sin cambiar la app.
+- Pendiente: ejecutar nuevamente **solo** el test de navegador
+  y confirmar el recorrido restante: carrito, checkout, tarifa
+  y segundo inicio de sesión. No se afirma todavía que haya pasado.
