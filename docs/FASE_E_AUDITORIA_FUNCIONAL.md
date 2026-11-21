@@ -166,3 +166,105 @@ La tienda sí aprobó `npm ci`, `verify:routes`,
 Tras el cambio, repetir las pruebas E.2 y la suite completa
 para confirmar resultado; no se ha declarado aprobado aún
 el backend de esta fase.
+
+
+## Fase E.2.2 — Navegador real y concurrencia MariaDB (entrega preparada)
+
+**Seguridad / aislamiento:** `docker-compose.e2e.yml` define
+un proyecto independiente `hjstorevp-e2e` con MariaDB sobre tmpfs,
+Redis temporal, backend exclusivo y frontend de prueba. Sus puertos
+localhost son **18000** (API) y **15173** (tienda); NO usa ni se
+conecta a los volúmenes `db_data`, `redis_data` o `uploads_data`
+de la aplicación normal. Los servicios existentes en 8000, 5173,
+5174, 3306 y 6379 no deben detenerse ni modificarse.
+
+El sembrador `backend/e2e_seed.py` rechaza ejecutarse si el
+host de BD no es `db-e2e` y la base no se llama `hjstore_e2e`.
+Crea solamente dos productos sintéticos (stock 6 y 1) y una
+tarifa de envío E2E. Se niega a restablecer existencias cuando
+hay pedidos existentes. Todos los envíos de correo y cobros reales
+están desactivados; la prueba de navegador **nunca pulsa
+el botón de confirmar compra**.
+
+### 1. Levantar ambiente independiente (CMD)
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose -f docker-compose.e2e.yml config --quiet
+docker compose -f docker-compose.e2e.yml up -d --build
+docker compose -f docker-compose.e2e.yml ps
+```
+
+**No ejecutar `docker compose down -v` sin `-f
+docker-compose.e2e.yml`**. El proyecto comercial debe permanecer
+funcionando. Antes del sembrado, confirmar en `ps` que
+`backend-e2e` y `db-e2e` pertenecen a este stack y que
+`http://127.0.0.1:18000/health` responde correctamente.
+
+```bat
+docker compose -f docker-compose.e2e.yml exec -T backend-e2e python e2e_seed.py
+```
+
+### 2. Preparar Playwright para Windows (una sola vez)
+
+```bat
+py -3.12 -m venv .venv-e2e
+.venv-e2e\Scripts\python.exe -m pip install -r tests\e2e\requirements.txt
+.venv-e2e\Scripts\python.exe -m playwright install chromium
+```
+
+### 3. Ejecutar los recorridos
+
+```bat
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_store_browser.py -q
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_mariadb_concurrency.py -q
+```
+
+Pruebas implementadas:
+
+- **Navegador Chromium**: registro con email sintético,
+  sesión válida, carrito local con artículo ficticio, continuación
+  al checkout, visualización de la tarifa configurada, consulta
+  de cero pedidos y login desde una segunda sesión independiente.
+  No crea un pedido en esta prueba.
+- **MariaDB InnoDB**: registra dos clientes sintéticos e intenta
+  comprar al mismo tiempo la **última unidad** de otro producto
+  E2E. Debe retornar exactamente una respuesta 201 y una 409,
+  con stock final cero y un solo pedido en total.
+  Ambos pedidos son sintéticos y permanecen en la base temporal.
+- **CI**: comprueba sintaxis de scripts E2E y validez del archivo
+  Compose. No arranca ni ejecuta los tests con navegador en CI
+  hasta verificar primero su funcionamiento controlado en Windows.
+
+**Orden:** ejecutar navegador antes de concurrencia y no repetir
+la prueba de concurrencia en el mismo stack: consume la única unidad.
+Si se necesita repetir, destruir solo la composición de pruebas
+y crearla de nuevo.
+
+### 4. Limpieza SEGURA (solo proyecto E2E)
+
+```bat
+docker compose -f docker-compose.e2e.yml down --remove-orphans
+docker compose ps
+```
+
+La base y Redis E2E están en tmpfs, por lo que al eliminar sus
+contenedores desaparecen los registros sintéticos. **Jamás**
+usar `docker compose down` sin el `-f` indicado ni
+`docker system prune --volumes`. La aplicación comercial debe
+seguir activa.
+
+### Criterios de aceptación
+
+Ambos tests deben aprobar. Si se detecta un error, conservar
+salida de pruebas y logs de `backend-e2e` sin publicar tokens,
+correos de clientes, contraseñas ni datos sensibles.
+No se afirma aún que esta entrega esté validada:
+es necesario revisar la ejecución local y el resultado
+de GitHub Actions.
+
+La concurrencia comprueba un caso de compra de la última unidad,
+no certifica cargas masivas, aislamiento de todas las operaciones
+ni funcionamiento de pagos y reembolsos en producción.
