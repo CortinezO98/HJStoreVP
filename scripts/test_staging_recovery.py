@@ -107,7 +107,32 @@ def test_rehearsal_blocks_unhealthy_container(tmp_path, monkeypatch):
         raise AssertionError("No se debe enviar SQL si MariaDB no está saludable")
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
-    with pytest.raises(RuntimeError, match="todavía no está saludable"):
+    with pytest.raises(module.RecoveryStageError, match="DB_HEALTHCHECK_FAILED"):
         module.rehearse(manifest)
     assert len(calls) == 2
     assert "healthcheck.sh" in calls[1]
+
+
+def test_restore_reports_safe_import_failure_stage(tmp_path, monkeypatch):
+    """Sólo mostrar código de etapa, no stderr ni contraseña ni SQL."""
+    from unittest.mock import Mock
+
+    manifest = module.create_fixture(tmp_path)
+    monkeypatch.setattr(module, "FIXTURES", tmp_path)
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if "ps" in cmd:
+            return Mock(returncode=0, stdout="db-recovery\n")
+        if "healthcheck.sh" in cmd:
+            return Mock(returncode=0, stdout="")
+        if kwargs.get("stdin") is not None:
+            return Mock(returncode=1, stderr=b"SECRET-DO-NOT-PRINT")
+        raise AssertionError("No deben ejecutarse consultas tras fallo de importación")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    with pytest.raises(module.RecoveryStageError, match="SQL_IMPORT_FAILED") as exc:
+        module.rehearse(manifest)
+    assert "SECRET-DO-NOT-PRINT" not in str(exc.value)
+    assert len(calls) == 3
