@@ -78,7 +78,13 @@ def sanitize_report(data: dict) -> dict:
     percent = data.get("observed_ok_percent")
     return {
         "schema_version": 1, "latest_at_utc": moment.isoformat(),
-        "latest_status": data.get("latest_status") if data.get("latest_status") in statuses else "warning",
+        # El estado global se calcula desde los checks depurados, nunca
+        # desde un campo libre de un archivo JSON local.
+        "latest_status": (
+            "critical" if any(item["status"] == "critical" for item in checks.values())
+            else "warning" if any(item["status"] == "warning" for item in checks.values())
+            else "ok"
+        ),
         "sample_count": count if type(count) is int and 0 <= count <= 720 else 0,
         "observed_ok_percent": percent if type(percent) in (float, int) and 0 <= percent <= 100 else None,
         "latest_checks": checks, "persistent_alerts": alerts, "latency": latency,
