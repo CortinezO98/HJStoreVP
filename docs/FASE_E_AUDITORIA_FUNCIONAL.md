@@ -762,3 +762,71 @@ separados para producción sin afectar Docker Compose local,
 con secretos obligatorios, red adecuada, sin puertos de base
 expuestos y plan de migración y recuperación. No desplegar
 ni encender pagos/correo reales hasta aprobación.
+
+
+## Fase E.5.2 — Infraestructura candidata productiva (sin despliegue)
+
+La auditoría E.5.1 confirmó en el entorno de desarrollo **6 BLOCKER,
+1 WARNING, 4 MANUAL, 9 PASS**; exit 2 esperado. Estos bloqueos
+siguen perteneciendo al Compose *de desarrollo* y **no se elimina ni
+se reemplaza** dicho Compose: continuar usándolo localmente.
+
+Se añadieron estos archivos totalmente separados:
+
+- `docker-compose.production.yml`: proyecto independiente
+  `hjstorevp-prod-candidate`, MariaDB/Redis en red interna sin puertos
+  publicados, backend y dos sitios estáticos enlazados **sólo a
+  127.0.0.1** por los puertos 28000/28080/28081.
+- `backend/Dockerfile.production`: imagen sin `--reload`, con usuario
+  `appuser` no privilegiado y volumen persistente de imágenes.
+- `frontend/Dockerfile.production` y
+  `frontend-admin/Dockerfile.production`: compilación Vite multietapa
+  y Nginx no privilegiado para servir archivos estáticos.
+- `frontend/nginx.production.conf` y
+  `frontend-admin/nginx.production.conf`: rutas SPA y cabeceras
+  defensivas. HTTPS deberá terminar en proxy externo validado.
+- `scripts/test_production_candidate.py`: cinco controles de
+  arquitectura que no leen secretos, no abren sockets ni arrancan
+  contenedores.
+
+**NO APTO PARA ACTIVACIÓN AÚN.** No se incluyen dominios, credenciales,
+certificados ni infraestructura real. Las variables requeridas se
+suministrarán por un medio seguro (nunca por Git ni en capturas).
+En particular, `PROD_DB_PASSWORD` debe ser robusta y **URL-safe**
+(letras, números, guion y guion bajo) por usarse tanto en la cuenta
+MariaDB como dentro de `DATABASE_URL`. Si se requieren símbolos
+reservados de URL, antes deberá cambiarse la construcción de DSN
+para codificar correctamente la contraseña. `VITE_*` contiene sólo
+direcciones públicas HTTPS; **nunca poner claves en argumentos de
+compilación**. Validación CORS usa `PROD_STORE_URL` y
+`PROD_ADMIN_URL` como orígenes exactos, sin barra final.
+
+El Compose candidato no inicia migraciones y **la app en modo
+producción no crea tablas automáticamente**. Al iniciar sin staging
+migrado puede responder errores; por eso **no ejecutar `up`
+ni aplicar `alembic upgrade` todavía**. Tampoco habilitar SMTP,
+Wompi, Sistecréditos o Addi reales. El proxy TLS, restauración
+integral, migraciones, permisos de almacenamiento y pruebas HTTPS
+se validarán en fases E.5.3–E.5.4.
+
+### CMD — validar sin arrancar nada
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_production_readiness.py scripts\test_production_candidate.py -q
+git status --short
+```
+
+Se esperan **10 casos** en total (5 de E.5.1 más 5 de E.5.2).
+No ejecutar `docker compose -f docker-compose.production.yml config`
+con secretos verdaderos si va a compartirse la salida: Docker puede
+mostrar variables y credenciales resueltas. De momento la validación
+estática es suficiente; los archivos candidatos aún no han sido
+construidos ni arrancados.
+
+**Siguiente E.5.3:** preparar escenario staging con base y volúmenes
+exclusivos, migraciones controladas, copia verificable y restauración
+probada, registro de versiones y rollback. Todo antes de promover
+la configuración candidata.
