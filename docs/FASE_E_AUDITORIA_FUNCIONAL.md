@@ -698,3 +698,67 @@ docker compose -f docker-compose.e2e.yml down --remove-orphans
 docker compose ps
 git status --short
 ```
+
+
+## Fase E.5.1 — Preflight de preparación para producción (no destructivo)
+
+Se incorporó `scripts/production_readiness.py`, un auditor
+**estático y exclusivamente de lectura** que no importa la app,
+no accede a Docker, MariaDB, Redis o Internet, no carga `.env`
+y no muestra contraseñas ni valores de variables.
+
+La auditoría identifica condiciones de desarrollo incompatibles
+con producción (Compose con `ENVIRONMENT=development`,
+`--reload`, credenciales de respaldo conocidas, volumen del código
+fuente); revisa defensas existentes del backend para secretos,
+CORS, DEBUG y autenticación; verifica disponibilidad de Alembic
+y registra validaciones **MANUAL** obligatorias:
+migraciones staging, restauración de backups, TLS y proveedores.
+La ejecución NO es una habilitación para desplegar.
+
+**Código de salida:** `2` si detecta BLOCKER;
+`1` cuando no hay bloqueos estáticos pero aún falta aprobación
+manual. Por diseño nunca devuelve `0` en esta fase.
+Un estado de fallo es ESPERADO y NO significa que el entorno
+de desarrollo esté averiado.
+
+### CMD — ejecutarlo sin modificar nada
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+py -3 scripts\production_readiness.py
+echo Codigo de salida: %ERRORLEVEL%
+py -3 -m pytest scripts\test_production_readiness.py -q
+git status --short
+```
+
+Si Python del host no tiene pytest, usar la venv E2E existente:
+`.venv-e2e\Scripts\python.exe -m pytest scripts\test_production_readiness.py -q`.
+Otra alternativa es `docker compose exec -T backend python
+../scripts/production_readiness.py` sólo si se monta /scripts,
+lo que no hace el Compose actual; **no usar esa alternativa**.
+Se añadieron **5 casos** de pruebas del auditor:
+detección de Compose de desarrollo, ausencia de archivos,
+protección de secretos, aprobación manual pendiente y
+verificación del repositorio real. No se ha confirmado aún
+la ejecución en Windows.
+
+### Bloqueos conocidos que E.5.1 no debe cambiar automáticamente
+
+- `docker-compose.yml` sirve para desarrollo y no debe
+  reconfigurarse como producción silenciosamente.
+- `backend/Dockerfile` todavía arranca Uvicorn con `--reload`.
+- Las variables de desarrollo contienen fallbacks inseguros;
+  **no introducir contraseñas reales en Git ni en logs**.
+- El despliegue productivo requerirá imagen inmutable,
+  usuario no privilegiado, secretos fuera del repositorio,
+  HTTPS/proxy, controles de acceso, respaldos restaurables
+  y migraciones validadas en staging.
+
+**Fase siguiente E.5.2:** definir Compose/Dockerfile
+separados para producción sin afectar Docker Compose local,
+con secretos obligatorios, red adecuada, sin puertos de base
+expuestos y plan de migración y recuperación. No desplegar
+ni encender pagos/correo reales hasta aprobación.
