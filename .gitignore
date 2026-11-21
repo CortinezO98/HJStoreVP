@@ -106,3 +106,6 @@ backups/
 *.sql.gz
 *.sql.gz.sha256
 *.partial
+
+# E.5.5: historial operativo local (no publicar snapshots)
+backend/monitoring/
