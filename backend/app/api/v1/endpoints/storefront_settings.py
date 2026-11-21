@@ -10,7 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -628,7 +628,17 @@ def homepage_fingerprint(homepage: dict) -> str:
 def validated_homepage(data: dict, base: dict) -> dict:
     if not set(data).issubset(set(HOMEPAGE_EDIT_FIELDS)) or not data:
         raise HTTPException(status_code=422, detail="El borrador debe contener exactamente los campos visuales permitidos")
-    merged = SettingsPayload.model_validate({**DEFAULTS, **{k: v for k, v in base.items() if not k.startswith("_")}, **data})
+    try:
+        merged = SettingsPayload.model_validate(
+            {**DEFAULTS, **{k: v for k, v in base.items() if not k.startswith("_")}, **data}
+        )
+    except ValidationError as exc:
+        # La validación se ejecuta dentro del endpoint, no al deserializar
+        # su request; traducirla a 422 en lugar de dejar escapar un HTTP 500.
+        raise HTTPException(
+            status_code=422,
+            detail="La configuración visual del borrador contiene datos inválidos",
+        ) from exc
     dump = merged.model_dump()
     return {key: dump[key] for key in HOMEPAGE_EDIT_FIELDS}
 
