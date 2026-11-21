@@ -1033,3 +1033,37 @@ No se cambió el esquema SQL sintético, el manifiesto SHA-256,
 la configuración del contenedor, ni los servicios normales.
 No utilizar salida de `docker compose config` con secretos
 reales. La prueba sólo intenta importar el fixture verificado.
+
+
+### E.5.3 — Corrección del transporte gzip → cliente SQL
+
+Con MariaDB `healthy` y pruebas offline **11/11**, la importación
+devolvió `SQL_IMPORT_FAILED_UNCLASSIFIED`. La revisión del código
+identificó un defecto concreto: `subprocess.run(stdin=gzip.GzipFile)`
+recibe el descriptor del archivo comprimido subyacente, no el
+contenido SQL descomprimido. Se reemplazó por la lectura acotada
+de `len(SQL) + 1` bytes y `subprocess.run(input=plain_sql)`;
+el contenido debe coincidir exactamente con el SQL sintético
+validado por SHA256. Ningún respaldo real se carga ni se modifica.
+
+Se añadió una **duodécima prueba** que confirma que el proceso
+recibe bytes SQL planos (y no la cabecera gzip), además de
+ajustar el mock de importación fallida para `input=`.
+
+**Revalidación en Windows (contenedor E.5.3 ya levantado):**
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_staging_recovery.py -q
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py verify
+docker compose -f docker-compose.staging-recovery.yml ps
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py rehearse
+```
+
+Resultado esperado si la importación termina:
+`restore: verified`, `marker: E53-RESTORE-VERIFIED`.
+La ejecución real sigue pendiente. Tras la comprobación,
+limpiar solamente con `docker compose -f
+docker-compose.staging-recovery.yml down --remove-orphans`.
