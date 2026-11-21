@@ -451,7 +451,7 @@ las 6 pruebas E.3.2 y la suite completa para confirmar el cierre.
 ## Fase E.4 — Auditoría de superadministrador (primera entrega)
 
 Se incorpora `backend/tests/test_phase_e4_superadmin.py` con
-**14 casos parametrizados** bajo SQLite temporal y aislada.
+**15 casos (incluidas variantes parametrizadas)** bajo SQLite temporal y aislada.
 No se modifica la portada ni las fotos comerciales: cualquier
 publicación del test solo afecta la base efímera.
 
