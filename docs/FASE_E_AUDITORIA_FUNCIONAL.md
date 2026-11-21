@@ -446,3 +446,61 @@ auténticos del pedido.
 No se cambiaron el endpoint de despachos, el cálculo de envío,
 los permisos ni la lógica comercial. Se requiere volver a ejecutar
 las 6 pruebas E.3.2 y la suite completa para confirmar el cierre.
+
+
+## Fase E.4 — Auditoría de superadministrador (primera entrega)
+
+Se incorpora `backend/tests/test_phase_e4_superadmin.py` con
+**14 casos parametrizados** bajo SQLite temporal y aislada.
+No se modifica la portada ni las fotos comerciales: cualquier
+publicación del test solo afecta la base efímera.
+
+Cobertura implementada:
+
+1. RBAC para diseñador y configuración: administrador, vendedor y
+   cliente (3 casos) reciben 403 en lectura/edición/publicación.
+2. Visitante anónimo sin permisos de gestión.
+3. Crear una sección personalizada **inactiva** en borrador;
+   comprobar que /public no cambia; publicar explícitamente,
+   comprobar orden y versión de historial y atribución del editor.
+4. Descartar borrador y conservar portada pública.
+5. Rechazar borradores con sección sin correspondencia en el
+   orden, ID duplicado o URL de imagen peligrosa (3 casos).
+6. Rechazar imágenes falsas sin crear registros asociados.
+7. Vista de integraciones exige autorización y no revela llaves.
+8. Inventario no acepta cantidades cero, negativas o decimales
+   (3 casos) y no escribe movimientos.
+9. Vendedor sin permiso de modificar inventario ni cargar fotos.
+
+**Corrección localizada de backend:** `validated_homepage`
+ahora convierte las excepciones de `SettingsPayload.model_validate`
+en HTTP 422 controlado, sin exponer detalles internos ni
+alterar validadores, permisos o flujo de publicación.
+
+### Validación en Windows CMD
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose exec -T backend python -m pytest tests/test_phase_e4_superadmin.py -q --disable-warnings
+docker compose exec -T backend python -m pytest tests/ -q --disable-warnings
+```
+
+El backend comercial monta el código fuente, pero **pytest reemplaza
+antes de importar la aplicación la conexión por SQLite efímera** en
+`backend/tests/conftest.py`. No se deben realizar las pruebas E.4
+contra API HTTP normal (`localhost:8000`) ni ejecutar
+publicaciones reales desde el panel.
+
+**Pendientes dentro de E.4:** pruebas de cargas válidas de imágenes
+con archivo temporal, revertir y recuperar versiones anteriores,
+cambios administrativos concurrentes, auditoría comercial detallada,
+y pruebas de navegador del panel usando la composición E2E.
+No declarar esta batería aprobada hasta revisar la ejecución.
+
+### Estado consolidado anterior a E.4
+
+La ejecución del 21 de noviembre de 2026 confirmó E.3.2 con
+6/6 aprobadas y la suite completa con 249/249 aprobadas.
+La entrega E.4 añade nuevos casos cuya ejecución aún falta.
