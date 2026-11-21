@@ -80,6 +80,8 @@ jobs:
         run: npm audit --audit-level=high
       - name: Verificar rutas y checkout de tienda
         run: npm run verify:routes
+      - name: Verificar contrato del carrito y checkout (Fase E.2)
+        run: node scripts/verify-cart-checkout.mjs
       - name: Compilar tienda publica
         run: npm run build
 
