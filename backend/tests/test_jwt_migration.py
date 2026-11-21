@@ -63,7 +63,9 @@ def test_expired_or_missing_exp_claim_rejected():
 
 def test_none_algorithm_and_modified_signature_rejected():
     token = create_access_token(9)
-    changed = token[:-1] + ("A" if token[-1] != "A" else "B")
+    header, payload, signature = token.split(".")
+    changed_sig = ("A" if signature[0] != "A" else "B") + signature[1:]
+    changed = f"{header}.{payload}.{changed_sig}"
     assert decode_token(changed) is None
 
     header = _b64(b'{"alg":"none","typ":"JWT"}')
