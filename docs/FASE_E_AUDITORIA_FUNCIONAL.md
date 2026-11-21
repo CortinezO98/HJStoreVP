@@ -504,3 +504,52 @@ No declarar esta batería aprobada hasta revisar la ejecución.
 La ejecución del 21 de noviembre de 2026 confirmó E.3.2 con
 6/6 aprobadas y la suite completa con 249/249 aprobadas.
 La entrega E.4 añade nuevos casos cuya ejecución aún falta.
+
+
+## Fase E.4.2 — Archivos, recuperación de versiones y trazabilidad
+
+Archivo nuevo: `backend/tests/test_phase_e42_admin_advanced.py`
+(**6 pruebas**, pendientes de validar en el entorno local).
+
+1. Subida de imagen PNG sintética, normalización a WEBP,
+   persistencia en directorio temporal y eliminación coherente
+   del archivo y registro.
+2. Lote de imágenes mixto (correcta + inválida): rechazo
+   de la operación completa sin archivos ni filas parciales.
+3. Publicación de una nueva portada ficticia y recuperación
+   de la versión anterior **solo como borrador**: /public permanece
+   intacto mientras no se vuelva a publicar.
+4. Publicación rechazada con HTTP 409 si el contenido publicado
+   cambió desde que se guardó el borrador; preserva el borrador.
+5. Ingreso de inventario válido con movimiento trazable,
+   cantidades anterior/posterior y usuario responsable.
+6. Acceso anónimo denegado a la auditoría comercial y acceso
+   autorizado de superadministrador.
+
+Todo se ejecuta contra SQLite temporal impuesta por
+`backend/tests/conftest.py`. Las fotos se generan en memoria
+y se guardan exclusivamente en `UPLOAD_DIR` temporal;
+**no publicar fotos ni contenidos sintéticos en el sitio real**.
+La prueba del conflicto simula una modificación concurrente
+en la BD de pruebas; no sustituye un ensayo de carreras reales
+con dos transacciones MariaDB.
+
+### Validación Windows
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose exec -T backend python -m pytest tests/test_phase_e42_admin_advanced.py -q --disable-warnings
+docker compose exec -T backend python -m pytest tests/ -q --disable-warnings
+```
+
+Último resultado confirmado antes de E.4.2: **264 pruebas
+aprobadas**. Con seis tests adicionales se esperan **270**,
+si no se añaden otros casos. No se afirma que E.4.2
+esté aprobada antes de recibir resultados.
+
+**Siguiente bloque:** probar el panel administrativo con Chromium
+en un frontend-admin E2E independiente (puerto libre dedicado),
+con usuario sintético, configuración temporal y controles para
+impedir conectar la UI a la API comercial.
