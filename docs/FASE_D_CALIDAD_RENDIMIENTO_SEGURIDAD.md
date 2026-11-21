@@ -779,3 +779,52 @@ realiza push y no manipula archivos locales del operador.
 No ejecutar `npm audit fix --force`, no eliminar los
 `package-lock.json` locales, y no reemplazar lockfiles
 sin comparar las dependencias y hashes correspondientes.
+
+
+## Fase D — Lockfiles definitivos y políticas de seguridad obligatorias (21/11/2026)
+
+Evidencia aportada por operación: el commit `273f05f` publicó los
+lockfiles previamente validados; `npm ci`, `npm audit
+--audit-level=high`, verificadores de rutas y compilaciones
+Vite 8.3.8 terminaron correctamente en ambos frontends
+(**cero vulnerabilidades npm reportadas**). Las imágenes
+Docker `frontend` y `frontend-admin` se construyeron
+con sus lockfiles y los contenedores arrancaron. El
+backend, MariaDB y Redis aparecían saludables; no se
+han certificado aún flujos comerciales end-to-end en
+navegador.
+
+A partir de este cambio:
+
+- Los dos Dockerfiles exigen `package-lock.json` y
+  ejecutan **solo** `npm ci --no-audit --no-fund`;
+  ya no existe fallback de `npm install`.
+- Los jobs admin y tienda del workflow
+  `phase-d-quality.yml` y el workflow específico de
+  administración requieren `npm ci` y ejecutan
+  `npm audit --audit-level=high`. Un hallazgo alto
+  o crítico bloquea CI y debe resolverse antes de
+  integrar nuevos cambios.
+- El job de inventario continúa generando el JSON y
+  los informes de clasificación para revisión humana;
+  ahora un hallazgo alto o crítico provoca error
+  **después de producir el informe**, y el artefacto
+  se carga con `if: always()`. Fallos del escáner
+  también bloquean la ejecución.
+- El workflow manual `frontend-lockfiles.yml`
+  dejó de regenerar lockfiles silenciosamente:
+  comprueba los ya publicados con `npm ci` y
+  audita las mismas dependencias. Continúa
+  adjuntando los archivos y JSON para revisión.
+- Una advertencia sobre dependencias obsoletas
+  (`recharts@2`, `eslint@9`) no equivale
+  por sí sola a una vulnerabilidad. Migraciones
+  mayores quedan para una fase posterior de
+  compatibilidad y pruebas.
+
+**Validación pendiente:** confirmar en la pestaña
+Actions de GitHub que los nuevos jobs finalizan
+correctamente sobre el commit actual; después,
+realizar pruebas funcionales de compra, inventario,
+despachos y editor de inicio con usuarios de prueba
+y sin publicar campañas ficticias.
