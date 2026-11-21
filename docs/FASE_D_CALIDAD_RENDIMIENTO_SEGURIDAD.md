@@ -440,3 +440,58 @@ disminución real de los avisos del parser y Starlette.
 
 **Pendiente de esta entrega:** optimización de Pillow, cryptography,
 frontend, dependencias transitivas y pruebas de despliegue seguro.
+
+
+## Sexta entrega — resolución de dependencias bloqueada por fastapi-mail
+
+Durante la reconstrucción Docker del bloque HTTP, `pip` falló con
+`ResolutionImpossible` por la incompatibilidad entre
+`starlette==1.10.0` y `fastapi-mail==1.4.1`
+(`fastapi-mail` antigua exige `starlette<1.0`). El contenedor
+anterior siguió activo y la batería reportó **212 pasadas y una
+fallida**, exactamente la verificación de versiones nuevas:
+`fastapi` instalado seguía siendo `0.115.0`. Por tanto,
+esa ejecución **NO valida** las nuevas versiones y tampoco
+representa una regresión funcional de FastAPI 0.165.0.
+
+Se revisaron los trabajadores reales de correo:
+`app/services/notification_worker.py` y
+`app/services/cart_recovery_worker.py`. Ambos utilizan
+`smtplib`, `ssl` y `email.message` de la biblioteca estándar
+con controles de consentimiento y opt-in; no usan FastMail.
+Se retiró `fastapi-mail` de `requirements.txt` en lugar de
+actualizar sus dependencias cruzadas (Pydantic, cryptography,
+httpx, aiosmtplib) innecesariamente en este mismo bloque.
+El test `test_mail_workers_do_not_depend_on_removed_fastapi_mail`
+busca imports activos de la biblioteca retirada en todo
+`backend/app`, protegiendo el contrato del proyecto.
+
+Nuevos objetivos: **214 pruebas** (206 baseline JWT + siete
+HTTP iniciales + guard de correo). El resultado queda
+pendiente de ejecutar sobre una imagen nueva y coherente.
+Las pruebas de notificaciones, colas, recuperación de carritos
+y posventa forman parte del suite completo; los procesos SMTP
+con envío externo siguen deshabilitados por defecto.
+
+### Validación obligatoria de recuperación
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git switch main
+git status --short
+git pull --ff-only origin main
+docker compose build backend
+docker compose up -d --no-build backend
+docker compose exec backend python -m pip check
+docker compose exec backend python -c "from importlib.metadata import version; print('FastAPI',version('fastapi'),'Starlette',version('starlette'),'multipart',version('python-multipart'))"
+docker compose exec backend python -m pytest tests/test_http_stack_migration.py tests/test_security_hardening.py tests/test_notifications.py tests/test_engagement.py -q
+docker compose exec backend python -m pytest tests/ -q
+docker compose exec backend alembic current
+docker compose ps
+```
+
+**Importante:** no ejecutar `docker compose down -v`, no borrar
+MariaDB ni asumir que `pip check` y pytest de un contenedor
+anterior prueban el cambio. El procedimiento separa `build`
+de `up --no-build` para impedir que se reinicie el backend
+si la imagen nueva falla al instalarse.
