@@ -553,3 +553,71 @@ esté aprobada antes de recibir resultados.
 en un frontend-admin E2E independiente (puerto libre dedicado),
 con usuario sintético, configuración temporal y controles para
 impedir conectar la UI a la API comercial.
+
+
+## Fase E.4.3 — Panel administrativo real con Chromium (entrega inicial)
+
+**Implementado, ejecución pendiente**. Se añade
+`frontend-admin-e2e` a `docker-compose.e2e.yml`, limitado a
+`127.0.0.1:25174`, con frontend independiente de la instancia normal
+`127.0.0.1:5174`, API sintética `127.0.0.1:18000`, base
+`db-e2e` en tmpfs y Redis exclusivo. La política CORS de pruebas
+incluye solo los orígenes de los dos frontends E2E.
+
+El sembrado `backend/e2e_seed.py` crea usuarios sintéticos
+`e2e-superadmin@example.com` y `e2e-seller@example.com`
+con contraseña exclusivamente local de ensayo
+`E2E-Admin-Only-123!`; su guardia exige host `db-e2e`,
+esquema `hjstore_e2e` y banderas sin entregas/cobros reales.
+
+`tests/e2e/test_admin_browser.py` agrega **cuatro escenarios**
+en Chromium headless:
+
+- Superadministrador inicia sesión, entra al estudio visual,
+  crea una sección sintética y **guarda únicamente borrador**;
+  confirma que la respuesta pública de la portada es idéntica.
+- Vendedor intenta entrar al estudio en viewport móvil (390x844)
+  y tablet (820x1180): redirección de frontend y HTTP 403 de API.
+- Visitante sin sesión intenta entrar al estudio: login obligatorio.
+
+Controles explícitos del navegador: abortar conexiones fuera de
+`127.0.0.1:25174` y `127.0.0.1:18000`, bloquear cualquier
+solicitud de publicación de portada y nunca usar las instancias
+habituales `:5174`, `:5173` o `:8000`.
+
+### Ejecución desde CMD Windows
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose -f docker-compose.e2e.yml config --quiet
+docker compose -f docker-compose.e2e.yml up -d --build
+docker compose -f docker-compose.e2e.yml ps
+docker compose -f docker-compose.e2e.yml exec -T backend-e2e python e2e_seed.py
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_admin_browser.py -q
+```
+
+No ejecutar `up` sin `-f docker-compose.e2e.yml` para esta fase.
+Es preciso construir las imágenes porque se añadió el panel E2E.
+La instalación de Chromium y la venv anteriores pueden reutilizarse.
+**Esperado si funciona:** `4 passed`; el resultado debe confirmarse
+con ejecución real y no se afirma aquí.
+
+Para limpiar **solo** el proyecto sintético al terminar:
+
+```bat
+docker compose -f docker-compose.e2e.yml down --remove-orphans
+docker compose ps
+git status --short
+```
+
+No usar `docker compose down -v` sobre la instancia habitual.
+No ejecutar esta batería contra el panel en `localhost:5174`.
+Las pruebas modifican exclusivamente el borrador de la BD temporal:
+no hacen clic en «Publicar portada», ni crean pedidos, ni contactan
+pasarelas. Las cuentas se descartan al eliminar los contenedores E2E.
+
+**Pendiente posterior:** ampliar validaciones visuales de captura,
+navegación completa y accesibilidad responsive si las primeras
+pruebas del navegador confirman la configuración.
