@@ -740,3 +740,42 @@ versionarse en Git tras su comparación, sin borrar el
 `frontend-admin/package-lock.json` existente. El
 workflow manual `frontend-lockfiles.yml` puede generar
 un artefacto de lockfiles de referencia sin alterar main.
+
+
+## Undécima entrega — artefacto auditable y reproducible para frontends
+
+La reconstrucción Docker de los dos frontends tras aplicar
+`.dockerignore` se completó; el contexto transmitido bajó
+a aproximadamente 3,05 KB (tienda) y 39,54 KB (admin).
+`docker compose ps` indicó backend, base de datos y Redis
+saludables. Ambos lockfiles existen actualmente **solo en
+el equipo Windows** del operador como archivos sin seguimiento.
+
+Se amplió el workflow manual
+`.github/workflows/frontend-lockfiles.yml` para ejecutar
+`npm audit --json` tras los `npm ci` y builds. El ZIP
+`hjstorevp-reviewed-npm-lockfiles` ahora contiene, cuando
+la ejecución completa los pasos correspondientes, los dos
+lockfiles, dos informes JSON de auditoría y dos informes
+Markdown de clasificación generados por
+`scripts/ci/triage_dependency_audits.py`.
+Una vulnerabilidad detectada por npm (código 1) **se reporta**,
+sin dar falsamente por fallida la herramienta; los errores
+de ejecución de `npm audit` (código >1) bloquean el paso.
+El workflow jamás actualiza versiones automáticamente, no
+realiza push y no manipula archivos locales del operador.
+
+### Siguiente acción desde GitHub
+
+1. Abrir
+   `https://github.com/CortinezO98/HJStoreVP/actions/workflows/frontend-lockfiles.yml`
+2. Elegir `Run workflow` sobre `main`.
+3. Comprobar que finalizaron compilación y auditorías.
+4. Descargar `hjstorevp-reviewed-npm-lockfiles` de Artifacts.
+5. Entregar el ZIP para clasificar las seis vulnerabilidades
+   vistas localmente en admin (4 altas y 2 moderadas), y
+   posteriormente revisar/introducir lockfiles en Git.
+
+No ejecutar `npm audit fix --force`, no eliminar los
+`package-lock.json` locales, y no reemplazar lockfiles
+sin comparar las dependencias y hashes correspondientes.
