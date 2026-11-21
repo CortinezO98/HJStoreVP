@@ -916,3 +916,40 @@ Nunca aplicar estas pruebas a la base comercial.
 
 Última referencia: E.5.2 confirmó 10/10 pruebas; E.5.3 añadida
 al repositorio, pendiente de ejecución por el usuario.
+
+
+### E.5.3 — Ajuste de arranque saludable MariaDB (21-11-2026)
+
+El usuario confirmó **7/7 pruebas**, grafo Alembic
+`18 revisiones` / `20261120_18`, manifiesto y SHA256 verificados.
+El primer ensayo de restauración falló con `RuntimeError`:
+el comando `docker compose ps` inmediatamente anterior mostraba
+`health: starting`, por lo que es probable que MariaDB aún
+estuviera inicializando. El error genérico no permite atribuirlo
+con total certeza a esa causa.
+
+Se agregó comprobación explícita `healthcheck.sh --connect
+--innodb_initialized` antes de enviar SQL y una prueba offline
+que verifica que un contenedor no saludable **nunca recibe SQL**.
+La suite ahora tiene **8 casos**. El operador debe usar la bandera
+`--wait` y no ejecutar `create-fixture` nuevamente, ya que el
+fixture está creado e íntegro y se niega a sobrescribirlo.
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_staging_recovery.py -q
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py verify
+docker compose -f docker-compose.staging-recovery.yml up -d --wait --wait-timeout 120
+docker compose -f docker-compose.staging-recovery.yml ps
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py rehearse
+docker compose -f docker-compose.staging-recovery.yml down --remove-orphans
+docker compose ps
+git status --short
+```
+
+No se modifica el archivo Compose E2E, producción ni desarrollo.
+Un `health: healthy` comprueba disponibilidad del motor; la
+integridad de restauración requiere además respuesta
+`E53-RESTORE-VERIFIED`. Fase pendiente de revalidación real.
