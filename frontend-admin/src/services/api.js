@@ -360,3 +360,8 @@ export const storefrontSettingsApi = {
     })
   },
 }
+
+// Observabilidad local, exclusivamente superadministrador.
+export const operationsMonitoringApi = {
+  summary: () => apiClient.get('/operations-monitoring'),
+}
