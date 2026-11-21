@@ -43,7 +43,7 @@ def test_register_cart_login_checkout_without_payment():
             page.locator("#register-password").fill(password)
             page.locator("#register-confirm").fill(password)
             page.get_by_role("button", name="CREAR CUENTA").click()
-            expect(page).to_have_url("**/mi-cuenta")
+            expect(page).to_have_url(STORE + "/mi-cuenta")
             token = page.evaluate("() => sessionStorage.getItem('access_token')")
             assert token, "Registro no creó sesión utilizable"
 
@@ -57,7 +57,7 @@ def test_register_cart_login_checkout_without_payment():
             page.reload()
             expect(page.get_by_text("Producto sintético E2E navegador").first).to_be_visible()
             page.get_by_role("button", name="Continuar a entrega y pago").click()
-            expect(page).to_have_url("**/checkout")
+            expect(page).to_have_url(STORE + "/checkout")
 
             page.locator("#checkout-full-name").fill("Cliente Sintetico E2E")
             page.locator("#checkout-phone").fill("3000000000")
@@ -86,7 +86,7 @@ def test_register_cart_login_checkout_without_payment():
             login.locator("#login-email").fill(email)
             login.locator("#login-password").fill(password)
             login.get_by_role("button", name="INGRESAR", exact=True).click()
-            expect(login).to_have_url("**/mi-cuenta")
+            expect(login).to_have_url(STORE + "/mi-cuenta")
             assert login.evaluate("() => Boolean(sessionStorage.getItem('access_token'))")
             fresh.close()
             isolated.close()
