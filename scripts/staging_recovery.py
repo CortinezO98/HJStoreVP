@@ -162,6 +162,19 @@ def rehearse(path: Path) -> dict:
                             cwd=ROOT, capture_output=True, text=True, check=False)
     if status.returncode or status.stdout.strip().splitlines() != ["db-recovery"]:
         raise RuntimeError("db-recovery debe ser el único servicio activo de este proyecto")
+    # Un contenedor RUNNING no significa que MariaDB haya terminado
+    # su inicialización. Fail-closed: no enviar SQL hasta que el
+    # healthcheck oficial confirme conexión e InnoDB disponibles.
+    ready = subprocess.run(
+        base + ["exec", "-T", "db-recovery", "healthcheck.sh", "--connect", "--innodb_initialized"],
+        cwd=ROOT, capture_output=True, check=False,
+    )
+    if ready.returncode:
+        raise RuntimeError(
+            "MariaDB de recuperación todavía no está saludable. "
+            "Ejecuta docker compose -f docker-compose.staging-recovery.yml "
+            "up -d --wait --wait-timeout 120 y repite rehearse."
+        )
     # La contraseña se expande DENTRO del contenedor; no se imprime ni se pasa a argv del host.
     exec_cmd = base + ["exec", "-T", "db-recovery", "sh", "-c",
                        'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -u root hjstore_recovery_fixture']
