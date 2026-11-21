@@ -668,3 +668,33 @@ Se esperan **6 tests** en la nueva batería y **4** en la E.4.3,
 pendientes de confirmación. La última validación recibida
 para E.4.3 fue 4/4 y la suite backend previa 270/270.
 La fase E.4.4 no está aún validada localmente.
+
+
+### E.4.4 — Ajuste de sincronización en Chromium (21-11-2026)
+
+La primera ejecución del usuario detectó **5/6** pruebas en
+`test_admin_visual_accessibility.py` y **3/4** en
+`test_admin_browser.py`. Los fallos fueron:
+
+- `get_by_role("link", name="Saltar al contenido")` no localizó
+  el enlace oculto visualmente hasta recibir foco. Se cambió a
+  selector específico `a.admin-skip-link`, se espera su
+  existencia y atributo href, y se prueba el foco con Tab.
+- `is_visible()` se evaluaba inmediatamente después del cambio
+  de URL `/login`, sin esperar el montaje del formulario React.
+  Se cambió por `expect(...).to_be_visible(timeout=10000)`.
+
+No se modificaron CSS, permisos, frontend comercial ni políticas
+de aislamiento. Los ajustes se limitan a pruebas automatizadas.
+La aprobación requiere repetir ambas baterías y observar
+sus resultados reales.
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_admin_visual_accessibility.py -q
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_admin_browser.py -q
+docker compose -f docker-compose.e2e.yml down --remove-orphans
+docker compose ps
+git status --short
+```
