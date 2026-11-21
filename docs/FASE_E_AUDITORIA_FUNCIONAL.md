@@ -373,3 +373,55 @@ módulo ni el pipeline sin evidencia real.
    inventario y trazabilidad de eventos en la misma matriz.
 4. Confirmar transacciones concurrentes con MariaDB exclusiva
    de pruebas (sin simular reembolsos reales).
+
+
+## Fase E.3.2 — Webhooks HTTP, conciliación y posventa integrada
+
+Archivo: `backend/tests/test_phase_e32_http_operations.py`.
+
+**Implementados seis tests de integración HTTP** que reutilizan las
+fixtures aisladas de SQLite de `tests/conftest.py`. La pasarela
+Wompi se sustituye por respuestas simuladas: se activa el endpoint
+solo dentro del test, se simula la verificación de firma y se
+reemplaza la consulta HTTP al proveedor. **No se envían solicitudes
+a Wompi, no se cobra dinero y no se procesan reembolsos reales.**
+
+Escenarios:
+
+1. Webhook con firma inválida: HTTP 401 y pedido intacto.
+2. Caída simulada del proveedor: HTTP 503 sin liberar ni confirmar stock.
+3. Webhook de aprobación repetido: primera aprobación y segundo evento
+   sin doble descuento ni segunda transición.
+4. Importe del proveedor inconsistente: HTTP 409 e inventario intacto.
+5. Conciliación sin autenticación rechazada; conciliación autenticada
+   aprobada y repetida con resultado idempotente.
+6. Recorrido **pedido → pago simulado → despacho → entrega →
+   devolución aprobada → recepción de unidad revendible →
+   solicitud y registro manual de reembolso externo**. Verifica
+   una sola devolución al stock, eventos históricos y rechazo
+   de confirmaciones duplicadas.
+
+**Alcance preciso:** la verificación criptográfica Wompi real ya
+cuenta con pruebas unitarias en `test_wompi.py`; en esta batería
+la firma se simula deliberadamente para probar respuestas HTTP y
+transiciones. El registro `externally_recorded` significa que un
+administrador consignó una confirmación externa, **no** que esta
+suite haya enviado o comprobado una devolución monetaria.
+
+### Comandos de validación
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose exec -T backend python -m pytest tests/test_phase_e32_http_operations.py -q --disable-warnings
+docker compose exec -T backend python -m pytest tests/ -q --disable-warnings
+```
+
+No reconstruir Docker ni levantar otro entorno de pruebas: el
+backend local monta el código y pytest obliga a SQLite efímera.
+Si cualquier aserción falla, revisar el error exacto y corregir
+el contrato sin flexibilizar permisos, firmas ni bloqueos comerciales.
+
+**Estado:** código versionado, ejecución pendiente de confirmación.
+No se declara E.3.2 aprobada hasta recibir los resultados.
