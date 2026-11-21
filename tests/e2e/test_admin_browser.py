@@ -134,7 +134,9 @@ def test_anonymous_admin_route_redirects_to_login():
             _assert_e2e_services(page.request)
             page.goto("/estudio-inicio")
             expect(page).to_have_url(ADMIN + "/login", timeout=15000)
-            assert page.get_by_role("button", name="Ingresar", exact=True).is_visible()
+            # La navegación /login se completa antes de renderizar el
+            # formulario React: esperar al control interactivo.
+            expect(page.get_by_role("button", name="Ingresar", exact=True)).to_be_visible(timeout=10000)
             ctx.close()
         finally:
             browser.close()
