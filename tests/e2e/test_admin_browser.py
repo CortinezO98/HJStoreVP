@@ -3,7 +3,6 @@
 Requiere docker-compose.e2e.yml y e2e_seed.py, y detiene cualquier
 solicitud que intente publicar portada o salir de puertos E2E locales.
 """
-import os
 from urllib.parse import urlsplit
 
 import pytest
