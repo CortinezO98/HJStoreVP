@@ -199,4 +199,4 @@ def test_sql_rehearsal_sends_plaintext_bytes_not_gzip_fd(tmp_path, monkeypatch):
     result = module.rehearse(manifest)
     assert result["restore"] == "verified"
     assert inputs == [module.SQL]
-    assert not inputs[0].startswith(b"\\x1f\\x8b")
+    assert not inputs[0].startswith(b"\x1f\x8b")
