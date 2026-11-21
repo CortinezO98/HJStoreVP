@@ -343,3 +343,44 @@ validarse en la siguiente ejecución de CI. No se han actualizado
 todavía dependencias de producción sin pruebas de compatibilidad.
 Las 201 pruebas se aprobaron en el último baseline anterior,
 no se presentan como ejecutadas de nuevo con los próximos cambios.
+
+
+## Cuarta entrega — sustitución de python-jose en autenticación
+
+Se reemplazó `python-jose[cryptography]==3.3.0` por
+`PyJWT==2.15.1` en `backend/requirements.txt`, cambiando
+exclusivamente el uso de JWT en `app/core/security.py`,
+`app/api/v1/endpoints/auth.py` y sus pruebas. Se conserva
+el algoritmo HS256 explícito y la misma firma HMAC; los tokens
+anteriores con `exp`, `sub` y `type` válidos siguen siendo
+compatibles. La función `decode_token` ahora exige esos tres claims
+y devuelve `None` ante errores de validación de PyJWT. No se
+cambiaron claves, contraseñas, roles, permisos, ni versiones MFA.
+
+`backend/tests/test_jwt_migration.py` incorpora pruebas de token
+histórico HS256 generado mediante HMAC sin python-jose, expiración,
+ausencia de claims, token alterado, algoritmo none, algoritmo
+distinto y contratos de acceso/refresh. Las otras pruebas existentes
+de perfil y MFA también usan PyJWT.
+
+**Validación obligatoria tras actualizar el backend:**
+
+```bat
+git pull --ff-only origin main
+docker compose up -d --build backend
+docker compose exec backend python -m pip check
+docker compose exec backend python -m pytest tests/test_jwt_migration.py tests/test_profile_mfa.py tests/test_auth_protection.py -q
+docker compose exec backend python -m pytest tests/ -q
+docker compose exec backend alembic current
+```
+
+**Estado**: código integrado en `main`; no se dispone todavía de
+resultado de estas nuevas pruebas. No marcar como remediadas las CVE
+de autenticación hasta comprobar el paquete realmente instalado,
+la batería completa y un nuevo `pip-audit`. La implementación
+no elimina necesariamente `ecdsa` si otra dependencia lo requiere.
+No se añadió migración de esquema.
+
+Las actualizaciones de FastAPI, Starlette, multipart, Pillow y
+frontends permanecen pendientes, y se realizarán en entregas
+separadas para localizar regresiones con precisión.
