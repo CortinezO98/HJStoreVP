@@ -542,3 +542,58 @@ con esta corrección de pruebas, el contenedor backend en desarrollo
 tiene el código nuevo por el bind mount `./backend:/app`; no
 es necesario reconstruir la imagen para ejecutar estas pruebas.
 No ejecutar `docker compose down -v`.
+
+
+## Octava entrega — Pillow y cryptography (pendiente de validar)
+
+La actualización HTTP precedente fue validada en Docker local:
+215/215 pruebas aprobadas, cinco contenedores levantados, backend,
+MariaDB y Redis saludables, Alembic `20261120_18 (head)`.
+Las advertencias de obsolescencia permanecen como deuda técnica
+separada y no deben silenciarse globalmente.
+
+A partir del artefacto de auditoría Fase D #21, los avisos
+agrupados requieren llegar, como mínimo, a Pillow 13.0.0
+(53 identificadores distintos; varios solucionados en esa
+versión) y cryptography 49.0.0 (6 identificadores distintos).
+`requirements.txt` fija ahora ambas versiones. Son cambios
+mayores que todavía no están validados sobre el backend de
+desarrollo. No se deduce ausencia total de CVE sin una nueva
+ejecución de `pip-audit`.
+
+Las nueve pruebas nuevas en
+`backend/tests/test_image_crypto_migration.py` verifican
+la versión instalada, transformación a WEBP desde PNG/JPEG/WEBP/GIF,
+conservación del canal alfa, rechazo de entrada inválida,
+cifrado y descifrado Fernet MFA, rechazo de manipulación de
+ciphertext y rechazo tras cambiar la clave. El código de
+procesamiento de imágenes y el cifrado operativo no se
+modificaron, y los archivos históricos no se reescriben.
+
+### Validación segura en Windows + Docker
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git switch main
+git status --short
+git pull --ff-only origin main
+docker compose build backend
+docker compose up -d --no-build backend
+docker compose exec backend python -m pip check
+docker compose exec backend python -m pytest tests/test_image_crypto_migration.py tests/test_security_hardening.py tests/test_profile_mfa.py -q
+docker compose exec backend python -m pytest tests/ -q
+docker compose exec backend alembic current
+docker compose ps
+```
+
+Si `docker compose build backend` falla no ejecutar el
+`up` siguiente: la imagen anterior se mantiene operativa.
+La suite objetivo tiene **224 pruebas** (215 validadas
+anteriormente + 9 nuevas). Si falla alguna, detener la
+actualización, compartir el mensaje exacto y corregir la
+incompatibilidad, no relajar los tests. No activar SMTP
+real ni ejecutar `down -v`.
+
+Tras validar, obtener un artefacto de auditoría fresco en
+GitHub Actions. Los hallazgos de frontends, los lockfiles y las
+advertencias de datetime/TestClient siguen pendientes.
