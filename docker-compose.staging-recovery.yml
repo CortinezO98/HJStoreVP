@@ -1,0 +1,18 @@
+# E.5.3 — DB DESECHABLE para ensayo de restauración (NO es producción).
+# NUNCA usar con datos reales. No puertos, no volúmenes persistentes.
+name: hjstorevp-staging-recovery
+
+services:
+  db-recovery:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: staging-recovery-only-not-production
+      MYSQL_DATABASE: hjstore_recovery_fixture
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Sin puertos ni volúmenes comerciales
