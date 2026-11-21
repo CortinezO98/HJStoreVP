@@ -69,6 +69,12 @@ def test_superadmin_designer_draft_does_not_publish():
             assert initial.status == 200
             baseline = initial.json()
             _login(page, "e2e-superadmin@example.com")
+            token = page.evaluate("() => sessionStorage.getItem('access_token')")
+            draft_url = API + "/api/v1/storefront-settings/admin/homepage-draft"
+            auth = {"Authorization": "Bearer " + token}
+            before_draft = page.request.get(draft_url, headers=auth)
+            assert before_draft.status == 200
+            prior_count = len(before_draft.json()["draft"]["homepage_custom_sections"])
             page.goto("/estudio-inicio")
             expect(page.get_by_role("heading", name="Estudio visual del inicio").first).to_be_visible(timeout=15000)
             page.get_by_role("button", name="Crear banner", exact=True).click()
@@ -82,14 +88,14 @@ def test_superadmin_designer_draft_does_not_publish():
             after = page.request.get(API + "/api/v1/storefront-settings/public")
             assert after.status == 200
             assert after.json() == baseline
-            token = page.evaluate("() => sessionStorage.getItem('access_token')")
-            saved = page.request.get(
-                API + "/api/v1/storefront-settings/admin/homepage-draft",
-                headers={"Authorization": "Bearer " + token},
-            )
+            saved = page.request.get(draft_url, headers=auth)
             assert saved.status == 200
             assert saved.json()["has_saved_draft"] is True
-            assert len(saved.json()["draft"]["homepage_custom_sections"]) == 1
+            assert len(saved.json()["draft"]["homepage_custom_sections"]) == prior_count + 1
+            # Repetible: limpiar el borrador SÓLO de la base sintética.
+            discarded = page.request.delete(draft_url, headers=auth)
+            assert discarded.status == 200
+            assert page.request.get(API + "/api/v1/storefront-settings/public").json() == baseline
             ctx.close()
         finally:
             browser.close()
