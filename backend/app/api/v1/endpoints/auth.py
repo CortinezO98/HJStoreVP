@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from datetime import datetime, timedelta, timezone
 import hmac
 import uuid
-from jose import jwt
+import jwt
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from app.db.session import get_db
