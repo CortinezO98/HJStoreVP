@@ -9,7 +9,8 @@ from decimal import Decimal
 from urllib.parse import urlsplit
 
 from app.db.session import Base, SessionLocal, engine
-from app.models.models import Inventory, Location, LocationType, Order, Product, ShippingRate
+from app.models.models import Inventory, Location, LocationType, Order, Product, ShippingRate, User, UserRole
+from app.core.security import hash_password
 
 
 def assert_isolated_environment():
@@ -70,8 +71,25 @@ def main():
                 days_min=2, days_max=4, active=True,
             )
             db.add(rate)
+        # Cuentas sintéticas únicamente en la base db-e2e; nunca reutilizar
+        # claves en producción. No se emiten tokens ni credenciales en logs.
+        synthetic_users = [
+            ("e2e-superadmin@example.com", UserRole.SUPER_ADMIN),
+            ("e2e-seller@example.com", UserRole.SELLER),
+        ]
+        for email, role in synthetic_users:
+            user = db.query(User).filter_by(email=email).first()
+            if user is None:
+                db.add(User(
+                    email=email, full_name=f"Cuenta E2E {role.value}",
+                    hashed_password=hash_password("E2E-Admin-Only-123!"),
+                    role=role, active=True, deleted=False,
+                ))
+            elif user.role != role:
+                raise RuntimeError("Rol sintético incompatible; reiniciar contenedor E2E")
         db.commit()
-        print(json.dumps({"seed": "isolated", "products": rows, "shipping_rate_id": rate.id}))
+        print(json.dumps({"seed": "isolated", "products": rows, "shipping_rate_id": rate.id,
+                          "synthetic_users": [email for email, _ in synthetic_users]}))
     except Exception:
         db.rollback()
         raise
