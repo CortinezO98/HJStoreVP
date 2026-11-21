@@ -173,7 +173,7 @@ el backend de esta fase.
 **Seguridad / aislamiento:** `docker-compose.e2e.yml` define
 un proyecto independiente `hjstorevp-e2e` con MariaDB sobre tmpfs,
 Redis temporal, backend exclusivo y frontend de prueba. Sus puertos
-localhost son **18000** (API) y **15173** (tienda); NO usa ni se
+localhost son **18000** (API) y **25173** (tienda); NO usa ni se
 conecta a los volúmenes `db_data`, `redis_data` o `uploads_data`
 de la aplicación normal. Los servicios existentes en 8000, 5173,
 5174, 3306 y 6379 no deben detenerse ni modificarse.
@@ -210,7 +210,7 @@ docker compose -f docker-compose.e2e.yml exec -T backend-e2e python e2e_seed.py
 ### 2. Preparar Playwright para Windows (una sola vez)
 
 ```bat
-py -3.12 -m venv .venv-e2e
+python -m venv .venv-e2e
 .venv-e2e\Scripts\python.exe -m pip install -r tests\e2e\requirements.txt
 .venv-e2e\Scripts\python.exe -m playwright install chromium
 ```
@@ -268,3 +268,31 @@ de GitHub Actions.
 La concurrencia comprueba un caso de compra de la última unidad,
 no certifica cargas masivas, aislamiento de todas las operaciones
 ni funcionamiento de pagos y reembolsos en producción.
+
+
+### Ajuste Windows: puerto ocupado y launcher Python ausente
+
+La primera ejecución del stack construyó ambas imágenes y levantó
+MariaDB, Redis y backend aislados, pero `15173` estaba ocupado;
+no se inició `frontend-e2e`. El sembrado E2E sí finalizó
+correctamente con 2 productos y la tarifa sintética. Se cambió
+la tienda E2E al **puerto 25173** y su origen CORS asociado.
+El equipo Windows no dispone del launcher `py`, por lo que
+las instrucciones usan el ejecutable disponible `python -m venv`.
+No se requiere volver a ejecutar `e2e_seed.py` mientras se
+mantenga la misma BD temporal sin pedidos.
+
+Para retomar tras actualizar `main`:
+
+```bat
+docker compose -f docker-compose.e2e.yml up -d --no-build
+ docker compose -f docker-compose.e2e.yml ps
+python --version
+python -m venv .venv-e2e
+.venv-e2e\Scripts\python.exe -m pip install -r tests\e2e\requirements.txt
+.venv-e2e\Scripts\python.exe -m playwright install chromium
+```
+
+Si el nuevo puerto tampoco está disponible, inspeccionar su
+ocupación y resolver el conflicto antes de correr las pruebas;
+no detener servicios desconocidos ni los de HJStoreVP comercial.
