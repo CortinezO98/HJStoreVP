@@ -312,3 +312,64 @@ no detener servicios desconocidos ni los de HJStoreVP comercial.
 - Pendiente: ejecutar nuevamente **solo** el test de navegador
   y confirmar el recorrido restante: carrito, checkout, tarifa
   y segundo inicio de sesión. No se afirma todavía que haya pasado.
+
+
+## Fase E.3 — Pagos, conciliación y operaciones (entrega 1)
+
+Se incorpora `backend/tests/test_phase_e3_payment_operations.py`:
+**9 escenarios** automatizados (incluidas cuatro variantes de datos
+inconsistentes). Se ejecutan con SQLite temporal según
+`backend/tests/conftest.py`, sin contactar proveedores ni
+modificar la base MariaDB de la tienda.
+
+Matriz de regresión nueva:
+
+- Confirmación Wompi aprobada simulada: pedido PENDING → PAID,
+  reserva HELD → COMMITTED sin segundo descuento de stock.
+- Reentrega de confirmación idéntica: sin repetir operaciones.
+- Rechazo simulado: pedido CANCELLED y liberación exacta de reserva;
+  reentrega sin reponer dos veces.
+- Datos de proveedor falsos: referencia, importe, moneda o ID
+  inconsistentes bloqueados con HTTP 409 sin alterar pedido.
+- Estado contradictorio (declinado tras pagado) y pago tardío
+  tras cancelación: rechazo para conciliación manual.
+- Pedido pendiente: ni despacho ni solicitud de devolución; sin
+  crear movimientos de esos módulos.
+
+**Límite de cobertura**: estas pruebas ejercitan la función
+`apply_wompi_transaction` con objetos de proveedor simulados,
+no realizan una llamada remota, validación integral del endpoint
+webhook ni reembolso monetario. La suite ya existente cubre
+firma de eventos Wompi, seguimiento de despachos y registro
+de reembolsos externos; se seguirá ampliando su integración.
+
+### Ejecución segura desde CMD
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose exec -T backend python -m pytest tests/test_phase_e3_payment_operations.py -q --disable-warnings
+docker compose exec -T backend python -m pytest tests/ -q --disable-warnings
+```
+
+El contenedor backend monta `./backend:/app`; por eso no se requiere
+reconstrucción Docker para archivos de pruebas Python.
+No ejecutar `e2e_seed.py` ni reconstruir un ambiente de pagos
+para esta batería. Los tests con SQLite efímera no usan credenciales
+de Wompi ni servicios externos.
+
+**Validación pendiente:** confirmar la batería E.3 y la regresión
+completa tras obtener sus resultados. No declarar aprobado el
+módulo ni el pipeline sin evidencia real.
+
+### Siguientes entregas E.3
+
+1. Validar endpoint webhook completo con respuestas HTTP y firma
+   simulada, errores de proveedor y eventos duplicados.
+2. Pruebas integrales de conciliación y recuperación ante desconexión,
+   usando proveedores falsos con controles de no-egreso.
+3. Integrar despachos y devoluciones/reembolsos registrados, con
+   inventario y trazabilidad de eventos en la misma matriz.
+4. Confirmar transacciones concurrentes con MariaDB exclusiva
+   de pruebas (sin simular reembolsos reales).
