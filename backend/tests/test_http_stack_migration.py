@@ -4,6 +4,7 @@ These exercise Starlette/FastAPI multipart and URL-encoded form parsing.
 Actual product and branding upload authorization is covered in test_main.
 """
 from typing import Annotated
+from importlib.metadata import version
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.testclient import TestClient
@@ -88,3 +89,9 @@ def test_malformed_multipart_does_not_succeed():
         response = client.post("/image", content=b"broken-multipart",
                                headers={"content-type": "multipart/form-data; boundary=xyz"})
     assert response.status_code in (400, 422)
+
+
+def test_http_dependency_versions_are_expected():
+    assert version("fastapi") == "0.165.0"
+    assert version("starlette") == "1.10.0"
+    assert version("python-multipart") == "0.0.34"
