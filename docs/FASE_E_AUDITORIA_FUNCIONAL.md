@@ -953,3 +953,44 @@ No se modifica el archivo Compose E2E, producción ni desarrollo.
 Un `health: healthy` comprueba disponibilidad del motor; la
 integridad de restauración requiere además respuesta
 `E53-RESTORE-VERIFIED`. Fase pendiente de revalidación real.
+
+
+### E.5.3 — Diagnóstico específico tras fallo con MariaDB healthy
+
+El usuario confirmó 8/8 pruebas offline y SQL/TAR SHA256
+válidos; arrancó `db-recovery` en estado `healthy`, pero
+`rehearse` devolvió `RuntimeError` genérico. Ya no puede
+atribuirse simplemente a falta de espera. Se añadió
+`RecoveryStageError` con identificadores seguros y sin exponer
+salida estándar de MariaDB, detalles SQL o contraseñas:
+
+- `CONTAINER_NOT_RUNNING_OR_NOT_UNIQUE`: el proyecto aislado
+  no tiene exactamente el servicio esperado.
+- `DB_HEALTHCHECK_FAILED`: salud interna de MariaDB no disponible.
+- `SQL_IMPORT_FAILED`: falló la carga del fixture sintético.
+- `SQL_READBACK_FAILED`: la consulta del marcador falló.
+- `SQL_MARKER_MISMATCH`: el marcador no coincide.
+
+La ejecución de SQL sigue prohibida para bases distintas de
+`hjstore_recovery_fixture`. Se agregó test adicional para
+protección de información sensible; ahora hay 9 pruebas.
+
+Como el usuario dejó el contenedor aislado running, **no**
+hace falta recrear fixture ni reiniciar Docker para identificar
+la etapa fallida:
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_staging_recovery.py -q
+docker compose -f docker-compose.staging-recovery.yml ps
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py rehearse
+```
+
+Si muestra `SQL_IMPORT_FAILED` o `SQL_READBACK_FAILED`,
+investigar únicamente `db-recovery` con consultas sintéticas;
+no revelar credenciales ni tocar `hjstorevp_db`. Mantener
+E.5.3 abierta hasta `restore: verified` y después limpiar
+con `docker compose -f docker-compose.staging-recovery.yml down
+--remove-orphans`.
