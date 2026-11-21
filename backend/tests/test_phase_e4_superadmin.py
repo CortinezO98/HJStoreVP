@@ -171,3 +171,59 @@ def test_integration_overview_requires_admin_and_hides_configuration_secrets(
     serialized = response.text.lower()
     for private_key in ("private_key", "events_secret", "smtp_password", "database_url"):
         assert private_key not in serialized
+
+
+@pytest.mark.parametrize("qty", [0, -1, 1.5])
+def test_replenish_rejects_nonpositive_or_fractional_quantity_without_movement(
+    client, auth_headers, qty,
+):
+    from app.models.models import Inventory, StockMovement
+    product_id, inventory_id = StockFixture.create_stock(qty=5)
+    db = TestingSession()
+    try:
+        location_id = db.get(Inventory, inventory_id).location_id
+        movements_before = db.query(StockMovement).count()
+    finally:
+        db.close()
+    response = client.post(
+        "/api/v1/inventory/replenish",
+        json={"product_id": product_id, "location_id": location_id, "qty": qty},
+        headers=auth_headers,
+    )
+    assert response.status_code == 422, response.text
+    db = TestingSession()
+    try:
+        assert db.get(Inventory, inventory_id).qty_available == 5
+        assert db.query(StockMovement).count() == movements_before
+    finally:
+        db.close()
+
+
+def test_seller_cannot_modify_inventory_or_upload_product_image(client):
+    from app.models.models import Inventory, StockMovement
+    product_id, inventory_id = StockFixture.create_stock(qty=5)
+    db = TestingSession()
+    try:
+        location_id = db.get(Inventory, inventory_id).location_id
+    finally:
+        db.close()
+    seller = _role_headers(client, UserRole.SELLER)
+    replenish = client.post(
+        "/api/v1/inventory/replenish",
+        json={"product_id": product_id, "location_id": location_id, "qty": 2},
+        headers=seller,
+    )
+    assert replenish.status_code == 403, replenish.text
+    uploaded = client.post(
+        f"/api/v1/products/{product_id}/images",
+        files={"files": ("invalid.png", b"invalid", "image/png")},
+        headers=seller,
+    )
+    assert uploaded.status_code == 403, uploaded.text
+    db = TestingSession()
+    try:
+        assert db.get(Inventory, inventory_id).qty_available == 5
+        assert db.query(StockMovement).count() == 0
+        assert db.query(ProductImage).filter_by(product_id=product_id).count() == 0
+    finally:
+        db.close()
