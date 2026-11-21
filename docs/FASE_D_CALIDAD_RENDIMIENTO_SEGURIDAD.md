@@ -233,3 +233,54 @@ Para revisar resultados ir a
 `admin-dependency-audit.json`, `store-dependency-audit.json`
 y `backend-dependency-audit.json`. No contienen contraseñas
 volcadas por la aplicación; de todas formas controlar su acceso.
+
+
+## Tercera entrega — reporte accionable de vulnerabilidades
+
+Tras `git pull`, los tres escáneres del workflow
+`Fase D - estabilidad y rendimiento` generan adicionalmente:
+
+- `admin-audit-triage.md`: vulnerabilidades del panel; severidad,
+  dependencia directa/transitiva, rango afectado, corrección propuesta
+  y referencias a avisos.
+- `store-audit-triage.md`: mismo informe para la tienda pública.
+- `backend-audit-triage.md`: dependencias Python, versiones instaladas,
+  identificador de aviso y versiones reparadas informadas por pip-audit.
+
+Los informes se publican también en el **resumen del job** de GitHub
+Actions. El analizador incluye siete pruebas de contrato, valida que el
+JSON sea real y no da por seguro ningún paquete solo porque el escáner
+falló. Las correcciones se muestran como **candidatas**, jamás se aplican
+automáticamente, porque incluso actualizaciones no mayores pueden
+alterar comportamiento del sistema.
+
+**Estado de auditorías del último código**: no se ha recibido ni
+verificado una ejecución con artefactos JSON de la Fase D. No se han
+confirmado vulnerabilidades específicas, ni se ha justificado el cambio
+de versiones. No clasificar como resuelto hasta revisar los reportes
+reales y ejecutar regresión de los componentes afectados.
+
+### Recuperar resultados reales
+
+En `https://github.com/CortinezO98/HJStoreVP/actions`, abrir la
+última ejecución de `Fase D - estabilidad y rendimiento`, identificar
+el job `Dependencias - informe sin actualizacion automatica`,
+consultar su resumen y descargar `fase-d-dependency-audits`.
+Si el job falla, revisar los archivos `*-audit-errors.txt` para
+separar errores de red o resolución de los hallazgos de seguridad.
+No compartir credenciales, archivos `.env` ni JWT en reportes.
+
+### Incorporar lockfiles sin sobrescribir archivos locales
+
+En Windows, `frontend-admin/package-lock.json` todavía figura como
+`??` (untracked). No ejecutar `git clean -fd` ni borrar el archivo.
+Se debe comparar primero con el `package.json`, validar
+`npm ci` y `npm run build` de forma controlada antes de confirmar
+el lockfile en GitHub. `frontend/package-lock.json` tampoco está
+versionado; generar uno de manera reproducible y validarlo por separado.
+Mientras no estén confirmados, los workflows siguen avisando de
+instalaciones npm no reproducibles.
+
+No es necesaria migración Alembic: permanece `20261120_18`. No se
+modificaron los contenedores en ejecución, la base MariaDB, el
+inventario ni el procesamiento de pagos para estas comprobaciones.
