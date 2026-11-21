@@ -35,12 +35,20 @@ def test_candidate_rejects_development_behavior_and_live_providers():
 
 
 def test_database_and_redis_are_not_exposed():
-    for service in ("db:", "redis:"):
-        start = COMPOSE.index("\n  " + service)
-        nxt = COMPOSE.find("\n  ", start + 3)
-        section = COMPOSE[start:nxt if nxt >= 0 else None]
-        assert "ports:" not in section
-        assert "networks: [internal]" in section
+    for service in ("db", "redis"):
+        # Servicio YAML bajo services: usa indentación exacta de 2 espacios.
+        # El bloque termina ante el SIGUIENTE servicio (2 espacios),
+        # no ante su primera línea; evitar falsos negativos.
+        match = re.search(
+            rf"(?ms)^  {service}:\\n(.*?)(?=^  [a-z][a-z0-9-]*:|^networks:|^volumes:|\\Z)",
+            COMPOSE,
+        )
+        assert match is not None, f"No se encontró servicio {service}"
+        section = match.group(1)
+        assert not re.search(r"(?m)^    ports:", section), f"{service} publica puertos"
+        assert re.search(r"(?m)^    networks: \\[internal\\]$", section), (
+            f"{service} no está limitado a red interna"
+        )
     assert "internal: true" in COMPOSE
     assert "127.0.0.1:28000:8000" in COMPOSE
     assert "127.0.0.1:28080:8080" in COMPOSE
