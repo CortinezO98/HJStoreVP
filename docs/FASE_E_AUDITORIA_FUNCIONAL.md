@@ -994,3 +994,42 @@ no revelar credenciales ni tocar `hjstorevp_db`. Mantener
 E.5.3 abierta hasta `restore: verified` y después limpiar
 con `docker compose -f docker-compose.staging-recovery.yml down
 --remove-orphans`.
+
+
+### E.5.3 — Diagnóstico de `SQL_IMPORT_FAILED` con BD saludable
+
+El usuario confirmó **9/9 pruebas** y que `db-recovery` sigue
+`healthy`; la importación del SQL sintético falló con código
+`SQL_IMPORT_FAILED`. Esto **descarta el arranque incompleto como
+explicación suficiente** y requiere separar problemas de conexión
+del cliente MariaDB de errores de sintaxis o datos del SQL.
+
+Se añadió una consulta SQL previa de lectura `SELECT 1` a la base
+`hjstore_recovery_fixture` antes de enviar bytes del fixture.
+Los errores se informan por *categoría* segura, sin imprimir stderr:
+
+- `SQL_CONNECTION_FAILED_AUTHENTICATION`
+- `SQL_CONNECTION_FAILED_DATABASE_MISSING`
+- `SQL_IMPORT_FAILED_DUPLICATE_SYNTHETIC_MARKER`
+- `SQL_IMPORT_FAILED_SQL_SYNTAX`
+- `SQL_IMPORT_FAILED_UNCLASSIFIED`
+
+También hay categorías `CONNECTION`, `CLIENT_NOT_FOUND`
+y `SQL_READBACK_FAILED` para otros fallos. En la nueva versión
+las pruebas de `test_staging_recovery.py` suman **11 casos**,
+pendientes de ejecución local. **No rehacer el fixture** y no
+ejecutar limpieza hasta identificar la causa. Ejecutar:
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_staging_recovery.py -q
+docker compose -f docker-compose.staging-recovery.yml ps
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py rehearse
+```
+
+No se cambió el esquema SQL sintético, el manifiesto SHA-256,
+la configuración del contenedor, ni los servicios normales.
+No utilizar salida de `docker compose config` con secretos
+reales. La prueba sólo intenta importar el fixture verificado.
