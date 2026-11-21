@@ -1271,3 +1271,41 @@ necesita imprimirlas:
 Las alertas persistentes aparecen a partir de **3 muestras
 consecutivas**. El refresco del tablero NO genera una nueva muestra:
 vuelve a consultar el último resumen recopilado.
+
+
+### Corrección E.5.5 — Inicialización de cuentas E2E en Chromium
+
+El usuario confirmó que la compilación E2E y los cinco contenedores
+alcanzan estado healthy, pero **2/2 tests de Chromium fallaron
+antes de abrir el tablero** por HTTP 401 al autenticar cuentas
+sintéticas. El comando indicado anteriormente
+`docker compose -f docker-compose.e2e.yml exec -T backend python -m backend.e2e_seed`
+era **incorrecto**: el servicio se llama `backend-e2e` y el
+script está en `/app/e2e_seed.py`. No existe servicio `backend`
+en el Compose E2E.
+
+Ejecución CORRECTA, aislada, desde CMD:
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose -f docker-compose.e2e.yml up -d --build --wait
+docker compose -f docker-compose.e2e.yml exec -T backend-e2e python e2e_seed.py
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_monitoring_browser.py -q
+docker compose -f docker-compose.e2e.yml down --remove-orphans
+docker compose ps
+git status --short
+```
+
+El seed `backend/e2e_seed.py` comprueba **host db-e2e**, esquema
+`hjstore_e2e`, entorno development y banderas de entrega/pago
+reales deshabilitadas; sólo allí crea superadministrador y vendedor
+sintéticos. La prueba `_assert_e2e_services` debe confirmar
+autenticación 200 tras el seed antes de iniciar navegación.
+
+El entorno E2E utiliza tmpfs y los usuarios desaparecen al bajar
+el contenedor; tras cada `down` + `up` hay que volver a ejecutar
+el seed. No ejecutar el seed contra el Compose normal ni alterar
+usuarios comerciales. Las pruebas Chromium siguen **pendientes de
+validación** tras corregir el comando.
