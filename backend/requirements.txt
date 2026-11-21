@@ -24,7 +24,8 @@ email-validator==2.2.0
 redis==5.1.1
 
 # ─── Email ─────────────────────────────────────────────────────
-fastapi-mail==1.4.1
+# Trabajadores SMTP usan smtplib estándar; fastapi-mail no se importa.
+# Evitar dependencia obsoleta con restricción Starlette <1.0.
 
 # ─── Utilidades ────────────────────────────────────────────────
 python-slugify==8.0.4
