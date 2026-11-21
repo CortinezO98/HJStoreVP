@@ -9,17 +9,17 @@ import pytest
 from app.models.models import Inventory, Order, OrderStockReservation, User, UserRole
 from app.core.security import verify_password
 from tests.test_main import (
-    TestingSession, TestWebOrderStockReservations,
+    TestingSession, TestWebOrderStockReservations as StockFixture,
     setup_db, client, auth_headers,
 )
 
 
 def _stock(qty=5):
-    return TestWebOrderStockReservations.create_stock(qty)
+    return StockFixture.create_stock(qty)
 
 
 def _payload(product_id, qty=2):
-    return TestWebOrderStockReservations.payload(product_id, qty)
+    return StockFixture.payload(product_id, qty)
 
 
 def _key():
@@ -45,7 +45,7 @@ def _counts(inventory_id):
 
 
 def test_customer_register_creates_customer_and_usable_session(client):
-    email = "phase-e2-" + uuid4().hex[:12] + "@example.test"
+    email = "phase-e2-" + uuid4().hex[:12] + "@example.com"
     payload = {
         "full_name": "Cliente E2", "email": email,
         "password": "Safe-Pass-12345", "phone": "3000000000",
@@ -76,7 +76,7 @@ def test_customer_register_creates_customer_and_usable_session(client):
 
 
 def test_register_rejects_weak_password_and_duplicate_email(client):
-    email = "phase-e2-dup-" + uuid4().hex[:10] + "@example.test"
+    email = "phase-e2-dup-" + uuid4().hex[:10] + "@example.com"
     request = {"full_name": "Cliente Registro", "email": email, "password": "bad"}
     assert client.post("/api/v1/auth/register", json=request).status_code == 400
     request["password"] = "Safe-Pass-12345"
