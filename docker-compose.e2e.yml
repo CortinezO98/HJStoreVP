@@ -47,7 +47,7 @@ services:
       CART_RECOVERY_LIVE_ALLOWED: "false"
       WOMPI_ENV: sandbox
       WOMPI_ALLOW_LIVE_PAYMENTS: "false"
-      ALLOWED_ORIGINS: '["http://localhost:25173","http://127.0.0.1:25173"]'
+      ALLOWED_ORIGINS: '["http://localhost:25173","http://127.0.0.1:25173","http://localhost:25174","http://127.0.0.1:25174"]'
       UPLOAD_DIR: /tmp/hjstore-e2e-uploads
     ports:
       - "127.0.0.1:18000:8000"
@@ -69,3 +69,16 @@ services:
       - "127.0.0.1:25173:5173"
     depends_on:
       - backend-e2e
+
+  frontend-admin-e2e:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: http://127.0.0.1:18000
+      VITE_STORE_URL: http://127.0.0.1:25173/
+    ports:
+      - "127.0.0.1:25174:5174"
+    depends_on:
+      - backend-e2e
+    # UI de administración E2E totalmente separada de localhost:5174.
