@@ -166,10 +166,33 @@ def test_paid_dispatch_return_and_external_refund_tracking(
     _mock_gateway(monkeypatch, tx)
     assert _webhook(client, tx).status_code == 200
 
+    # El checkout guarda la transportadora y servicio contratados.
+    # El despacho no debe poder sustituirlos por valores inventados.
+    db = TestingSession()
+    try:
+        shipping = dict(db.get(Order, order["id"]).shipping_address or {})
+    finally:
+        db.close()
+    assert shipping.get("carrier") and shipping.get("shipping_service")
+    tracking = "E32-TRACK-" + str(order["id"])
+    wrong_carrier = client.post(
+        f"/api/v1/shipments/orders/{order['id']}/dispatch",
+        json={"carrier": "Otra transportadora", "service": shipping["shipping_service"],
+              "tracking_number": tracking},
+        headers=auth_headers,
+    )
+    assert wrong_carrier.status_code == 409, wrong_carrier.text
+    wrong_service = client.post(
+        f"/api/v1/shipments/orders/{order['id']}/dispatch",
+        json={"carrier": shipping["carrier"], "service": "Servicio no contratado",
+              "tracking_number": tracking},
+        headers=auth_headers,
+    )
+    assert wrong_service.status_code == 409, wrong_service.text
     dispatched = client.post(
         f"/api/v1/shipments/orders/{order['id']}/dispatch",
-        json={"carrier": "E32 Transporte", "service": "E32",
-              "tracking_number": "E32-TRACK-" + str(order["id"])},
+        json={"carrier": shipping["carrier"], "service": shipping["shipping_service"],
+              "tracking_number": tracking},
         headers=auth_headers,
     )
     assert dispatched.status_code == 201, dispatched.text
