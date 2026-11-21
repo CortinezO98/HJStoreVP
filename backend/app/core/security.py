@@ -3,7 +3,8 @@ import hashlib
 import hmac
 import uuid
 from typing import Optional, Union
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from app.core.config import settings
 
@@ -57,6 +58,9 @@ def create_refresh_token(subject: Union[str, int], extra: Optional[dict] = None)
 
 def decode_token(token: str) -> Optional[dict]:
     try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+        return jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+            options={"require": ["exp", "sub", "type"]},
+        )
+    except InvalidTokenError:
         return None
