@@ -129,10 +129,42 @@ def test_restore_reports_safe_import_failure_stage(tmp_path, monkeypatch):
             return Mock(returncode=0, stdout="")
         if kwargs.get("stdin") is not None:
             return Mock(returncode=1, stderr=b"SECRET-DO-NOT-PRINT")
+        if "SELECT 1" in " ".join(cmd):
+            return Mock(returncode=0, stdout=b"1\n")
         raise AssertionError("No deben ejecutarse consultas tras fallo de importación")
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
-    with pytest.raises(module.RecoveryStageError, match="SQL_IMPORT_FAILED") as exc:
+    with pytest.raises(module.RecoveryStageError, match="SQL_IMPORT_FAILED_UNCLASSIFIED") as exc:
         module.rehearse(manifest)
     assert "SECRET-DO-NOT-PRINT" not in str(exc.value)
     assert len(calls) == 3
+
+
+def test_sql_connection_failure_prevents_import(tmp_path, monkeypatch):
+    """Rechazar el SQL si el cliente no puede conectar, sin intentar importar."""
+    from unittest.mock import Mock
+
+    manifest = module.create_fixture(tmp_path)
+    monkeypatch.setattr(module, "FIXTURES", tmp_path)
+    commands = []
+
+    def fake_run(cmd, **kwargs):
+        commands.append(cmd)
+        if "ps" in cmd:
+            return Mock(returncode=0, stdout="db-recovery\n")
+        if "healthcheck.sh" in cmd:
+            return Mock(returncode=0)
+        if "SELECT 1" in " ".join(cmd):
+            return Mock(returncode=1, stderr=b"ERROR 1045 (28000): Access denied for user")
+        raise AssertionError("No importar SQL si el cliente no autentica")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    with pytest.raises(module.RecoveryStageError, match="SQL_CONNECTION_FAILED_AUTHENTICATION"):
+        module.rehearse(manifest)
+    assert len(commands) == 3
+
+
+def test_error_classification_is_non_sensitive():
+    assert module.classify_mariadb_failure(b"ERROR 1062 Duplicate entry for key") == "DUPLICATE_SYNTHETIC_MARKER"
+    assert module.classify_mariadb_failure(b"ERROR 1049 Unknown database") == "DATABASE_MISSING"
+    assert module.classify_mariadb_failure(b"random SECRET=123") == "UNCLASSIFIED"
