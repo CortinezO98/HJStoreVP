@@ -681,3 +681,62 @@ Backend, migraciones y pagos reales no fueron modificados
 en esta entrega. Permanecen pendientes la revisión
 de auditoría npm fresca y la incorporación a main
 de ambos lockfiles tras una resolución y revisión reales.
+
+
+## Décima entrega — diagnóstico de migración frontend en Windows
+
+En la validación local posterior al cambio de Vite/Router:
+
+- Panel: `npm ci`, verificación estática administrativa y Vite
+  8.3.8 build **correctos**. `npm audit` reportó
+  **6 vulnerabilidades (4 altas, 2 moderadas)**; no se dispone
+  todavía del JSON detallado. Es obligatorio clasificarlo,
+  sin `npm audit fix --force` ni saltos de versión ciegos.
+- Tienda: `npm ci`, verificación de rutas y compilación
+  Vite 8.3.8 **correctos**, con **0 vulnerabilidades**
+  en ese `npm audit` local.
+- Docker: las dos imágenes se construyeron e iniciaron,
+  junto con backend y Redis/DB. En el `docker compose ps`
+  inmediato, el backend todavía indicaba `health: starting`:
+  verificar más tarde `docker compose ps` antes de declararlo
+  healthy. Tampoco equivale a validar transacciones reales
+  en navegador.
+- Los dos selectores `.md\\:col-span-2` del CSS administrativo
+  tenían **doble escape**, de modo que Lightning CSS interpretaba
+  el colon como pseudoclase no válida. Se corrigieron a
+  `.md\:col-span-2` (un solo escape CSS). La maquetación
+  responsive debe revisarse también en navegador.
+- La construcción Docker enviaba 108–121 MB de contexto
+  por incluir `node_modules` y `dist` locales. Se añadieron
+  `frontend/.dockerignore` y
+  `frontend-admin/.dockerignore` para excluir esos
+  directorios, caches, logs y ficheros .env. No se excluyen
+  `package-lock.json` ni `package.json`.
+
+### Recolección segura del hallazgo pendiente de admin
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+cd frontend-admin
+npm audit --json > "%USERPROFILE%\Documents\HJStoreVP-lock-backups\admin-audit.json"
+npm ls --depth=0
+npm run build
+cd ..
+docker compose build frontend frontend-admin
+docker compose up -d --no-build frontend frontend-admin
+docker compose ps
+```
+
+Adjuntar el JSON de auditoría para distinguir paquetes
+directos, transitivos y fixes incompatibles. El retorno
+no-cero de `npm audit` cuando encuentra vulnerabilidades
+es normal; la auditoría **no** queda aprobada hasta
+revisar/solucionar hallazgos.
+
+Los lockfiles generados localmente deben revisarse y
+versionarse en Git tras su comparación, sin borrar el
+`frontend-admin/package-lock.json` existente. El
+workflow manual `frontend-lockfiles.yml` puede generar
+un artefacto de lockfiles de referencia sin alterar main.
