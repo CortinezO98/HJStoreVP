@@ -384,3 +384,59 @@ No se añadió migración de esquema.
 Las actualizaciones de FastAPI, Starlette, multipart, Pillow y
 frontends permanecen pendientes, y se realizarán en entregas
 separadas para localizar regresiones con precisión.
+
+
+## Quinta entrega — actualización HTTP, multipart y formularios
+
+Se fijaron de manera coordinada estas versiones en `backend/requirements.txt`:
+
+| Dependencia | Anterior | Nueva |
+|---|---|---|
+| FastAPI | 0.115.0 | 0.165.0 |
+| Starlette (transitiva) | 0.38.6 | 1.10.0 (pin explícito) |
+| python-multipart | 0.0.12 | 0.0.34 |
+
+Es una actualización de framework y parser, **no** una actualización
+de modelos comerciales ni de tablas. La fijación explícita de Starlette
+protege contra una resolución inesperada del grafo HTTP; se debe validar
+la compatibilidad real con `pip check`, la creación de rutas y los tests.
+No modificar las credenciales, el esquema ni el contenido de la BD
+para esta entrega.
+
+`backend/tests/test_http_stack_migration.py` añade siete verificaciones:
+versiones instaladas, multipart con fichero y campo de texto, campo
+obligatorio ausente (422), archivo vacío o superior al límite (413),
+múltiples archivos sin reordenar, formulario urlencoded y multipart
+malformado rechazado. Estas pruebas utilizan una aplicación FastAPI
+efímera y no requieren base de datos; además, las pruebas históricas
+`tests/test_main.py` siguen verificando autorización, persistencia
+y publicación de imágenes reales.
+
+### Procedimiento de validación
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git switch main
+git status --short
+git pull --ff-only origin main
+docker compose up -d --build backend
+docker compose exec backend python -m pip check
+docker compose exec backend python -m pytest tests/test_http_stack_migration.py tests/test_security_hardening.py tests/test_main.py -q
+docker compose exec backend python -m pytest tests/ -q
+docker compose exec backend alembic current
+docker compose ps
+```
+
+**Meta:** 206 pruebas anteriores + 7 nuevas = **213**.
+No dar esa cifra por aprobada hasta disponer de una ejecución real.
+Un fallo de resolución de dependencias, `pip check` o tests es
+bloqueante: registrar el error y ajustar el conjunto de versiones,
+nunca forzar la instalación con `--no-deps` ni retirar pruebas.
+
+Se mantienen pruebas con aislamiento en SQLite temporal. Evitar
+`docker compose down -v`, `git clean` y operaciones sobre tablas
+de negocio. Tras validar se repetirá `pip-audit` para medir la
+disminución real de los avisos del parser y Starlette.
+
+**Pendiente de esta entrega:** optimización de Pillow, cryptography,
+frontend, dependencias transitivas y pruebas de despliegue seguro.
