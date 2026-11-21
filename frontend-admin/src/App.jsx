@@ -6,6 +6,7 @@ import AdminLayout from './components/layout/AdminLayout'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const MyProfilePage = lazy(() => import('./pages/MyProfilePage'))
 const SecurityAuditPage = lazy(() => import('./pages/SecurityAuditPage'))
+const OperationsMonitoringPage = lazy(() => import('./pages/OperationsMonitoringPage'))
 const CommercialAuditPage = lazy(() => import('./pages/CommercialAuditPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
@@ -69,6 +70,10 @@ export default function App() {
           </Route>
           <Route path="auditoria-seguridad" element={<ProtectedAdmin roles={['super_admin']} />}>
             <Route index element={<SecurityAuditPage />} />
+          </Route>
+
+          <Route path="monitoreo-tecnico" element={<ProtectedAdmin roles={['super_admin']} />}>
+            <Route index element={<OperationsMonitoringPage />} />
           </Route>
 
           {/* Admin / Super Admin */}
