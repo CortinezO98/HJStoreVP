@@ -597,3 +597,87 @@ real ni ejecutar `down -v`.
 Tras validar, obtener un artefacto de auditoría fresco en
 GitHub Actions. Los hallazgos de frontends, los lockfiles y las
 advertencias de datetime/TestClient siguen pendientes.
+
+
+## Novena entrega — migración Vite 8 / React Router 7 y lockfiles
+
+Las **224 pruebas** anteriores de backend fueron validadas en
+Docker por el operador: `pip check` correcto y contenedores
+saludables, Alembic `20261120_18 (head)`.
+
+Se cambiaron los `package.json` de panel y tienda:
+`vite=8.3.8`, `@vitejs/plugin-react=6.1.2`,
+`react-router-dom=7.18.6`; se conserva React 18
+y se declara `node >=22.12`, npm >=10. Vite 8 y el
+plugin React de la misma generación requieren una versión
+moderna de Node; las compilaciones de Docker y Actions
+pasan a Node 24. React Router 7 conserva los exports
+de `react-router-dom` para simplificar la migración.
+No se retiraron guards ni se reescribieron rutas
+de checkout, inicio, superadministración o diseñador.
+
+Se agregó `frontend/scripts/verify-storefront-routes.mjs`:
+revisa rutas, navegación, guard de checkout y cuenta,
+páginas de pago, catálogo y políticas. El CI Fase D
+ejecuta `npm run verify:routes`; el panel conserva
+`node scripts/verify-admin-modules.mjs` y valida
+rutas/roles/lazy loading.
+
+### Lockfiles reproducibles: incorporación controlada
+
+NO se añadió un archivo `package-lock.json` inventado:
+se necesita resolución y hashes `integrity` del registro npm.
+La acción manual `.github/workflows/frontend-lockfiles.yml`,
+«Frontends - generar lockfiles revisables», resuelve los
+dos árboles en GitHub Actions, ejecuta `npm ci`,
+valida contratos y compila ambas apps. Después publica
+`hjstorevp-reviewed-npm-lockfiles` como artefacto ZIP.
+**No hace push a main**. Revisar el artefacto y
+versionar sus dos lockfiles antes de exigir `npm ci`
+en todos los pipelines.
+
+**Advertencia local:** actualmente el operador tiene un
+`frontend-admin/package-lock.json` **sin seguimiento**
+en Windows. Nunca ejecutar `git clean -fd`, `git reset
+--hard` ni borrarlo sin respaldo. Al incorporar por primera
+vez el lockfile desde Git, guardar una copia en una carpeta
+fuera del repositorio (por ejemplo, backup temporal personal),
+verificar el `npm ci` y después integrar el lock revisado.
+Si el nuevo `package.json` no coincide con el lockfile
+antiguo, Docker `npm ci` rechazará esa combinación de
+forma intencional. No usar `--force` ni `--legacy-peer-deps`.
+
+### Validación Windows por etapas
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+node --version
+npm --version
+cd frontend
+npm install --no-audit
+npm run verify:routes
+npm run build
+cd ..\frontend-admin
+npm install --no-audit
+node scripts/verify-admin-modules.mjs
+npm run build
+cd ..
+docker compose up -d --build frontend frontend-admin
+docker compose ps
+```
+
+**Importante:** Node >=22.12 o 24 es obligatorio para
+estos comandos locales, y se recomienda Node 24.
+El `npm install` local puede actualizar el lockfile
+sin seguimiento: guardar antes una copia si importa
+conservar el archivo exactamente igual. Las
+compilaciones y npm audit aún NO están verificadas
+sobre estas versiones; no declarar cerrado el bloque
+hasta comprobar la CI y el artefacto.
+
+Backend, migraciones y pagos reales no fueron modificados
+en esta entrega. Permanecen pendientes la revisión
+de auditoría npm fresca y la incorporación a main
+de ambos lockfiles tras una resolución y revisión reales.
