@@ -6,8 +6,9 @@ Actual product and branding upload authorization is covered in test_main.
 from typing import Annotated
 from importlib.metadata import version
 from pathlib import Path
+from types import SimpleNamespace
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.testclient import TestClient
 
 
@@ -109,3 +110,22 @@ def test_mail_workers_do_not_depend_on_removed_fastapi_mail():
             if stripped.startswith(("from fastapi_mail", "import fastapi_mail")):
                 imports.append(f"{source.relative_to(app_dir)}:{number}")
     assert imports == [], f"Dependencia eliminada todavía importada: {imports}"
+
+
+def test_authenticated_user_without_role_remains_forbidden():
+    """401 (missing credentials) must not weaken 403 (insufficient permissions)."""
+    from app.core.deps import get_current_user, require_roles
+    from app.models.models import UserRole
+
+    app = FastAPI()
+
+    @app.get("/restricted")
+    def restricted(_user=Depends(require_roles(UserRole.SUPER_ADMIN))):
+        return {"ok": True}
+
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        role=UserRole.CUSTOMER
+    )
+    with TestClient(app) as client:
+        response = client.get("/restricted")
+    assert response.status_code == 403
