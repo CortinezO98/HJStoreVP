@@ -830,3 +830,89 @@ construidos ni arrancados.
 exclusivos, migraciones controladas, copia verificable y restauración
 probada, registro de versiones y rollback. Todo antes de promover
 la configuración candidata.
+
+
+## Fase E.5.3 — Auditoría Alembic y recuperación SINTÉTICA aislada
+
+Los mecanismos existentes `scripts/backup_full_local.py` y
+`scripts/verify_backup_pair.py` ya producen y verifican copias
+de MariaDB + uploads con SHA-256. **No se invocan aquí** porque
+usan el proyecto Docker de desarrollo y podrían contener datos
+comerciales. No debe mezclarse el ensayo sintético con un respaldo real.
+
+Archivos añadidos:
+
+- `scripts/staging_recovery.py`: auditoría del grafo de revisiones
+  Alembic leyendo los archivos como AST **sin ejecutarlos**;
+  generación de SQL y TAR con marcadores sintéticos, SHA-256, validación
+  completa y ensayo explícito de importación en base aislada.
+- `docker-compose.staging-recovery.yml`: proyecto
+  `hjstorevp-staging-recovery` con **una única MariaDB** sobre
+  `tmpfs`, sin puertos ni volúmenes de producción/desarrollo.
+- `scripts/test_staging_recovery.py`: **7 pruebas offline** de
+  cadena Alembic, detección de errores, no sobrescritura,
+  manipulación de SQL/manifiesto, ruta no canónica y aislamiento
+  declarado.
+
+### CMD Windows — validaciones sin Docker
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_staging_recovery.py -q
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py audit
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py create-fixture
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py verify
+git status --short
+```
+
+Los fixtures se guardan en `backups/staging-fixtures/` (excluidos
+del control de versiones); **no se sobrescriben**. Si ya existen,
+`create-fixture` se niega a reemplazarlos. `audit` certifica
+sólo que las dependencias de revisiones son coherentes y reporta
+una única cabeza; **no verifica el estado real de la base**.
+
+### Ensayo de restauración en MariaDB efímera (opcional, explícito)
+
+Tras obtener los resultados offline, ejecutar **solamente** lo
+siguiente; usa el Compose explícito y no involucra ninguna tienda
+ni aplicación:
+
+```bat
+docker compose -f docker-compose.staging-recovery.yml up -d
+docker compose -f docker-compose.staging-recovery.yml ps
+.venv-e2e\Scripts\python.exe scripts\staging_recovery.py rehearse
+docker compose -f docker-compose.staging-recovery.yml down --remove-orphans
+docker compose ps
+git status --short
+```
+
+`rehearse` requiere que el contenedor `db-recovery` ya esté
+en ejecución, valida el SQL y manifiesto canónicos y ejecuta
+únicamente el marcador sintético. Confirma lectura posterior
+`E53-RESTORE-VERIFIED`; el TAR de prueba se valida byte a byte,
+**pero no se extrae/restaura** en este paso. La base es temporal y se
+pierde al destruir el contenedor. No ejecutar este ensayo en Docker
+remoto, ni suministrar archivos SQL comerciales.
+
+### Límites, riesgo y rollback
+
+La validación del grafo Alembic no implica que una base existente
+esté en `head`. Varias migraciones tienen `downgrade` expresamente
+bloqueado por riesgo de pérdida de datos: **no intentar bajar Alembic
+automáticamente**. El rollback de una actualización real exigirá:
+ventana de mantenimiento, respaldo previo consistente y probado,
+reponer versiones de imágenes/código, restaurar una copia de la base
+en infraestructura controlada y reconciliar operaciones posteriores
+al punto de corte. Para lograr consistencia de DB+uploads es necesario
+congelar escrituras o usar un procedimiento transaccional coordinado.
+
+**No aprobado aún para producción:** falta ensayar la restauración
+realista de un respaldo de staging completo (sin datos sensibles),
+comprobar estado de Alembic contra ese staging, validar uploads y
+definir RPO/RTO, capacidad, retención y recuperación documentada.
+Nunca aplicar estas pruebas a la base comercial.
+
+Última referencia: E.5.2 confirmó 10/10 pruebas; E.5.3 añadida
+al repositorio, pendiente de ejecución por el usuario.
