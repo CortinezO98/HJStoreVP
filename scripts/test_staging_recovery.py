@@ -101,7 +101,7 @@ def test_rehearsal_blocks_unhealthy_container(tmp_path, monkeypatch):
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
         if "ps" in cmd:
-            return Mock(returncode=0, stdout="db-recovery\\n")
+            return Mock(returncode=0, stdout="db-recovery\n")
         if "healthcheck.sh" in cmd:
             return Mock(returncode=1, stdout="")
         raise AssertionError("No se debe enviar SQL si MariaDB no está saludable")
