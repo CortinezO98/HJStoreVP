@@ -75,9 +75,14 @@ def test_keyboard_skip_link_and_command_palette():
             _assert_e2e_services(page.request)
             _login(page, "e2e-superadmin@example.com")
             page.goto("/")
-            skip = page.get_by_role("link", name="Saltar al contenido")
-            assert skip.count() == 1
-            assert skip.get_attribute("href") == "#admin-main"
+            # El enlace de salto está oculto visualmente hasta recibir foco.
+            # Playwright get_by_role omite enlaces ocultos: buscar por clase
+            # y comprobar que puede recibir foco mediante teclado.
+            skip = page.locator("a.admin-skip-link")
+            expect(skip).to_have_count(1)
+            expect(skip).to_have_attribute("href", "#admin-main")
+            page.keyboard.press("Tab")
+            expect(skip).to_be_focused()
             page.keyboard.press("Control+k")
             dialog = page.get_by_role("dialog")
             expect(dialog).to_be_visible(timeout=5000)
