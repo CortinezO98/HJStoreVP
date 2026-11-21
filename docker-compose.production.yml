@@ -77,7 +77,7 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 3
-    # NO create_all y NO alembic upgrade automático. Requiere migración
+    # Sin creación automática de tablas ni migración automática. Requiere migración
     # revisada y restauración comprobada antes de habilitar servicio.
 
   frontend:
