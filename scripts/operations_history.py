@@ -162,11 +162,13 @@ def record_once(folder: Path = FOLDER, consecutive: int = 3, snapshot: dict | No
         summary = build_summary(rows, consecutive)
         # Nunca escribir contenido de terceros; sólo lista blanca.
         history = "\n".join(json.dumps(item, separators=(",", ":")) for item in rows) + "\n"
-        atomic_write(folder / SUMMARY.name, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
         temp = folder / (EVENTS.name + ".partial")
         with temp.open("x", encoding="utf-8") as output:
             output.write(history)
         os.replace(temp, folder / EVENTS.name)
+        # Publicar resumen sólo después de persistir el historial, para
+        # evitar mostrar una muestra cuyo histórico todavía no se escribió.
+        atomic_write(folder / SUMMARY.name, json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
         return summary
     finally:
         lock.unlink(missing_ok=True)
