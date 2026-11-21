@@ -40,13 +40,13 @@ def test_database_and_redis_are_not_exposed():
         # El bloque termina ante el SIGUIENTE servicio (2 espacios),
         # no ante su primera línea; evitar falsos negativos.
         match = re.search(
-            rf"(?ms)^  {service}:\\n(.*?)(?=^  [a-z][a-z0-9-]*:|^networks:|^volumes:|\\Z)",
+            rf"(?ms)^  {service}:\n(.*?)(?=^  [a-z][a-z0-9-]*:|^networks:|^volumes:|\Z)",
             COMPOSE,
         )
         assert match is not None, f"No se encontró servicio {service}"
         section = match.group(1)
         assert not re.search(r"(?m)^    ports:", section), f"{service} publica puertos"
-        assert re.search(r"(?m)^    networks: \\[internal\\]$", section), (
+        assert re.search(r"(?m)^    networks: \[internal\]$", section), (
             f"{service} no está limitado a red interna"
         )
     assert "internal: true" in COMPOSE
