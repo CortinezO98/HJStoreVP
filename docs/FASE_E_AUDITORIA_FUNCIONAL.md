@@ -147,3 +147,22 @@ localmente y en GitHub Actions antes de declararlos aprobados.
   sin alterar sesiones comerciales.
 - Auditar el manejo de respuestas de error de pago y la
   recuperación tras cierre de navegador durante checkout.
+
+
+### Incidencia corregida en E.2 — validación del correo sintético
+
+La primera ejecución en Windows terminó con **17 aprobadas, 2 fallidas**.
+Ambos fallos fueron de las pruebas nuevas de registro: el validador
+Pydantic `EmailStr` rechazó el dominio reservado `example.test`
+antes de que la lógica de contraseña/duplicado llegara a ejecutarse.
+Se sustituyeron por identificadores sintéticos únicos bajo
+`example.com`, manteniendo inalterada la validación productiva.
+También se importó la clase heredada de fixtures bajo un alias
+que no empieza con `Test`, para evitar que pytest recopile
+sus métodos como pruebas de esta suite.
+
+La tienda sí aprobó `npm ci`, `verify:routes`,
+`verify:checkout` y `npm run build` (Vite 8.3.8).
+Tras el cambio, repetir las pruebas E.2 y la suite completa
+para confirmar resultado; no se ha declarado aprobado aún
+el backend de esta fase.
