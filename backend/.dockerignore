@@ -28,3 +28,6 @@ uploads/
 media/
 backups/
 *.log
+
+# E.5.5 — excluir historial del monitoreo de todas las imágenes
+monitoring/
