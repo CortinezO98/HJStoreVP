@@ -6,7 +6,7 @@ No reemplaza una auditoría formal WCAG, ni pruebas de contraste/lector de panta
 import pytest
 from playwright.sync_api import expect, sync_playwright
 
-from tests.e2e.test_admin_browser import (
+from test_admin_browser import (
     ADMIN, API, _assert_e2e_services, _context, _login,
 )
 
@@ -53,7 +53,10 @@ def test_admin_routes_render_without_global_horizontal_overflow(viewport):
                 page.goto(route)
                 expect(page).to_have_url(ADMIN + route, timeout=15000)
                 expect(page.locator("#admin-main")).to_be_visible(timeout=15000)
-                expect(page.get_by_role("heading", name=label, exact=True).first).to_be_visible(timeout=15000) if route == "/estudio-inicio" else expect(page.locator(".admin-topbar-title")).to_have_text(label, timeout=15000)
+                if route == "/estudio-inicio":
+                    expect(page.get_by_role("heading", name=label, exact=True).first).to_be_visible(timeout=15000)
+                else:
+                    expect(page.locator(".admin-topbar-title")).to_have_text(label, timeout=15000)
                 # Esperar fuentes y renderizado; no iniciar ni modificar operaciones comerciales.
                 page.evaluate("() => document.fonts.ready")
                 _assert_no_document_overflow(page)
