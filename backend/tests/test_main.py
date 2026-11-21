@@ -195,8 +195,10 @@ class TestAuth:
         assert relogin.status_code == 200
 
     def test_me_unauthenticated(self, client):
+        # FastAPI reciente: sin credenciales corresponde 401, no 403.
         resp = client.get("/api/v1/auth/me")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
+        assert resp.headers.get("www-authenticate", "").lower() == "bearer"
 
 
 # ── TESTS PRODUCTOS ───────────────────────────────────────────────────────────
@@ -226,10 +228,12 @@ class TestProducts:
         assert resp.status_code == 400
 
     def test_create_product_unauthorized(self, client):
+        # La ausencia de Bearer es 401; 403 se reserva para roles insuficientes.
         resp = client.post("/api/v1/products", json={
             "name": "Sin auth", "sku": "NO-AUTH", "cost_price": 1000, "margin_pct": 10
         })
-        assert resp.status_code == 403
+        assert resp.status_code == 401
+        assert resp.headers.get("www-authenticate", "").lower() == "bearer"
 
     def test_get_product_by_slug(self, client, auth_headers):
         client.post("/api/v1/products", json={
