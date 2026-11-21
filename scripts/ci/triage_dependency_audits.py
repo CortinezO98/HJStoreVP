@@ -65,11 +65,13 @@ def markdown_report(kind: str, payload: dict, *, project: str) -> str:
         findings = npm_findings(payload)
         lines.append(f"Paquetes con hallazgos: **{len(findings)}**.")
         if findings:
-            lines += ["", "| Severidad | Paquete | Directa | Rango afectado | Corrección informada |",
-                      "|---|---|---|---|---|"]
+            lines += ["", "| Severidad | Paquete | Directa | Rango afectado | Corrección informada | Referencias (máx. 4) |",
+                      "|---|---|---|---|---|---|"]
             for row in findings[:100]:
-                lines.append("| " + " | ".join(_cell(row[key]) for key in
-                             ("severity", "package", "direct", "installed_range", "fix")) + " |")
+                values = [_cell(row[key]) for key in
+                          ("severity", "package", "direct", "installed_range", "fix")]
+                values.append(_cell(", ".join(row["references"]) if row["references"] else "—"))
+                lines.append("| " + " | ".join(values) + " |")
             if len(findings) > 100:
                 lines.append(f"\nSe omitieron {len(findings)-100} filas de la vista; ver JSON original.")
         else:
