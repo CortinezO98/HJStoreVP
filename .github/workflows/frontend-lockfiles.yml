@@ -8,27 +8,24 @@ permissions:
 
 jobs:
   generate:
-    name: Resolver y validar lockfiles npm
+    name: Validar lockfiles npm publicados
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - name: Generar lockfile del panel administrativo
+      - name: Validar lockfile versionado del panel administrativo
         working-directory: frontend-admin
         run: |
           set -euo pipefail
-          # En el repositorio aún no existe lockfile versionado; se resuelve aquí.
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --no-audit --no-fund
           node scripts/verify-admin-modules.mjs
           npm run build
-      - name: Generar lockfile de tienda pública
+      - name: Validar lockfile versionado de tienda pública
         working-directory: frontend
         run: |
           set -euo pipefail
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --no-audit --no-fund
           npm run verify:routes
           npm run build
@@ -37,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm audit --json > ../frontend-admin-audit.json 2> ../frontend-admin-audit-stderr.txt
+          npm audit --audit-level=high --json > ../frontend-admin-audit.json 2> ../frontend-admin-audit-stderr.txt
           result=$?
           set -e
           if [ "$result" -gt 1 ]; then
@@ -47,7 +44,8 @@ jobs:
           python ../scripts/ci/triage_dependency_audits.py npm ../frontend-admin-audit.json --project 'Panel administrativo' --output ../frontend-admin-audit-triage.md
           cat ../frontend-admin-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$result" -eq 1 ]; then
-            echo "::warning::El panel tiene vulnerabilidades; revisar informe antes de desplegar."
+            echo "::error::El panel tiene vulnerabilidades altas o criticas."
+            exit 1
           fi
       - name: Auditoría npm y clasificación de tienda pública
         working-directory: frontend
@@ -64,7 +62,8 @@ jobs:
           python ../scripts/ci/triage_dependency_audits.py npm ../frontend-store-audit.json --project 'Tienda pública' --output ../frontend-store-audit-triage.md
           cat ../frontend-store-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$result" -eq 1 ]; then
-            echo "::warning::La tienda tiene vulnerabilidades; revisar informe antes de desplegar."
+            echo "::error::La tienda tiene vulnerabilidades altas o criticas."
+            exit 1
           fi
       - name: Publicar lockfiles y auditorías para revisión
         if: always()
