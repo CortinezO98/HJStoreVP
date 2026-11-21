@@ -1,0 +1,71 @@
+# EXCLUSIVAMENTE E2E: sin servicios, credenciales ni volumenes compartidos.
+# Uso: docker compose -f docker-compose.e2e.yml up -d --build
+name: hjstorevp-e2e
+
+services:
+  db-e2e:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: local-e2e-root-only
+      MYSQL_DATABASE: hjstore_e2e
+      MYSQL_USER: hjstore_e2e
+      MYSQL_PASSWORD: local-e2e-only
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Sin puertos de host y sin volumenes comerciales.
+
+  redis-e2e:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  backend-e2e:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: mysql+pymysql://hjstore_e2e:local-e2e-only@db-e2e:3306/hjstore_e2e
+      REDIS_URL: redis://redis-e2e:6379/0
+      SECRET_KEY: e2e-isolated-session-secret-replace-for-real-deployments
+      ENVIRONMENT: development
+      AUTH_RATE_LIMIT_ENABLED: "false"
+      AUTH_REFRESH_REPLAY_PROTECTION_ENABLED: "false"
+      EMAIL_NOTIFICATIONS_ENABLED: "false"
+      EMAIL_LIVE_DELIVERY_ALLOWED: "false"
+      CART_RECOVERY_DELIVERY_ENABLED: "false"
+      CART_RECOVERY_LIVE_ALLOWED: "false"
+      WOMPI_ENV: sandbox
+      WOMPI_ALLOW_LIVE_PAYMENTS: "false"
+      ALLOWED_ORIGINS: '["http://localhost:15173","http://127.0.0.1:15173"]'
+      UPLOAD_DIR: /tmp/hjstore-e2e-uploads
+    ports:
+      - "127.0.0.1:18000:8000"
+    depends_on:
+      db-e2e:
+        condition: service_healthy
+      redis-e2e:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  frontend-e2e:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: http://127.0.0.1:18000
+      VITE_ENABLE_DEMO_PAYMENTS: "false"
+    ports:
+      - "127.0.0.1:15173:5173"
+    depends_on:
+      - backend-e2e
