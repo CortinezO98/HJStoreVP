@@ -69,6 +69,8 @@ jobs:
             echo "::warning::Tienda publica sin lockfile versionado."
             npm install --no-audit
           fi
+      - name: Verificar rutas y checkout de tienda
+        run: npm run verify:routes
       - name: Compilar tienda publica
         run: npm run build
 
