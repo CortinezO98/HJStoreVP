@@ -1,0 +1,43 @@
+name: Frontends - generar lockfiles revisables
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Resolver y validar lockfiles npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Generar lockfile del panel administrativo
+        working-directory: frontend-admin
+        run: |
+          set -euo pipefail
+          # En el repositorio aún no existe lockfile versionado; se resuelve aquí.
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          node scripts/verify-admin-modules.mjs
+          npm run build
+      - name: Generar lockfile de tienda pública
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm run verify:routes
+          npm run build
+      - name: Publicar lockfiles para revisión e incorporación en Git
+        uses: actions/upload-artifact@v6
+        with:
+          name: hjstorevp-reviewed-npm-lockfiles
+          path: |
+            frontend-admin/package-lock.json
+            frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 14
