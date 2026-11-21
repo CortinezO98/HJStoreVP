@@ -13,7 +13,7 @@ def test_superadmin_monitoring_page_is_readonly_and_reports_no_data_e2e():
             _assert_e2e_services(page.request)
             _login(page, "e2e-superadmin@example.com")
             page.goto("/monitoreo-tecnico")
-            expect(page.get_by_role("heading", name="Monitoreo técnico")).to_be_visible(timeout=15000)
+            expect(page.get_by_role("heading", name="Monitoreo técnico", level=1)).to_be_visible(timeout=15000)
             # En contenedor E2E no hay backend/monitoring: el reporte es
             # 503, nunca se muestra una métrica ficticia.
             expect(page.get_by_role("alert")).to_contain_text("No existe un informe local", timeout=15000)
