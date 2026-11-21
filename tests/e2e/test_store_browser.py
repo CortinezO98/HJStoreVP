@@ -7,7 +7,7 @@ import uuid
 
 from playwright.sync_api import expect, sync_playwright
 
-STORE = "http://127.0.0.1:15173"
+STORE = "http://127.0.0.1:25173"
 API = "http://127.0.0.1:18000"
 
 
