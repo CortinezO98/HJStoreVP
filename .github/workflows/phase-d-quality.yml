@@ -11,6 +11,17 @@ permissions:
   contents: read
 
 jobs:
+  phase-e-smoke-contract:
+    name: Fase E - controles pasivos locales (unitarios)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validar limites de seguridad del smoke checker
+        run: python -m unittest discover -s scripts -p 'test_phase_e_smoke.py' -v
+
   backend-regression:
     name: Backend - regresion completa
     runs-on: ubuntu-latest
