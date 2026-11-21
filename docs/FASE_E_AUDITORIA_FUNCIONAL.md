@@ -621,3 +621,50 @@ pasarelas. Las cuentas se descartan al eliminar los contenedores E2E.
 **Pendiente posterior:** ampliar validaciones visuales de captura,
 navegación completa y accesibilidad responsive si las primeras
 pruebas del navegador confirman la configuración.
+
+
+## Fase E.4.4 — Auditoría visual, responsive y accesibilidad básica
+
+Se añade `tests/e2e/test_admin_visual_accessibility.py` con
+**6 escenarios** (3 viewports + 3 recorridos especializados).
+Reutiliza las defensas de red y el inicio de sesión sintético
+de `test_admin_browser.py`. Nunca accede a los puertos
+comerciales `5174`/`8000`, ni publica contenido real.
+
+Cobertura:
+
+- Chromium: escritorio 1440x900, tableta 820x1180 y móvil 390x844.
+- Navegación a Dashboard, Productos, Inventario y Estudio visual:
+  espera contenido visible y verifica URL, errores JavaScript
+  no controlados y ancho de `documentElement`/`body`.
+- Accesibilidad básica: enlace «Saltar al contenido»,
+  buscador Ctrl+K y cierre con Escape.
+- Menú móvil: abrir, `aria-expanded`, cerrar con Escape.
+- Diseñador: crear mosaico, aceptar eliminación por diálogo y
+  comprobar que no se guarda un borrador ni cambia `/public`.
+
+Estas comprobaciones pueden revelar errores responsive reales.
+No sustituyen revisión manual, axe/WCAG, contraste ni lectores
+de pantalla. Un desbordamiento debe analizarse, no silenciarse.
+Sin cambios funcionales a la tienda o administración en esta entrega.
+
+### CMD: ejecución aislada
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+docker compose -f docker-compose.e2e.yml up -d --build
+docker compose -f docker-compose.e2e.yml ps
+docker compose -f docker-compose.e2e.yml exec -T backend-e2e python e2e_seed.py
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_admin_visual_accessibility.py -q
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_admin_browser.py -q
+docker compose -f docker-compose.e2e.yml down --remove-orphans
+docker compose ps
+git status --short
+```
+
+Se esperan **6 tests** en la nueva batería y **4** en la E.4.3,
+pendientes de confirmación. La última validación recibida
+para E.4.3 fue 4/4 y la suite backend previa 270/270.
+La fase E.4.4 no está aún validada localmente.
