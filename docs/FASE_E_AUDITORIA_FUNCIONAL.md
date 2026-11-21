@@ -1232,3 +1232,42 @@ correlación de trazas. El modo `production` devuelve 503 para
 esta ruta local. Se requiere diseñar una ingesta segura para
 producción y completar restauración realista de staging, TLS,
 migraciones y pruebas de carga antes de desplegar.
+
+
+### E.5.5 — Pruebas de navegador aisladas y protección de artefactos
+
+También se agregó `tests/e2e/test_monitoring_browser.py` con
+dos verificaciones Chromium: acceso superadministrador en pantalla
+móvil con mensaje de ausencia de datos (sin inventar métricas en E2E)
+y rechazo HTTP 403 al vendedor. Usa únicamente los puertos E2E
+aislados `25174`/`18000`, no la tienda comercial.
+
+```bat
+docker compose -f docker-compose.e2e.yml up -d --build --wait
+.venv-e2e\Scripts\python.exe -m pytest tests\e2e\test_monitoring_browser.py -q
+docker compose -f docker-compose.e2e.yml down --remove-orphans
+docker compose ps
+```
+
+Este ensayo requiere la base E2E previamente inicializada
+con el seed sintético de E.4.3 y Playwright Chromium instalado.
+No ejecutar pruebas E2E contra puertos normales.
+
+El directorio `backend/monitoring/` fue excluido tanto de
+`.gitignore` como de `backend/.dockerignore`: ni el historial
+ni los resúmenes operativos se versionan o se incluyen al construir
+imágenes Docker, incluso si hay datos de pruebas locales.
+Los reportes se leen por la API solamente en modo desarrollo;
+la API recalcula el estado global desde controles permitidos
+para evitar mostrar como saludable un JSON alterado.
+
+Para registrar muestras manualmente no usar `--json` si no se
+necesita imprimirlas:
+
+```bat
+.venv-e2e\Scripts\python.exe scripts\operations_history.py
+```
+
+Las alertas persistentes aparecen a partir de **3 muestras
+consecutivas**. El refresco del tablero NO genera una nueva muestra:
+vuelve a consultar el último resumen recopilado.
