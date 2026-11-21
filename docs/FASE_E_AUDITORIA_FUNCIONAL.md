@@ -425,3 +425,24 @@ el contrato sin flexibilizar permisos, firmas ni bloqueos comerciales.
 
 **Estado:** código versionado, ejecución pendiente de confirmación.
 No se declara E.3.2 aprobada hasta recibir los resultados.
+
+
+### Corrección de prueba E.3.2 — contrato de transportadora
+
+La ejecución local reportó 5/6 en el módulo E.3.2 y 248/249
+en la suite completa. La prueba de flujo integrado enviaba
+`carrier="E32 Transporte"` y `service="E32"`, distintos de
+los confirmados por el cliente y guardados por el checkout.
+El backend rechazó correctamente con HTTP 409
+(`La transportadora no coincide con la elegida por el cliente`).
+
+**Corrección exclusivamente en la prueba:** se recuperan
+`carrier` y `shipping_service` desde
+`Order.shipping_address` de la BD SQLite temporal. Se añaden
+dos aserciones que exigen HTTP 409 para transportadora y servicio
+no contratados; a continuación se despacha con los valores
+auténticos del pedido.
+
+No se cambiaron el endpoint de despachos, el cálculo de envío,
+los permisos ni la lógica comercial. Se requiere volver a ejecutar
+las 6 pruebas E.3.2 y la suite completa para confirmar el cierre.
