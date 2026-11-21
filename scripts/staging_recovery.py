@@ -211,8 +211,17 @@ def rehearse(path: Path) -> dict:
         raise RecoveryStageError("SQL_CONNECTION_FAILED_" + category)
     # La contraseña se expande DENTRO del contenedor; no se imprime ni se pasa a argv del host.
     exec_cmd = base + ["exec", "-T", "db-recovery", "sh", "-c", root_client]
-    with gzip.open(path.parent / "hjstorevp_e53_synthetic.sql.gz", "rb") as input_sql:
-        restored = subprocess.run(exec_cmd, cwd=ROOT, stdin=input_sql, capture_output=True, check=False)
+    # Importante: subprocess(stdin=gzip.GzipFile) entrega el descriptor del
+    # archivo .gz SUBYACENTE a Docker, NO los bytes descomprimidos.
+    # La verificación previa exige que el SQL sea exactamente el fixture
+    # sintético fijo (209 bytes). Entregar esos bytes vía pipe binario.
+    with gzip.open(path.parent / "hjstorevp_e53_synthetic.sql.gz", "rb") as archive:
+        plain_sql = archive.read(len(SQL) + 1)
+    if plain_sql != SQL:
+        raise RecoveryStageError("SYNTHETIC_SQL_MISMATCH")
+    restored = subprocess.run(
+        exec_cmd, cwd=ROOT, input=plain_sql, capture_output=True, check=False
+    )
     if restored.returncode:
         raise RecoveryStageError("SQL_IMPORT_FAILED_" + classify_mariadb_failure(restored.stderr or b""))
     query = base + ["exec", "-T", "db-recovery", "sh", "-c",
