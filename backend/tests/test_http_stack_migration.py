@@ -5,6 +5,7 @@ Actual product and branding upload authorization is covered in test_main.
 """
 from typing import Annotated
 from importlib.metadata import version
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.testclient import TestClient
@@ -95,3 +96,16 @@ def test_http_dependency_versions_are_expected():
     assert version("fastapi") == "0.165.0"
     assert version("starlette") == "1.10.0"
     assert version("python-multipart") == "0.0.34"
+
+
+def test_mail_workers_do_not_depend_on_removed_fastapi_mail():
+    """Legacy integration was unused; fail if application code still imports it."""
+    app_dir = Path(__file__).resolve().parents[1] / "app"
+    imports = []
+    for source in app_dir.rglob("*.py"):
+        text = source.read_text(encoding="utf-8")
+        for number, line in enumerate(text.splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith(("from fastapi_mail", "import fastapi_mail")):
+                imports.append(f"{source.relative_to(app_dir)}:{number}")
+    assert imports == [], f"Dependencia eliminada todavía importada: {imports}"
