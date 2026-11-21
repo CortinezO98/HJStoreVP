@@ -1,5 +1,6 @@
 # ─── Framework ─────────────────────────────────────────────────
-fastapi==0.115.0
+fastapi==0.165.0
+starlette==1.10.0
 uvicorn[standard]==0.30.6
 
 # ─── Base de datos ─────────────────────────────────────────────
@@ -12,7 +13,7 @@ cryptography==43.0.1
 PyJWT==2.15.1
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
-python-multipart==0.0.12
+python-multipart==0.0.34
 
 # ─── Validación ────────────────────────────────────────────────
 pydantic==2.9.2
