@@ -1067,3 +1067,78 @@ Resultado esperado si la importación termina:
 La ejecución real sigue pendiente. Tras la comprobación,
 limpiar solamente con `docker compose -f
 docker-compose.staging-recovery.yml down --remove-orphans`.
+
+
+## Fase E.5.4 — Observabilidad operativa local (implementada, pendiente de validar)
+
+Se incorporó el monitor pasivo `scripts/operations_monitor.py`
+y la suite `scripts/test_operations_monitor.py`. Esta fase NO
+modifica `docker-compose.yml`, `docker-compose.production.yml`,
+`backend/app/main.py`, configuración de pagos, base de datos o workers.
+No crea alertas en servicios externos, no instala servicios permanentes
+y no recopila secretos, logs de aplicación, tokens o información de clientes.
+
+### Alcance del diagnóstico
+
+- `container:db/redis/backend/store/admin`: inspección del estado
+  Docker mediante nombres **fijos**; identifica contenedores
+  detenidos, unhealthy o starting. Un contenedor running no garantiza
+  una transacción funcional.
+- `http:api/store/admin`: GET sólo a `127.0.0.1` en los
+  puertos existentes 8000/5173/5174. No sigue redirecciones.
+  Verifica HTTP 200; en API exige JSON exactamente
+  `{"status":"ok"}`; en SPAs exige `text/html`.
+  Mide duración por solicitud y genera advertencia si supera 1500 ms.
+- `disk:workspace`: porcentaje libre de la unidad que contiene
+  el repositorio (warning bajo 20 %, critical bajo 10 %).
+  **No es medición del volumen remoto de base de datos**.
+- `backup:db/uploads`: existencia, tamaño, acompañamiento
+  del manifiesto `.sha256` y antigüedad hasta 48 h
+  en `backups/local`. Esta comprobación **NO recalcula el hash**:
+  usar `verify_backup_pair.py` para validar integridad real.
+- Snapshot JSON con `schema_version`, fecha UTC, códigos cerrados,
+  latencia y estados, sin datos de transacciones ni valores de entorno.
+  Constituye logging estructurado del diagnóstico, **no** trazabilidad
+  de peticiones internas del backend.
+
+### CMD — validación sin cambiar servicios
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP
+git status --short
+git pull --ff-only origin main
+.venv-e2e\Scripts\python.exe -m pytest scripts\test_operations_monitor.py -q
+.venv-e2e\Scripts\python.exe scripts\operations_monitor.py
+echo Codigo de salida: %ERRORLEVEL%
+.venv-e2e\Scripts\python.exe scripts\operations_monitor.py --json
+git status --short
+```
+
+Códigos de salida: `0` sin alertas; `1` si existen advertencias,
+por ejemplo ausencia o antigüedad de respaldos; `2` si existe al menos
+un fallo crítico (contenedor detenido, respuesta HTTP incorrecta,
+espacio crítico). **Es esperado** que el monitor emita advertencias
+si todavía no existen copias en `backups/local`.
+Nunca usar salida del monitor como certificación de producción.
+
+Umbrales permitidos:
+
+```bat
+.venv-e2e\Scripts\python.exe scripts\operations_monitor.py --warn-latency-ms 2000 --max-backup-age-hours 72 --warning-free-percent 20 --critical-free-percent 10
+```
+
+### Pendientes necesarios para operación productiva
+
+No se ha instalado vigilancia programada, notificación remota,
+métricas históricas (p95/p99), trazas correlacionadas por request ID
+ni recolector de logs central. Un endpoint `/health` que responde
+200 sólo demuestra disponibilidad del proceso, no salud completa de
+MySQL/Redis. Es necesario asegurar gestión segura de logs (redacción
+de PII), proxy TLS, umbrales reales, pruebas de carga, backups con
+restauración integral, consultas de esquema staging y alertas con
+propietarios/escalamiento antes de producción. Los hallazgos previos
+de E.5.1 siguen siendo bloqueantes para el Compose de desarrollo.
+
+El monitor no se ejecuta automáticamente ni queda activado en
+ningún contenedor. Las pruebas se deben ejecutar en el equipo del
+usuario antes de dar la fase por validada.
