@@ -319,7 +319,7 @@
   .admin-app-shell .admin-catalog-filter {padding:16px!important}
   .admin-app-shell .admin-catalog-stat {min-height:90px}
   .admin-app-shell .admin-catalog-form-grid{grid-template-columns:1fr;padding:18px}
-  .admin-app-shell .admin-catalog-form-grid .md\\:col-span-2{grid-column:span 1}
+  .admin-app-shell .admin-catalog-form-grid .md\:col-span-2{grid-column:span 1}
   .admin-app-shell .admin-catalog-modal-header,.admin-app-shell .admin-catalog-modal-body{padding:18px}
   .admin-app-shell .admin-catalog-modal-footer{padding:15px}
   .admin-app-shell .admin-catalog-overlay {padding:8px}
@@ -565,7 +565,7 @@
   .admin-app-shell .admin-users-overlay{padding:8px}
   .admin-app-shell .admin-users-modal{max-height:calc(100dvh - 16px)}
   .admin-app-shell .admin-users-form-grid{grid-template-columns:1fr;padding:18px}
-  .admin-app-shell .admin-users-form-grid .md\\:col-span-2{grid-column:span 1}
+  .admin-app-shell .admin-users-form-grid .md\:col-span-2{grid-column:span 1}
   .admin-app-shell .admin-reports-filters{padding:17px}
 }
 
