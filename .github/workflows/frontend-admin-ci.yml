@@ -24,14 +24,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit
-          else
-            echo "::warning::No hay lockfile versionado del panel; no se garantiza instalación reproducible."
-            npm install --no-audit
-          fi
+      - name: Instalar exactamente las dependencias versionadas
+        run: npm ci --no-audit --no-fund
+      - name: Bloquear vulnerabilidades altas y criticas
+        run: npm audit --audit-level=high
       - name: Verify administrative functionality contract
         run: node scripts/verify-admin-modules.mjs
       - name: Build admin
