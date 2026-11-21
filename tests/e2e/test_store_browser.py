@@ -59,7 +59,7 @@ def test_register_cart_login_checkout_without_payment():
             page.get_by_role("button", name="Continuar a entrega y pago").click()
             expect(page).to_have_url("**/checkout")
 
-            page.locator("#checkout-name").fill("Cliente Sintetico E2E")
+            page.locator("#checkout-full-name").fill("Cliente Sintetico E2E")
             page.locator("#checkout-phone").fill("3000000000")
             page.locator("#checkout-street").fill("Calle 123 local de prueba")
             page.locator("#checkout-department").select_option("Cundinamarca")
