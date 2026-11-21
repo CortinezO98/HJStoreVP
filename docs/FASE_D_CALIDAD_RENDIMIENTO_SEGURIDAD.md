@@ -284,3 +284,62 @@ instalaciones npm no reproducibles.
 No es necesaria migración Alembic: permanece `20261120_18`. No se
 modificaron los contenedores en ejecución, la base MariaDB, el
 inventario ni el procesamiento de pagos para estas comprobaciones.
+
+
+## Auditoría verificada de GitHub Actions #21 — 20/11/2026
+
+Ejecución: https://github.com/CortinezO98/HJStoreVP/actions/runs/44840960404
+(HEAD `79683e5`; los cuatro jobs terminaron en success).
+Se descargó el artefacto `fase-d-dependency-audits` y se analizaron
+los JSON originales, no solamente la página de configuración.
+
+### Riesgos identificados
+
+- Frontend administrativo y tienda pública: cuatro paquetes con
+  vulnerabilidades en cada uno (Vite: alto; esbuild, react-router,
+  react-router-dom: moderados). Son los mismos cuatro nombres en
+  ambos, pero provienen de dos árboles de instalación distintos.
+  El escáner propone `vite@8.3.8` y
+  `react-router-dom@7.18.6`; cambios mayores pendientes de pruebas.
+- Backend: ocho paquetes afectados, con 81 identificadores de aviso
+  únicos al agrupar registros duplicados:
+  `pillow` (53), `starlette` (7),
+  `python-multipart` (7), `cryptography` (6),
+  `python-jose` (4), `aiosmtplib` (2),
+  `pytest` (1), `ecdsa` (1). Las 120 filas crudas no
+  corresponden a 120 problemas independientes.
+- Autenticación JWT: `python-jose` 3.3.0 tiene avisos sin
+  versión reparada informada por el escáner. Su actualización aislada
+  a 3.4.0 **no resuelve todos los avisos**. Evaluar reemplazo de
+  biblioteca y contrato JWT con tests de MFA, refresh, algoritmos,
+  claves y revocación, manteniendo `algorithms=[HS256]` explícito.
+- HTTP y carga de archivos: actualizar FastAPI, Starlette y
+  python-multipart **en una sola rama de compatibilidad**:
+  FastAPI 0.115.0 es antiguo y la reorganización de imports
+  multipart puede impedir su arranque si cambia solamente el parser.
+  Revalidar formularios, archivos de producto y branding, errores
+  413/422 y límites de tamaño.
+- Pillow 10.4.0 tiene numerosos avisos. Probar normalización
+  WEBP, límites de píxeles y manejo de archivos inválidos antes
+  de sustituirlo por una versión nueva.
+- Cryptography y aiosmtplib requieren pruebas de autenticación,
+  certificados y envío real bajo entorno controlado, no producción.
+  Pytest es dependencia de desarrollo, clasificarla por exposición.
+
+### Control aplicado sobre GitHub Actions
+
+Se migraron `actions/checkout@v5`,
+`actions/setup-node@v5`, `actions/setup-python@v6` y
+`actions/upload-artifact@v6` en los workflows de Fase D,
+backend, frontend-admin y auditoría Fase C, para dejar de usar
+versiones de acciones cuyo runtime Node 20 genera advertencias
+de obsolescencia. Esto **no actualiza** la versión de Node usada
+para compilar la aplicación, ni corrige las vulnerabilidades npm.
+
+### No declarado resuelto
+
+Los cambios de acciones están integrados en main pero deben
+validarse en la siguiente ejecución de CI. No se han actualizado
+todavía dependencias de producción sin pruebas de compatibilidad.
+Las 201 pruebas se aprobaron en el último baseline anterior,
+no se presentan como ejecutadas de nuevo con los próximos cambios.
