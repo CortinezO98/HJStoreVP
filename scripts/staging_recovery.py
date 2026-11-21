@@ -24,6 +24,15 @@ COMPOSE = ROOT / "docker-compose.staging-recovery.yml"
 PROJECT = "hjstorevp-staging-recovery"
 DB = "hjstore_recovery_fixture"
 
+
+class RecoveryStageError(RuntimeError):
+    """Identificador de etapa seguro: nunca incluye stderr ni secretos."""
+
+    def __init__(self, code: str):
+        self.code = code
+        super().__init__(code)
+
+
 SQL = b"""-- SYNTHETIC ONLY: E.5.3 recovery probe
 CREATE TABLE IF NOT EXISTS recovery_probe (id INT PRIMARY KEY, marker VARCHAR(80) NOT NULL);
 INSERT INTO recovery_probe (id, marker) VALUES (1, 'E53-RESTORE-VERIFIED');
@@ -161,7 +170,7 @@ def rehearse(path: Path) -> dict:
     status = subprocess.run(base + ["ps", "--status", "running", "--services"],
                             cwd=ROOT, capture_output=True, text=True, check=False)
     if status.returncode or status.stdout.strip().splitlines() != ["db-recovery"]:
-        raise RuntimeError("db-recovery debe ser el único servicio activo de este proyecto")
+        raise RecoveryStageError("CONTAINER_NOT_RUNNING_OR_NOT_UNIQUE")
     # Un contenedor RUNNING no significa que MariaDB haya terminado
     # su inicialización. Fail-closed: no enviar SQL hasta que el
     # healthcheck oficial confirme conexión e InnoDB disponibles.
@@ -170,23 +179,21 @@ def rehearse(path: Path) -> dict:
         cwd=ROOT, capture_output=True, check=False,
     )
     if ready.returncode:
-        raise RuntimeError(
-            "MariaDB de recuperación todavía no está saludable. "
-            "Ejecuta docker compose -f docker-compose.staging-recovery.yml "
-            "up -d --wait --wait-timeout 120 y repite rehearse."
-        )
+        raise RecoveryStageError("DB_HEALTHCHECK_FAILED")
     # La contraseña se expande DENTRO del contenedor; no se imprime ni se pasa a argv del host.
     exec_cmd = base + ["exec", "-T", "db-recovery", "sh", "-c",
                        'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -u root hjstore_recovery_fixture']
     with gzip.open(path.parent / "hjstorevp_e53_synthetic.sql.gz", "rb") as input_sql:
         restored = subprocess.run(exec_cmd, cwd=ROOT, stdin=input_sql, capture_output=True, check=False)
     if restored.returncode:
-        raise RuntimeError("Falló la restauración sintética; no se muestran trazas con datos")
+        raise RecoveryStageError("SQL_IMPORT_FAILED")
     query = base + ["exec", "-T", "db-recovery", "sh", "-c",
                     'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -N -u root hjstore_recovery_fixture -e "SELECT marker FROM recovery_probe WHERE id=1"']
     result = subprocess.run(query, cwd=ROOT, capture_output=True, text=True, check=False)
-    if result.returncode or result.stdout.strip() != MARKER:
-        raise RuntimeError("La lectura posterior no coincide con el marcador esperado")
+    if result.returncode:
+        raise RecoveryStageError("SQL_READBACK_FAILED")
+    if result.stdout.strip() != MARKER:
+        raise RecoveryStageError("SQL_MARKER_MISMATCH")
     return {"restore": "verified", "database": DB, "marker": MARKER,
             "uploads": "archive-verified-not-restored", "real_data": False}
 
@@ -209,7 +216,10 @@ def main(argv=None):
         return 0
     except (OSError, ValueError, RuntimeError, KeyError, TypeError, subprocess.SubprocessError,
             tarfile.TarError, EOFError) as exc:
-        print("E.5.3 BLOQUEADO:", type(exc).__name__, file=sys.stderr)
+        if isinstance(exc, RecoveryStageError):
+            print("E.5.3 BLOQUEADO:", exc.code, file=sys.stderr)
+        else:
+            print("E.5.3 BLOQUEADO:", type(exc).__name__, file=sys.stderr)
         return 2
 
 
