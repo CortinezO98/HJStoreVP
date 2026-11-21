@@ -127,7 +127,9 @@ def test_restore_reports_safe_import_failure_stage(tmp_path, monkeypatch):
             return Mock(returncode=0, stdout="db-recovery\n")
         if "healthcheck.sh" in cmd:
             return Mock(returncode=0, stdout="")
-        if kwargs.get("stdin") is not None:
+        if kwargs.get("input") is not None:
+            assert kwargs["input"] == module.SQL
+            assert kwargs.get("stdin") is None
             return Mock(returncode=1, stderr=b"SECRET-DO-NOT-PRINT")
         if "SELECT 1" in " ".join(cmd):
             return Mock(returncode=0, stdout=b"1\n")
@@ -168,3 +170,33 @@ def test_error_classification_is_non_sensitive():
     assert module.classify_mariadb_failure(b"ERROR 1062 Duplicate entry for key") == "DUPLICATE_SYNTHETIC_MARKER"
     assert module.classify_mariadb_failure(b"ERROR 1049 Unknown database") == "DATABASE_MISSING"
     assert module.classify_mariadb_failure(b"random SECRET=123") == "UNCLASSIFIED"
+
+
+def test_sql_rehearsal_sends_plaintext_bytes_not_gzip_fd(tmp_path, monkeypatch):
+    """La entrada que recibe Docker es SQL descomprimido, nunca el archivo .gz."""
+    from unittest.mock import Mock
+
+    manifest = module.create_fixture(tmp_path)
+    monkeypatch.setattr(module, "FIXTURES", tmp_path)
+    inputs = []
+
+    def fake_run(cmd, **kwargs):
+        if "ps" in cmd:
+            return Mock(returncode=0, stdout="db-recovery\n")
+        if "healthcheck.sh" in cmd:
+            return Mock(returncode=0)
+        if "SELECT 1" in " ".join(cmd):
+            return Mock(returncode=0, stdout=b"1\n")
+        if kwargs.get("input") is not None:
+            inputs.append(kwargs["input"])
+            assert kwargs.get("stdin") is None
+            return Mock(returncode=0)
+        if "SELECT marker" in " ".join(cmd):
+            return Mock(returncode=0, stdout=module.MARKER + "\n")
+        raise AssertionError("Unexpected subprocess in recovery rehearsal")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    result = module.rehearse(manifest)
+    assert result["restore"] == "verified"
+    assert inputs == [module.SQL]
+    assert not inputs[0].startswith(b"\\x1f\\x8b")
