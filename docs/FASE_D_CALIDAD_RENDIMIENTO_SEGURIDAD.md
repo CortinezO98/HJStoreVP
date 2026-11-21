@@ -495,3 +495,50 @@ MariaDB ni asumir que `pip check` y pytest de un contenedor
 anterior prueban el cambio. El procedimiento separa `build`
 de `up --no-build` para impedir que se reinicie el backend
 si la imagen nueva falla al instalarse.
+
+
+## Séptima entrega — ajuste de contrato HTTPBearer en FastAPI 0.165.0
+
+La validación local aportada tras quitar `fastapi-mail` confirma
+`docker compose build backend` correcto, `pip check` limpio,
+FastAPI 0.165.0, Starlette 1.10.0, python-multipart 0.0.34,
+42 pruebas dirigidas aprobadas, contenedores saludables y
+Alembic `20261120_18 (head)`.
+
+La ejecución de regresión completa obtuvo **212 aprobadas y dos
+fallidas**, exclusivamente:
+`TestAuth.test_me_unauthenticated` y
+`TestProducts.test_create_product_unauthorized`. Ambas exigían
+403 ante la ausencia total de cabecera de autenticación.
+HTTPBearer del framework nuevo responde correctamente **401**
+y el challenge `WWW-Authenticate: Bearer` bajo este escenario.
+Esto es un cambio de contrato del framework, no evidencia de
+pérdida de autorización ni error comercial.
+
+Se ajustaron **solo esas dos expectativas** en
+`backend/tests/test_main.py`, incluyendo comprobación del
+challenge de autenticación. No se modificaron endpoints, roles,
+`HTTPBearer`, el modelo de datos ni el comportamiento de producción.
+Se añadió un test explícito en `test_http_stack_migration.py`
+que conserva **403 para usuarios autenticados sin rol suficiente**.
+
+### Puerta de aceptación
+
+```bat
+git pull --ff-only origin main
+docker compose exec backend python -m pytest tests/test_main.py::TestAuth::test_me_unauthenticated tests/test_main.py::TestProducts::test_create_product_unauthorized tests/test_http_stack_migration.py::test_authenticated_user_without_role_remains_forbidden -q
+docker compose exec backend python -m pytest tests/ -q
+docker compose exec backend alembic current
+docker compose ps
+```
+
+**Meta:** 215 pruebas completas (214 del conjunto previo, más
+una nueva prueba de control de roles). El número todavía no es
+resultado certificado de CI ni de Docker local, hasta recibir
+una ejecución posterior de la nueva revisión.
+
+Como no se cambiaron `requirements.txt`, servicios ni imágenes
+con esta corrección de pruebas, el contenedor backend en desarrollo
+tiene el código nuevo por el bind mount `./backend:/app`; no
+es necesario reconstruir la imagen para ejecutar estas pruebas.
+No ejecutar `docker compose down -v`.
