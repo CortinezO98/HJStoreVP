@@ -158,6 +158,25 @@ def verify_fixture(path: Path) -> dict:
             "upload_entries": 1, "commercial_data": False}
 
 
+def classify_mariadb_failure(stderr: bytes) -> str:
+    """Clasifica errores conocidos, sin imprimir stderr ni comandos/secretos."""
+    # Sólo SQL sintético en db-recovery: no publicar nunca stderr libre.
+    data = stderr[:8192].decode("utf-8", errors="replace").lower()
+    if "1045" in data or "access denied" in data or "1698" in data:
+        return "AUTHENTICATION"
+    if "1049" in data or "unknown database" in data:
+        return "DATABASE_MISSING"
+    if "1062" in data or "duplicate entry" in data:
+        return "DUPLICATE_SYNTHETIC_MARKER"
+    if "1064" in data or "syntax" in data:
+        return "SQL_SYNTAX"
+    if "2002" in data or "2003" in data or "can't connect" in data:
+        return "CONNECTION"
+    if "not found" in data or "127" in data:
+        return "CLIENT_NOT_FOUND"
+    return "UNCLASSIFIED"
+
+
 def rehearse(path: Path) -> dict:
     """Ejecuta SQL fijo sintético SOLO en el servicio db-recovery del proyecto fijo."""
     verify_fixture(path)
@@ -180,13 +199,22 @@ def rehearse(path: Path) -> dict:
     )
     if ready.returncode:
         raise RecoveryStageError("DB_HEALTHCHECK_FAILED")
+    # Validar que las credenciales de root y el esquema sintético sean
+    # utilizables ANTES de intentar SQL. No mostrar stdout/stderr crudos.
+    root_client = 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb --user=root --database=hjstore_recovery_fixture'
+    connection = subprocess.run(
+        base + ["exec", "-T", "db-recovery", "sh", "-c", root_client + ' -N -e "SELECT 1"'],
+        cwd=ROOT, capture_output=True, check=False,
+    )
+    if connection.returncode or connection.stdout.strip() != b"1":
+        category = classify_mariadb_failure(connection.stderr or b"")
+        raise RecoveryStageError("SQL_CONNECTION_FAILED_" + category)
     # La contraseña se expande DENTRO del contenedor; no se imprime ni se pasa a argv del host.
-    exec_cmd = base + ["exec", "-T", "db-recovery", "sh", "-c",
-                       'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -u root hjstore_recovery_fixture']
+    exec_cmd = base + ["exec", "-T", "db-recovery", "sh", "-c", root_client]
     with gzip.open(path.parent / "hjstorevp_e53_synthetic.sql.gz", "rb") as input_sql:
         restored = subprocess.run(exec_cmd, cwd=ROOT, stdin=input_sql, capture_output=True, check=False)
     if restored.returncode:
-        raise RecoveryStageError("SQL_IMPORT_FAILED")
+        raise RecoveryStageError("SQL_IMPORT_FAILED_" + classify_mariadb_failure(restored.stderr or b""))
     query = base + ["exec", "-T", "db-recovery", "sh", "-c",
                     'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mariadb -N -u root hjstore_recovery_fixture -e "SELECT marker FROM recovery_probe WHERE id=1"']
     result = subprocess.run(query, cwd=ROOT, capture_output=True, text=True, check=False)
