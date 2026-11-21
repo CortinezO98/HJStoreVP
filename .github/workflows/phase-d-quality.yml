@@ -38,8 +38,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - run: |
-          if [ -f package-lock.json ]; then npm ci --no-audit; else npm install --no-audit; fi
+      - name: Instalar dependencias bloqueadas
+        run: npm ci --no-audit --no-fund
+      - name: Bloquear avisos altos o criticos npm
+        run: npm audit --audit-level=high
       - name: Verificar contratos administrativos
         run: node scripts/verify-admin-modules.mjs
       - name: Compilar panel
@@ -61,14 +63,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - name: Instalar dependencias para compilar
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit
-          else
-            echo "::warning::Tienda publica sin lockfile versionado."
-            npm install --no-audit
-          fi
+      - name: Instalar dependencias bloqueadas
+        run: npm ci --no-audit --no-fund
+      - name: Bloquear avisos altos o criticos npm
+        run: npm audit --audit-level=high
       - name: Verificar rutas y checkout de tienda
         run: npm run verify:routes
       - name: Compilar tienda publica
@@ -89,23 +87,13 @@ jobs:
         run: python -m unittest discover -s scripts/ci -p 'test_*.py'
       - name: Preparar inventario npm reproducible
         working-directory: frontend-admin
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -f package-lock.json ]; then
-            echo "lockfile_present=true" >> "$GITHUB_ENV"
-            npm ci --ignore-scripts --no-audit --no-fund
-          else
-            echo "::warning::No hay package-lock.json versionado. Inventario npm no reproducible; pendiente incorporar lockfile revisado."
-            echo "lockfile_present=false" >> "$GITHUB_ENV"
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          fi
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Auditoria npm (fallos de herramienta bloquean, vulnerabilidades se reportan)
         working-directory: frontend-admin
         shell: bash
         run: |
           set +e
-          npm audit --json > ../admin-dependency-audit.json 2> ../npm-audit-errors.txt
+          npm audit --audit-level=high --json > ../admin-dependency-audit.json 2> ../npm-audit-errors.txt
           code=$?
           set -e
           echo "npm_audit_exit=$code" >> "$GITHUB_ENV"
@@ -117,23 +105,19 @@ jobs:
           python ../scripts/ci/summarize_dependency_audit.py npm ../admin-dependency-audit.json
           python ../scripts/ci/triage_dependency_audits.py npm ../admin-dependency-audit.json --project 'Panel administrativo' --output ../admin-audit-triage.md
           cat ../admin-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" -eq 1 ]; then
+            echo "::error::El panel contiene hallazgos npm altos o criticos."
+            exit 1
+          fi
       - name: Preparar inventario npm de tienda publica
         working-directory: frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -f package-lock.json ]; then
-            npm ci --ignore-scripts --no-audit --no-fund
-          else
-            echo "::warning::La tienda publica no tiene package-lock.json versionado."
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          fi
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Auditoria npm de tienda publica
         working-directory: frontend
         shell: bash
         run: |
           set +e
-          npm audit --json > ../store-dependency-audit.json 2> ../store-npm-audit-errors.txt
+          npm audit --audit-level=high --json > ../store-dependency-audit.json 2> ../store-npm-audit-errors.txt
           code=$?
           set -e
           if [ "$code" -gt 1 ]; then
@@ -144,6 +128,10 @@ jobs:
           python ../scripts/ci/summarize_dependency_audit.py npm ../store-dependency-audit.json
           python ../scripts/ci/triage_dependency_audits.py npm ../store-dependency-audit.json --project 'Tienda publica' --output ../store-audit-triage.md
           cat ../store-audit-triage.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" -eq 1 ]; then
+            echo "::error::La tienda contiene hallazgos npm altos o criticos."
+            exit 1
+          fi
       - name: Preparar auditoria Python
         shell: bash
         run: |
