@@ -1,0 +1,20 @@
+# Dependencies are installed inside the image using package-lock.json.
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+.cache/
+coverage/
+.nyc_output/
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
