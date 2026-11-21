@@ -137,7 +137,7 @@ def test_restore_reports_safe_import_failure_stage(tmp_path, monkeypatch):
     with pytest.raises(module.RecoveryStageError, match="SQL_IMPORT_FAILED_UNCLASSIFIED") as exc:
         module.rehearse(manifest)
     assert "SECRET-DO-NOT-PRINT" not in str(exc.value)
-    assert len(calls) == 3
+    assert len(calls) == 4
 
 
 def test_sql_connection_failure_prevents_import(tmp_path, monkeypatch):
