@@ -44,7 +44,7 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? 'Fecha no válida' : date.toLocaleDateString('es-CO')
 }
 
-function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand' }) {
+function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand', unavailable = false }) {
   const tones = {
     brand: 'bg-brand-50 text-brand-700 border-brand-100',
     green: 'bg-green-50 text-green-700 border-green-100',
@@ -54,11 +54,11 @@ function MetricCard({ title, value, subtitle, icon: Icon, tone = 'brand' }) {
   }
 
   return (
-    <div className="card admin-dashboard-metric">
+    <div className={`card admin-dashboard-metric ${unavailable ? 'is-unavailable' : ''}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="admin-dashboard-metric-label">{title}</p>
-          <p className="admin-dashboard-metric-value">{value}</p>
+          <p className="admin-dashboard-metric-value" aria-label={`${title}: ${unavailable ? 'Datos no disponibles' : value}`}>{unavailable ? 'No disponible' : value}</p>
           {subtitle && <p className="text-xs text-gray-400 mt-2">{subtitle}</p>}
         </div>
 
@@ -147,53 +147,63 @@ export default function DashboardPage() {
   const [topLimit] = useState(8)
   const [lowRotationDays] = useState(30)
 
-  const { data: dashboard, isLoading: loadingSummary } = useQuery({
+  const { data: dashboard, isLoading: loadingSummary, isError: summaryError } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: () => analyticsApi.dashboard().then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: salesByMonth = [], isLoading: loadingSalesByMonth } = useQuery({
+  const { data: salesByMonth = [], isLoading: loadingSalesByMonth, isError: salesByMonthError } = useQuery({
     queryKey: ['sales-by-month', year],
     queryFn: () => analyticsApi.salesByMonth(year).then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: topProducts = [], isLoading: loadingTopProducts } = useQuery({
+  const { data: topProducts = [], isLoading: loadingTopProducts, isError: topProductsError } = useQuery({
     queryKey: ['top-products', topLimit],
     queryFn: () => analyticsApi.topProducts({ limit: topLimit }).then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: lowRotation = [], isLoading: loadingLowRotation } = useQuery({
+  const { data: lowRotation = [], isLoading: loadingLowRotation, isError: lowRotationError } = useQuery({
     queryKey: ['low-rotation', lowRotationDays],
     queryFn: () => analyticsApi.lowRotation(lowRotationDays).then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: salesByLocation = [], isLoading: loadingSalesByLocation } = useQuery({
+  const { data: salesByLocation = [], isLoading: loadingSalesByLocation, isError: salesByLocationError } = useQuery({
     queryKey: ['sales-by-location'],
     queryFn: () => analyticsApi.salesByLocation({}).then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: lowStock = [], isLoading: loadingLowStock } = useQuery({
+  const { data: lowStock = [], isLoading: loadingLowStock, isError: lowStockError } = useQuery({
     queryKey: ['low-stock'],
     queryFn: () => inventoryApi.lowStock().then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: recentWebOrders = [], isLoading: loadingWebOrders } = useQuery({
+  const { data: recentWebOrders = [], isLoading: loadingWebOrders, isError: webOrdersError } = useQuery({
     queryKey: ['recent-web-orders-dashboard'],
     queryFn: () => ordersApi.list({}).then((r) => r.data),
     enabled: isAdmin,
   })
 
-  const { data: recentPhysicalSales = [], isLoading: loadingPhysicalSales } = useQuery({
+  const { data: recentPhysicalSales = [], isLoading: loadingPhysicalSales, isError: physicalSalesError } = useQuery({
     queryKey: ['recent-physical-sales-dashboard'],
     queryFn: () => physicalSalesApi.list({}).then((r) => r.data),
     enabled: isAdmin,
   })
+
+  const hasDataErrors = [summaryError, salesByMonthError, topProductsError, lowRotationError,
+    salesByLocationError, lowStockError, webOrdersError, physicalSalesError].some(Boolean)
+  const refreshDashboard = () => {
+    for (const key of [
+      ['dashboard-summary'], ['sales-by-month', year], ['top-products'],
+      ['low-rotation'], ['sales-by-location'], ['low-stock'],
+      ['recent-web-orders-dashboard'], ['recent-physical-sales-dashboard'],
+    ]) queryClient.invalidateQueries({ queryKey: key })
+  }
 
   const monthlyTotals = useMemo(() => {
     const totalYearRevenue = salesByMonth.reduce(
@@ -283,17 +293,24 @@ export default function DashboardPage() {
           </div>
           <button type="button" className="admin-dashboard-refresh"
             aria-label="Actualizar indicadores del dashboard"
-            onClick={() => {
-              for (const key of [
-                ['dashboard-summary'], ['sales-by-month', year], ['top-products'],
-                ['low-rotation'], ['sales-by-location'], ['low-stock'],
-                ['recent-web-orders-dashboard'], ['recent-physical-sales-dashboard'],
-              ]) queryClient.invalidateQueries({ queryKey: key })
-            }}>
+            onClick={refreshDashboard}>
             <RefreshCw size={15} aria-hidden="true"/> Actualizar indicadores
           </button>
         </div>
       </div>
+
+      {hasDataErrors && (
+        <div className="admin-dashboard-data-warning" role="alert">
+          <AlertTriangle size={19} aria-hidden="true" />
+          <div className="flex-grow-1">
+            <strong>Algunos indicadores no están disponibles</strong>
+            <p className="mb-0">No se muestran cifras estimadas cuando falla una consulta. Puedes reintentar la carga.</p>
+          </div>
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={refreshDashboard}>
+            <RefreshCw size={15} aria-hidden="true" /> Reintentar
+          </button>
+        </div>
+      )}
 
       <section className="admin-dashboard-shortcuts" aria-label="Accesos rápidos">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -328,6 +345,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Pedidos del mes"
           value={loadingSummary ? '...' : formatNumber(dashboard?.orders_this_month)}
+          unavailable={summaryError}
           subtitle="Órdenes pagadas del mes actual"
           icon={ShoppingCart}
           tone="brand"
@@ -336,6 +354,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Ingresos del mes"
           value={loadingSummary ? '...' : formatCOP(dashboard?.revenue_this_month)}
+          unavailable={summaryError}
           subtitle="Ventas pagadas acumuladas"
           icon={DollarSign}
           tone="green"
@@ -344,6 +363,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Ticket promedio"
           value={loadingSummary ? '...' : formatCOP(dashboard?.avg_ticket)}
+          unavailable={summaryError}
           subtitle="Promedio por pedido"
           icon={TrendingUp}
           tone="blue"
@@ -352,6 +372,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Utilidad bruta del mes"
           value={loadingSummary ? '...' : formatCOP(dashboard?.profit_this_month)}
+          unavailable={summaryError}
           subtitle="Ingreso - costo"
           icon={BarChart3}
           tone="green"
@@ -360,6 +381,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Alertas de stock"
           value={loadingSummary ? '...' : formatNumber(dashboard?.low_stock_alerts)}
+          unavailable={summaryError}
           subtitle="Productos por debajo del mínimo"
           icon={AlertTriangle}
           tone="amber"
@@ -371,6 +393,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Pedidos pendientes"
           value={loadingSummary ? '...' : formatNumber(dashboard?.pending_orders)}
+          unavailable={summaryError}
           subtitle="Requieren seguimiento"
           icon={Clock}
           tone="amber"
@@ -379,6 +402,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Ventas del año"
           value={loadingSalesByMonth ? '...' : formatCOP(monthlyTotals.totalYearRevenue)}
+          unavailable={salesByMonthError}
           subtitle={`Año ${year}`}
           icon={DollarSign}
           tone="brand"
@@ -387,6 +411,7 @@ export default function DashboardPage() {
         <MetricCard
           title="Utilidad del año"
           value={loadingSalesByMonth ? '...' : formatCOP(monthlyTotals.totalYearProfit)}
+          unavailable={salesByMonthError}
           subtitle={`Año ${year}`}
           icon={TrendingUp}
           tone="green"
@@ -407,6 +432,8 @@ export default function DashboardPage() {
 
         {loadingSalesByMonth ? (
           <div className="h-56 bg-gray-50 rounded-2xl animate-pulse" />
+        ) : salesByMonthError ? (
+          <p className="admin-dashboard-inline-error" role="status">No se pudo cargar la gráfica de ventas.</p>
         ) : (
           <MiniBarChart data={salesByMonth} valueKey="total_sales" labelKey="month_name" />
         )}
@@ -428,7 +455,9 @@ export default function DashboardPage() {
                 <div key={i} className="h-10 bg-gray-50 rounded animate-pulse" />
               ))}
             </div>
-          ) : topProductsByRevenue.length === 0 ? (
+          ) : topProductsError ? (
+            <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
+          : topProductsByRevenue.length === 0 ? (
             <p className="text-sm text-gray-400">No hay datos disponibles</p>
           ) : (
             <HorizontalBars
@@ -454,7 +483,9 @@ export default function DashboardPage() {
                 <div key={i} className="h-10 bg-gray-50 rounded animate-pulse" />
               ))}
             </div>
-          ) : topLocations.length === 0 ? (
+          ) : salesByLocationError ? (
+            <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
+          : topLocations.length === 0 ? (
             <p className="text-sm text-gray-400">No hay datos disponibles</p>
           ) : (
             <HorizontalBars
@@ -486,7 +517,9 @@ export default function DashboardPage() {
                 <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : lowStock.length === 0 ? (
+          ) : lowStockError ? (
+            <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
+          : lowStock.length === 0 ? (
             <p className="text-sm text-gray-400">No hay alertas de stock por ahora</p>
           ) : (
             <div className="space-y-3">
@@ -533,7 +566,9 @@ export default function DashboardPage() {
                 <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : lowRotation.length === 0 ? (
+          ) : lowRotationError ? (
+            <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
+          : lowRotation.length === 0 ? (
             <p className="text-sm text-gray-400">No hay productos en baja rotación</p>
           ) : (
             <div className="space-y-3">
@@ -586,7 +621,9 @@ export default function DashboardPage() {
                 <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : lastOrders.length === 0 ? (
+          ) : webOrdersError ? (
+            <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
+          : lastOrders.length === 0 ? (
             <p className="text-sm text-gray-400">No hay pedidos web recientes</p>
           ) : (
             <div className="space-y-3">
@@ -634,7 +671,9 @@ export default function DashboardPage() {
                 <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : lastPhysicalSales.length === 0 ? (
+          ) : physicalSalesError ? (
+            <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
+          : lastPhysicalSales.length === 0 ? (
             <p className="text-sm text-gray-400">No hay ventas físicas recientes</p>
           ) : (
             <div className="space-y-3">
