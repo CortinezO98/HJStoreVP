@@ -100,7 +100,7 @@ export default function CatalogPage() {
           productCount={resultCount} sort={filters.orden} filtersVisible={desktopFilters}
           onToggleFilters={() => window.matchMedia('(max-width: 1023px)').matches
             ? setMobileFilters(true) : setDesktopFilters(v => !v)}
-          density={density} onDensity={changeDensity} isLoading={isLoading}/>
+          density={density} onDensity={changeDensity} isLoading={isLoading} mobileOpen={mobileFilters}/>
       </div>
     </div>
     <div className="hj-catalog-wrap hj-catalog-body">
