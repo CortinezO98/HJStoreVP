@@ -26,6 +26,8 @@ import { usersApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
 import toast from 'react-hot-toast'
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 function roleLabel(role) {
     switch (role) {
         case 'super_admin':
@@ -378,7 +380,7 @@ export default function UsersPage() {
       (isSuperAdmin || !['super_admin', 'admin'].includes(target.role))
     const isAdmin = user?.role === 'admin' || isSuperAdmin
 
-    const { data: users = [], isLoading } = useQuery({
+    const { data: users = [], isLoading, isError: usersError, refetch: retryUsers } = useQuery({
         queryKey: ['admin-users'],
         queryFn: () => usersApi.list().then((r) => r.data),
         enabled: isAdmin,
@@ -398,11 +400,10 @@ export default function UsersPage() {
 
     const filteredUsers = useMemo(() => {
         return users.filter((u) => !u.deleted).filter((u) => {
-        const term = search.trim().toLowerCase()
+        const term = normalizeSearch(search.trim())
         const matchesSearch = !term
             ? true
-            : `${u.full_name || ''} ${u.email || ''} ${u.phone || ''}`
-                .toLowerCase()
+            : normalizeSearch(`${u.full_name || ''} ${u.email || ''} ${u.phone || ''}`)
                 .includes(term)
 
         const matchesRole = roleFilter ? String(u.role) === String(roleFilter) : true
@@ -515,12 +516,13 @@ export default function UsersPage() {
             <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="font-bold text-gray-900">Listado de usuarios</h2>
             <p className="text-xs text-gray-500 mt-1">
-                {filteredUsers.length} usuarios encontrados
+                {usersError ? 'No se pudo cargar el listado' : `${filteredUsers.length.toLocaleString('es-CO')} de ${users.filter(u => !u.deleted).length.toLocaleString('es-CO')} usuarios`}
             </p>
             </div>
 
-            <div className="table-responsive">
+            <div className="table-responsive admin-list-table-scroll" role="region" aria-label="Listado de usuarios" tabIndex={0}>
             <table className="table table-hover align-middle admin-users-table mb-0">
+                <caption className="visually-hidden">Usuarios del panel, perfiles, puntos físicos y acciones disponibles</caption>
                 <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th className="text-left px-4 py-3 text-gray-500 font-semibold">Usuario</th>
@@ -543,6 +545,11 @@ export default function UsersPage() {
                         ))}
                     </tr>
                     ))
+                ) : usersError ? (
+                    <tr><td colSpan={6} className="px-4 py-12 text-center">
+                        <p role="alert" className="text-danger mb-3">No se pudo cargar el listado de usuarios.</p>
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => retryUsers()}>Reintentar</button>
+                    </td></tr>
                 ) : filteredUsers.length === 0 ? (
                     <tr>
                     <td colSpan={6} className="px-4 py-16 text-center">
@@ -643,7 +650,7 @@ export default function UsersPage() {
 
         <div className="admin-catalog-pagination">
           <span className="text-secondary small">
-            {filteredUsers.length === 0 ? 'Sin resultados' : `Mostrando ${(currentPage-1)*perPage+1}–${Math.min(currentPage*perPage,filteredUsers.length)} de ${filteredUsers.length}`}
+            {usersError ? 'Datos no disponibles' : filteredUsers.length === 0 ? 'Sin resultados' : `Mostrando ${(currentPage-1)*perPage+1}–${Math.min(currentPage*perPage,filteredUsers.length)} de ${filteredUsers.length}`}
           </span>
           <div className="d-flex flex-wrap align-items-center gap-2">
             <label className="small text-secondary" htmlFor="users-per-page">Por página</label>
