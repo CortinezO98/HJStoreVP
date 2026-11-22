@@ -57,7 +57,7 @@ export default function SearchOverlay({ open, onClose, categories = [], returnFo
       returnFocusRef?.current?.focus?.()
     }
   }, [open, onClose, returnFocusRef])
-  const { data: products = [], isFetching, isError } = useQuery({
+  const { data: products = [], isFetching, isError, refetch } = useQuery({
     queryKey: ['storefront-overlay-search', debounced],
     queryFn: () => productsApi.list({ search: debounced, per_page: 8, page: 1 }).then(r => r.data),
     enabled: open && debounced.length >= 2,
@@ -126,7 +126,7 @@ export default function SearchOverlay({ open, onClose, categories = [], returnFo
           <div id="hj-search-options" role="listbox" aria-label="Resultados de búsqueda">
             {debounced.length < 2 ? <p>Escribe al menos dos caracteres para comenzar.</p> :
               isFetching ? <p role="status">Buscando productos…</p> :
-              isError ? <p>No fue posible buscar. Inténtalo nuevamente.</p> :
+              isError ? <p>No fue posible buscar. <button type="button" onClick={() => refetch()}>Reintentar</button></p> :
               choices.length ? choices.map((item, index) => {
                 const stock = Number(item.total_stock ?? item.stock ?? 0)
                 const image = item.primary_image
