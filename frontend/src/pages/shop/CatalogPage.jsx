@@ -75,6 +75,18 @@ export default function CatalogPage() {
     staleTime: 60000,
   })
   const visibleProducts = listing?.products || []
+  // La API de categorías no publica image_url, pero la ficha del producto sí
+  // devuelve su categoría completa. Una única consulta reutiliza esa imagen.
+  const firstCategoryProduct = visibleProducts.find(item => item.category_slug === filters.categoria)
+  const { data: categoryDetails } = useQuery({
+    queryKey: ['catalog-category-banner', filters.categoria, firstCategoryProduct?.slug],
+    queryFn: () => productsApi.get(firstCategoryProduct.slug).then(response => response.data?.category),
+    enabled: Boolean(filters.categoria && firstCategoryProduct?.slug),
+    staleTime: 5 * 60 * 1000,
+  })
+  const categoryWithImage = category
+    ? { ...category, image_url: categoryDetails?.image_url || category.image_url || '' }
+    : null
   const hasNext = listing?.hasNext || false
   const resultCount = visibleProducts.length
   const categoryOptions = [{ name: 'Todo', slug: '' }, ...activeCategories]
@@ -88,7 +100,7 @@ export default function CatalogPage() {
   const noResults = !isLoading && !isError && visibleProducts.length === 0
   return <div className="hj-catalog-page">
     <div className="hj-catalog-wrap">
-      <CategoryHero category={category} featured={filters.featured}/>
+      <CategoryHero category={categoryWithImage} featured={filters.featured}/>
       <CategoryChips categories={categoryOptions} selected={filters.categoria}
         setMany={setCategory} counts={countByCategory} complete={completePriceCounts}/>
     </div>
