@@ -785,6 +785,52 @@ def restore_homepage_version_as_draft(
     return {"restored_as_draft": True, "published_unchanged": True}
 
 
+# Biblioteca de marca persistente sobre el almacenamiento ya existente.
+# Sin borrado físico: un archivo podría seguir referenciado en portada o historial.
+@router.get("/admin/media-library")
+def list_brand_images(
+    page: int = 1,
+    page_size: int = 24,
+    search: str = "",
+    _: User = Depends(require_super_admin),
+):
+    if settings.STORAGE_BACKEND != "local":
+        raise HTTPException(
+            status_code=409,
+            detail="La biblioteca multimedia requiere almacenamiento local configurado",
+        )
+    if page < 1 or not 1 <= page_size <= 60:
+        raise HTTPException(status_code=422, detail="Paginación no válida")
+    if len(search) > 100:
+        raise HTTPException(status_code=422, detail="Búsqueda demasiado larga")
+    folder = Path(settings.UPLOAD_DIR).resolve() / "branding"
+    if not folder.exists():
+        return {"items": [], "total": 0, "page": page, "page_size": page_size}
+    # Solo los archivos que el propio cargador genera; ignorar symlinks,
+    # rutas ajenas y archivos temporales.
+    import re
+    pattern = re.compile(r"^[0-9a-f]{32}\\.(?:webp|png|jpg|jpeg|gif)$", re.IGNORECASE)
+    query = search.strip().lower()
+    files = []
+    for entry in folder.iterdir():
+        if not pattern.fullmatch(entry.name) or entry.is_symlink() or not entry.is_file():
+            continue
+        if query and query not in entry.name.lower():
+            continue
+        info = entry.stat()
+        files.append((info.st_mtime, entry.name, info.st_size))
+    files.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    offset = (page - 1) * page_size
+    return {
+        "items": [
+            {"url": f"/uploads/branding/{name}", "filename": name,
+             "bytes": size, "updated_at": datetime.fromtimestamp(timestamp).isoformat()}
+            for timestamp, name, size in files[offset:offset + page_size]
+        ],
+        "total": len(files), "page": page, "page_size": page_size,
+    }
+
+
 @router.post("/admin/upload-image", status_code=201)
 async def upload_brand_image(
     file: UploadFile = File(...),
