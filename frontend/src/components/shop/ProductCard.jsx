@@ -1,5 +1,6 @@
 import { formatCOP } from '../../utils/currency'
 import { useProductVariantSummary } from '../../hooks/useProductVariantSummary'
+import { productNameColor } from '../../utils/catalogColors'
 import { Link } from 'react-router-dom'
 import { Plus, Heart, ArrowUpRight } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '../../store'
@@ -14,6 +15,8 @@ export default function ProductCard({ product, label, catalogMode = false, hideC
   const toggleFavorite = useWishlistStore((state) => state.toggle)
   const favorite = useWishlistStore((state) => state.items.some((item) => item.id === product.id))
   const { colors, hasPriceRange } = useProductVariantSummary(product, catalogMode)
+  const knownNameColor = catalogMode && !product.has_variants ? productNameColor(product) : ''
+  const cardColors = colors.length ? colors : knownNameColor ? [knownNameColor] : []
   const stock = product.total_stock ?? product.stock
   const soldOut = stock !== null && stock !== undefined && Number(stock) <= 0
   const image = product.primary_image
@@ -75,11 +78,11 @@ export default function ProductCard({ product, label, catalogMode = false, hideC
         )}
       </div>
       <div className="editorial-product-details">
-        {catalogMode && colors.length > 0 && <div className="hj-catalog-variant-colors" aria-label="Colores disponibles">
-          {colors.slice(0, 6).map(color => <span key={color}
+        {catalogMode && cardColors.length > 0 && <div className="hj-catalog-variant-colors" aria-label="Colores disponibles">
+          {cardColors.slice(0, 6).map(color => <span key={color}
             title={color} aria-label={color} role="img" className="hj-catalog-variant-dot"
             data-color={color.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')}/>)}
-          <small>{colors.length} colores</small>
+          {cardColors.length > 1 && <small>{cardColors.length} colores</small>}
         </div>}
         {!hideCategory && product.category_name && <span className="editorial-product-category">{product.category_name}</span>}
         <Link to={`/producto/${product.slug}`} className="editorial-product-info">
