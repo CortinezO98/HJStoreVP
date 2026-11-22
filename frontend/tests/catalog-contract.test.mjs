@@ -1,0 +1,56 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+
+const source = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8')
+
+test('búsqueda solo en header; sin buscador duplicado del catálogo', () => {
+  const page = source('src/pages/shop/CatalogPage.jsx')
+  const header = source('src/components/layout/ShopLayout.jsx')
+  assert.equal(page.includes('hj-catalog-sidebar-search'), false)
+  assert.ok(header.includes('<SearchOverlay'))
+  assert.ok(header.includes("event.key !== '/'"))
+})
+
+test('toolbar sticky y filtros accesibles en desktop y móvil', () => {
+  const css = source('src/catalog-redesign.css')
+  const controls = source('src/components/shop/CatalogControls.jsx')
+  assert.match(css, /\.hj-catalog-sticky\s*\{[^}]*position:\s*sticky/)
+  assert.ok(controls.includes('aria-label={`Filtrar por color'))
+  assert.ok(controls.includes("filters.categoria === 'gorras' && <section>"))
+  assert.ok(controls.includes('Guía de tallas'))
+  assert.ok(controls.includes('hj-filter-sheet'))
+})
+
+test('tarjetas preservan compra y favoritos, muestran stock y variantes', () => {
+  const card = source('src/components/shop/ProductCard.jsx')
+  assert.ok(card.includes('AGREGAR AL CARRITO'))
+  assert.ok(card.includes('ELEGIR COLOR Y TALLA'))
+  assert.ok(card.includes('Quedan {stock} unidades'))
+  assert.ok(card.includes('aria-pressed={favorite}'))
+  assert.ok(card.includes('cardColors'))
+  assert.ok(card.includes('!hideCategory'))
+})
+
+test('moneda comercial compartida en vistas públicas de compra', () => {
+  for (const filename of [
+    'src/components/shop/ProductCard.jsx',
+    'src/components/shop/MiniCartDrawer.jsx',
+    'src/components/shop/SearchOverlay.jsx',
+    'src/pages/shop/ProductPage.jsx',
+    'src/pages/shop/CartPage.jsx',
+    'src/pages/shop/CheckoutPage.jsx',
+    'src/pages/shop/AccountPage.jsx',
+    'src/pages/shop/PaymentConfirmationPage.jsx',
+    'src/components/shop/PostSaleCustomer.jsx',
+  ]) {
+    assert.ok(source(filename).includes("utils/currency"), filename)
+  }
+})
+
+test('banner omite imagen si falta y reutiliza detalle público cuando existe', () => {
+  const hero = source('src/components/shop/CategoryHero.jsx')
+  const page = source('src/pages/shop/CatalogPage.jsx')
+  assert.ok(hero.includes('{image && <div'))
+  assert.ok(page.includes('categoryDetails?.image_url'))
+})
