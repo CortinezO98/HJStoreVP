@@ -44,7 +44,7 @@ export default function HomeStudioInspector({
   const isHidden = selected !== 'hero' && hidden.includes(selected)
   const heading = custom?.title || SECTION_NAMES[selected] || 'Sección seleccionada'
   const media = selectedMedia?.kind === selected ||
-    (selected.startsWith('custom:') && selectedMedia?.kind === 'custom')
+    (selected.startsWith('custom:') && selectedMedia?.kind === 'custom' && selected === 'custom:' + selectedMedia?.blockId)
     ? selectedMedia : null
   const target = (() => {
     if (!media) return null
