@@ -398,6 +398,8 @@ function TransferModal({ products, locations, onClose }) {
   )
 }
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 export default function InventoryPage() {
   const queryClient = useQueryClient()
   const userRole = useAuthStore((state) => state.user?.role)
@@ -463,9 +465,9 @@ export default function InventoryPage() {
   const lowStockSet = useMemo(() => new Set(lowStock.map(row => Number(row.product_id))), [lowStock])
 
   const filteredProducts = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase('es')
+    const term = normalizeSearch(search.trim())
     return products.filter(product => {
-      const text = `${product.name} ${product.sku} ${product.category_name || ''}`.toLocaleLowerCase('es')
+      const text = normalizeSearch(`${product.name} ${product.sku} ${product.category_name || ''}`)
       const matchesTerm = !term || text.includes(term)
       const flagged = lowStockSet.has(Number(product.id))
       const stock = Number(product.total_stock || 0)
@@ -740,8 +742,9 @@ export default function InventoryPage() {
           </div>
           <span className="badge text-bg-light border text-secondary">{filteredProducts.length} resultados</span>
         </div>
-        <div className="table-responsive">
+        <div className="table-responsive admin-list-table-scroll" role="region" aria-label="Tabla de existencias de productos" tabIndex={0}>
           <table className="table table-hover align-middle admin-inventory-table mb-0">
+            <caption className="visually-hidden">Inventario, stock total, existencias por canal y acciones</caption>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">Producto</th>
