@@ -8,6 +8,7 @@ import ProductCard from '../../components/shop/ProductCard'
 import CategoryHero from '../../components/shop/CategoryHero'
 import { CategoryChips, CatalogToolbar, FilterFields, FilterSheet } from '../../components/shop/CatalogControls'
 import { ErrorState } from '../../components/shop/StoreUI'
+import { mergeCatalogPages } from '../../utils/catalogPagination'
 
 function readDensity() {
   try { return window.localStorage.getItem('hj-catalog-density') === 'compact' ? 'compact' : 'large' }
@@ -58,27 +59,26 @@ export default function CatalogPage() {
       category: filters.categoria || undefined, search: filters.q || undefined,
     }).then(r => r.data),
   })
-  const { data: products = [], isLoading, isError, refetch } = useQuery({
+  const { data: listing, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['catalog-redesign', apiFilters.category, apiFilters.search, apiFilters.sort,
       apiFilters.min_price, apiFilters.max_price, apiFilters.in_stock, apiFilters.featured,
       apiFilters.color, apiFilters.talla, apiFilters.presentacion, apiFilters.page],
-    queryFn: () => productsApi.list(apiFilters).then(r => r.data),
+    queryFn: async () => {
+      const pages = await Promise.all(
+        Array.from({ length: apiFilters.page }, (_, index) =>
+          productsApi.list({ ...apiFilters, page: index + 1 }).then(response => response.data))
+      )
+      return mergeCatalogPages(pages)
+    },
   })
   const { data: allProducts = [], isSuccess: allProductsReady } = useQuery({
     queryKey: ['catalog-cross-sell-products'],
     queryFn: () => productsApi.list({ page: 1, per_page: 100, sort: 'featured' }).then(r => r.data),
     staleTime: 60000,
   })
-  const [seen, setSeen] = useState([])
-  useEffect(() => setSeen([]), [filters.categoria, filters.q, filters.orden, filters.color,
-    filters.talla, filters.presentacion, filters.min_price, filters.max_price, filters.disponible, filters.featured])
-  useEffect(() => {
-    if (isLoading || isError || !Array.isArray(products)) return
-    setSeen(old => [...new Map([...old, ...products].map(item => [item.id, item])).values()])
-  }, [products, isLoading, isError])
-  const visibleProducts = filters.page <= 1 ? products : seen
-  const hasNext = Array.isArray(products) && products.length === 24
-  const resultCount = isLoading ? 0 : visibleProducts.length
+  const visibleProducts = listing?.products || []
+  const hasNext = listing?.hasNext || false
+  const resultCount = visibleProducts.length
   const categoryOptions = [{ name: 'Todo', slug: '' }, ...activeCategories]
   const completePriceCounts = allProductsReady && allProducts.length < 100
   const countByCategory = Object.fromEntries([
@@ -87,7 +87,7 @@ export default function CatalogPage() {
   ])
   const setCategory = values => setMany(values)
   const sidebarProps = { filters, setMany, variants, allProducts, complete: completePriceCounts, categories: activeCategories }
-  const noResults = !isLoading && !isError && products.length === 0 && filters.page === 1
+  const noResults = !isLoading && !isError && visibleProducts.length === 0
   return <div className="hj-catalog-page">
     <div className="hj-catalog-wrap">
       <CategoryHero category={category} featured={filters.featured}/>
@@ -100,7 +100,7 @@ export default function CatalogPage() {
           productCount={resultCount} sort={filters.orden} filtersVisible={desktopFilters}
           onToggleFilters={() => window.matchMedia('(max-width: 1023px)').matches
             ? setMobileFilters(true) : setDesktopFilters(v => !v)}
-          density={density} onDensity={changeDensity} isLoading={isLoading} mobileOpen={mobileFilters}/>
+          density={density} onDensity={changeDensity} isLoading={isLoading || isFetching} mobileOpen={mobileFilters}/>
       </div>
     </div>
     <div className="hj-catalog-wrap hj-catalog-body">
@@ -115,7 +115,7 @@ export default function CatalogPage() {
         <FilterFields {...sidebarProps}/>
       </aside>}
       <section className="hj-catalog-main" aria-label="Productos del catálogo">
-        {isLoading && !seen.length ? <CatalogSkeleton/> :
+        {isLoading ? <CatalogSkeleton/> :
           isError ? <ErrorState onRetry={() => refetch()}/> : noResults ?
           <div className="hj-catalog-empty" role="status">
             <h2>No hay {category?.name?.toLowerCase() || 'productos'} con estos filtros</h2>
