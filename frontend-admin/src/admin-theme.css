@@ -720,6 +720,71 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   .admin-app-shell .hj-studio-checklist-items .btn { margin-left: 29px; }
 }
 
+/* Biblioteca de fotos del borrador: selección, miniaturas y controles compactos. */
+.admin-app-shell .hj-home-image-card {
+  background: #fff; border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius-sm); padding: 9px;
+  height: 100%;
+}
+.admin-app-shell .hj-home-image-card > img {
+  display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover;
+  border-radius: 6px; background: var(--hj-hover);
+}
+.admin-app-shell .hj-home-image-card-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  align-items: center; justify-content: space-between; margin-top: 10px;
+}
+.admin-app-shell .hj-home-image-card-actions > div { display: flex; gap: 4px; }
+.admin-app-shell .hj-home-image-card-actions strong { font-size: 12px; }
+.admin-app-shell .hj-library-backdrop {
+  position: fixed; inset: 0; z-index: 11990;
+  background: rgba(10,10,10,.55); display: grid; place-items: center;
+  padding: 15px;
+}
+.admin-app-shell .hj-library-dialog {
+  width: min(860px, 100%); max-height: min(90dvh, 900px);
+  overflow: auto; padding: clamp(16px, 2vw, 24px);
+  border-radius: var(--hj-radius); background: #fff;
+  box-shadow: var(--hj-shadow-lg); border: 1px solid var(--hj-line);
+}
+.admin-app-shell .hj-library-search { position: relative; display: block; margin: 18px 0; }
+.admin-app-shell .hj-library-search svg {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; color: var(--hj-muted);
+}
+.admin-app-shell .hj-library-search input { padding-left: 38px; }
+.admin-app-shell .hj-library-grid {
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+}
+.admin-app-shell .hj-library-tile {
+  appearance: none; display: flex; flex-direction: column;
+  overflow: hidden; border-radius: var(--hj-radius-sm);
+  padding: 5px; border: 1px solid var(--hj-line);
+  background: #fff; text-align: left; cursor: pointer;
+}
+.admin-app-shell .hj-library-tile img {
+  width: 100%; height: 125px; object-fit: cover; border-radius: 5px;
+  background: var(--hj-hover);
+}
+.admin-app-shell .hj-library-tile span {
+  font-size: 11.5px; color: var(--hj-text);
+  padding: 7px 4px 3px; line-height: 1.3;
+}
+.admin-app-shell .hj-library-tile:hover,
+.admin-app-shell .hj-library-tile:focus-visible {
+  border-color: var(--hj-ink); box-shadow: 0 0 0 1px var(--hj-ink);
+}
+.admin-app-shell .hj-marketing-photo-input { margin: 10px 0; }
+@media (max-width: 768px) {
+  .admin-app-shell .hj-library-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 400px) {
+  .admin-app-shell .hj-library-grid { grid-template-columns: 1fr; }
+  .admin-app-shell .hj-library-tile { flex-direction: row; gap: 10px; align-items: center; }
+  .admin-app-shell .hj-library-tile img { width: 90px; height: 76px; flex: none; }
+}
+
 /* ---------- Estados (error de módulo, vacío, carga) ---------- */
 .hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
 .hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
