@@ -47,7 +47,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
     if (!order.includes(id)) order.splice(order.indexOf(after) + 1, 0, id)
   }
   const hidden = new Set(draft.homepage_hidden_sections || [])
-  const banners = (draft.homepage_banners || []).filter(item => item.active && item.image_url)
+  const banners = (draft.homepage_banners || []).map((item, index) => ({ ...item, __studioIndex: index })).filter(item => item.active && item.image_url)
   const visuals = (draft.homepage_visual_blocks || []).filter(block => block.active && block.items?.length)
   const heroImage = (draft.hero_images || [])[0]
   const statementImage = (draft.statement_images || [])[0]
@@ -55,7 +55,12 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
   const loyalty = draft.homepage_loyalty_banner
   const heroPresentation = draft.hero_presentation || {}
   const statementPresentation = draft.statement_presentation || {}
-  const click = (id) => onSelect?.(id)
+  const click = (id, event) => {
+    const field = event?.target?.closest?.('[data-studio-field]')?.dataset.studioField || ''
+    const indexText = event?.target?.closest?.('[data-studio-index]')?.dataset.studioIndex
+    const index = indexText === undefined ? 0 : Number(indexText)
+    onSelect?.(id, { field, index: Number.isInteger(index) ? index : 0 })
+  }
 
   return <div className="bg-white text-black mx-auto overflow-hidden"
     style={{ maxWidth: mobile ? 375 : 1000, width: '100%', boxShadow: '0 12px 42px #0002',
@@ -70,8 +75,8 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       </div>}
       <div className="d-flex gap-2"><Search size={16}/><UserRound size={16}/><ShoppingBag size={16}/></div>
     </div>
-    <button type="button" onClick={() => click('hero')} className="w-100 text-start border-0 p-0"
-      aria-label="Seleccionar banner principal" style={{ outline: selected === 'hero' ? '3px solid #2563eb' : 'none',
+    <button type="button" onClick={event => click('hero', event)} className="w-100 text-start border-0 p-0"
+      aria-label="Seleccionar banner principal" style={{ outline: selected === 'hero' ? '3px solid #E1141E' : 'none',
         outlineOffset: -3, background: '#171717', color: '#fff' }}>
       <div className="position-relative overflow-hidden d-flex"
         style={{ height: mobile ? 400 : 370,
@@ -92,14 +97,14 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
           textAlign: heroPresentation.text_align || 'left',
           marginLeft: heroPresentation.text_align === 'right' ? 'auto' : undefined,
           marginInline: heroPresentation.text_align === 'center' ? 'auto' : undefined }}>
-          <small>{draft.hero_eyebrow}</small>
-          <h1 style={{ fontFamily:'Impact, Arial Narrow, sans-serif',
+          <small data-studio-field="hero_eyebrow">{draft.hero_eyebrow}</small>
+          <h1 data-studio-field="hero_title" style={{ fontFamily:'Impact, Arial Narrow, sans-serif',
             fontSize: mobile ? 38 : 48, fontWeight:900, lineHeight:1,
             margin:'10px 0', textTransform:'uppercase' }}>
             {draft.hero_title || 'ESTILO PROPIO'}
           </h1>
-          <p>{draft.hero_description}</p>
-          <span className="d-inline-flex align-items-center gap-2 px-3 py-2 bg-white text-black fw-bold">
+          <p data-studio-field="hero_description">{draft.hero_description}</p>
+          <span data-studio-field="hero_button" className="d-inline-flex align-items-center gap-2 px-3 py-2 bg-white text-black fw-bold">
             {draft.hero_button || 'EXPLORAR'} <ArrowUpRight size={14}/>
           </span>
           {!heroImage && <small className="d-block mt-3" style={{opacity:.7}}>
@@ -109,10 +114,10 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       </div>
     </button>
     {order.filter(id => !hidden.has(id)).map(id => <button
-      key={id} type="button" onClick={() => click(id)}
+      key={id} type="button" onClick={event => click(id, event)}
       className="d-block w-100 text-start border-0 p-0 bg-white text-black"
       aria-label={`Seleccionar sección ${id.startsWith('custom:') ? 'personalizada' : LABELS[id]}`}
-      style={{ outline: selected === id ? '3px solid #2563eb' : 'none', outlineOffset: -3 }}>
+      style={{ outline: selected === id ? '3px solid #E1141E' : 'none', outlineOffset: -3 }}>
       {id.startsWith('custom:') ? (() => {
         const block = custom.find(entry => 'custom:' + entry.id === id)
         if (!block) return null
@@ -122,7 +127,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
             ? 'CARRUSEL' : block.type === 'mosaic' ? 'MOSAICO' : 'BANNER'} PERSONALIZADO
             {!block.active && ' · AÚN NO PUBLICADO'}
           </p>
-          <h2 style={{fontSize:mobile ? 20 : 28, fontWeight:900}}>
+          <h2 data-studio-field="title" style={{fontSize:mobile ? 20 : 28, fontWeight:900}}>
             {block.title || 'Nueva sección'}
           </h2>
           {images.length ? <div className="d-grid gap-2 mt-2"
@@ -145,7 +150,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       id === 'campaigns' ? banners.length > 0 && <div className="p-3">
         <h2 className="fw-black mb-3" style={{ fontSize: mobile ? 18 : 26 }}>{LABELS[id]}</h2>
         <div className="d-grid gap-2" style={{ gridTemplateColumns: mobile ? '1fr' : 'repeat(2,1fr)' }}>
-          {banners.map((item,i) => <Tile item={item} mobile={mobile} key={i}/>)}
+          {banners.map((item,i) => <div key={i} data-studio-index={item.__studioIndex}><Tile item={item} mobile={mobile}/></div>)}
         </div>
       </div> :
       id === 'visual' ? visuals.length > 0 && <div className="p-3">
@@ -169,8 +174,8 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
             loyalty.text_position === 'center' ? (mobile ? 70 : 100) : 0,
         }}>
           <small>{loyalty.eyebrow}</small>
-          <h2 style={{ fontWeight:900,fontSize:mobile ? 28 : 42 }}>{loyalty.title}</h2>
-          <p>{loyalty.description}</p>
+          <h2 data-studio-field="title" style={{ fontWeight:900,fontSize:mobile ? 28 : 42 }}>{loyalty.title}</h2>
+          <p data-studio-field="description">{loyalty.description}</p>
           <span className="d-inline-flex bg-white text-black px-3 py-2">{loyalty.button_text}</span>
         </div>
       </div> :
