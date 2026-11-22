@@ -52,7 +52,7 @@ export default function CatalogPage() {
   })
   const activeCategories = categories.filter(c => c.active !== false)
   const category = activeCategories.find(c => c.slug === filters.categoria)
-  const { data: variants = { color: [], talla: [], presentacion: [] }, isSuccess: variantsReady } = useQuery({
+  const { data: variants = { color: [], talla: [], presentacion: [] }, isSuccess: variantsReady, isError: variantsError } = useQuery({
     queryKey: ['catalog-variant-filters', filters.categoria, filters.q],
     queryFn: () => productsApi.filters({
       category: filters.categoria || undefined, search: filters.q || undefined,
@@ -66,7 +66,7 @@ export default function CatalogPage() {
     queryKey: ['catalog-redesign', apiFilters.category, apiFilters.search, apiFilters.sort,
       apiFilters.min_price, apiFilters.max_price, apiFilters.in_stock, apiFilters.featured,
       apiFilters.color, standaloneColorFallback, apiFilters.talla, apiFilters.presentacion, apiFilters.page],
-    enabled: !filters.color || variantsReady,
+    enabled: !filters.color || variantsReady || variantsError,
     queryFn: async () => {
       const pages = await Promise.all(
         Array.from({ length: apiFilters.page }, (_, index) =>
