@@ -522,6 +522,119 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   }
 }
 
+
+/* Inicio editable: navegación orientada a tareas, sin alterar la publicación. */
+.admin-app-shell .hj-home-guide {
+  background: #fff;
+  border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius);
+  box-shadow: var(--hj-shadow);
+  padding: clamp(16px, 2vw, 24px);
+  margin-bottom: 18px;
+}
+.admin-app-shell .hj-home-guide-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.admin-app-shell .hj-home-guide-heading > div { flex: 1 1 320px; }
+.admin-app-shell .hj-home-guide-kicker {
+  display: block;
+  color: var(--hj-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.admin-app-shell .hj-home-guide-heading h2 {
+  margin: 5px 0;
+  color: var(--hj-ink);
+  font-size: clamp(17px, 1.6vw, 21px);
+  font-weight: 800;
+}
+.admin-app-shell .hj-home-guide-heading p {
+  margin: 0;
+  max-width: 75ch;
+  font-size: 13px;
+  color: var(--hj-muted);
+  line-height: 1.55;
+}
+.admin-app-shell .hj-home-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+.admin-app-shell .hj-home-guide-step {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px;
+  border-radius: var(--hj-radius-sm);
+  background: var(--hj-bg);
+  border: 1px solid var(--hj-line);
+}
+.admin-app-shell .hj-home-guide-step-icon {
+  flex: 0 0 35px;
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #fff;
+  border: 1px solid var(--hj-line);
+  color: var(--hj-ink);
+}
+.admin-app-shell .hj-home-guide-step strong { font-size: 13px; color: var(--hj-ink); }
+.admin-app-shell .hj-home-guide-step p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--hj-muted);
+}
+.admin-app-shell .hj-home-guide-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--hj-success);
+  font-weight: 600;
+  font-size: 12px;
+}
+.admin-app-shell .hj-home-guide-note svg { flex-shrink: 0; }
+.admin-app-shell .hj-studio-quick-actions {
+  border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius);
+  background: #fff;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.admin-app-shell .hj-studio-quick-actions > strong { font-size: 13px; }
+.admin-app-shell #studio-section-editor { scroll-margin-top: 85px; }
+.admin-app-shell .hj-settings-hero-note {
+  padding: 12px 14px;
+  border-radius: var(--hj-radius-sm);
+  border: 1px solid var(--hj-line);
+  background: var(--hj-bg);
+  color: var(--hj-muted);
+  line-height: 1.6;
+}
+.admin-app-shell .hj-settings-hero-note a {
+  color: var(--hj-ink);
+  font-weight: 700;
+}
+@media (max-width: 900px) {
+  .admin-app-shell .hj-home-guide-steps { grid-template-columns: 1fr; }
+  .admin-app-shell .hj-home-guide-step { padding: 12px; }
+}
+@media (max-width: 575px) {
+  .admin-app-shell .hj-home-guide-heading > .btn { width: 100%; }
+  .admin-app-shell .hj-studio-quick-actions .btn { flex: 1 1 100%; }
+}
+
 /* ---------- Estados (error de módulo, vacío, carga) ---------- */
 .hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
 .hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
