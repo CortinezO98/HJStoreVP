@@ -81,11 +81,12 @@ export function FilterFields({ filters, setMany, variants = {}, suggestedColors 
       <div className="hj-catalog-filter-title">Talla</div>
       <div className="hj-catalog-size-options">
         {sizes.map(size => {
-          const available = (variants.talla || []).some(item => item.toLocaleLowerCase('es') === size.toLocaleLowerCase('es'))
-          return <button type="button" key={size} aria-pressed={filters.talla === size}
-            disabled={!available && filters.talla !== size}
-            title={!available ? 'Todavía no hay variantes con esta talla' : undefined}
-            onClick={() => setMany({ talla: filters.talla === size ? '' : size })}>{size}</button>
+          const matched = (variants.talla || []).find(item => normalizeColor(item) === normalizeColor(size))
+          const selected = normalizeColor(filters.talla) === normalizeColor(size)
+          return <button type="button" key={size} aria-pressed={selected}
+            disabled={!matched && !selected}
+            title={!matched ? 'Todavía no hay variantes con esta talla' : undefined}
+            onClick={() => setMany({ talla: selected ? '' : matched || size })}>{size}</button>
         })}
       </div>
       <button type="button" className="hj-catalog-size-guide" aria-expanded={sizeGuideOpen}
