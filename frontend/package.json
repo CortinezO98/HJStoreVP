@@ -11,7 +11,8 @@
     "verify:routes": "node scripts/verify-storefront-routes.mjs",
     "verify:checkout": "node scripts/verify-cart-checkout.mjs",
     "verify:bundle": "node scripts/verify-production-bundle.mjs dist",
-    "verify:catalog": "node --test tests/catalog-*.test.mjs"
+    "verify:catalog": "node --test tests/catalog-*.test.mjs",
+    "capture:catalog": "node scripts/capture-catalog.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
