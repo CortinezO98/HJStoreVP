@@ -10,6 +10,8 @@ import { BannerPresentationControls, CarouselPlaybackControls } from '../compone
 import CampaignDestinationEditor from '../components/storefront/CampaignDestinationEditor'
 import ImageCropModal from '../components/products/ImageCropModal'
 import StorefrontWorkflowGuide from '../components/storefront/StorefrontWorkflowGuide'
+import StorefrontImageDropzone from '../components/storefront/StorefrontImageDropzone'
+import HomeStudioChecklist from '../components/storefront/HomeStudioChecklist'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 import { confirmAction } from '../components/ui/ConfirmDialog'
 
@@ -57,6 +59,7 @@ export default function HomeStudioPage() {
   const [crop, setCrop] = useState(null)
   const [device, setDevice] = useState('desktop')
   const [selected, setSelected] = useState('hero')
+  const [draggedSection, setDraggedSection] = useState(null)
   const [showPreview, setShowPreview] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [versions, setVersions] = useState([])
@@ -141,6 +144,22 @@ export default function HomeStudioPage() {
     const next = [...order]
     ;[next[i], next[j]] = [next[j], next[i]]
     update('homepage_section_order', next)
+  }
+  const dropSection = targetId => {
+    if (!draggedSection || draggedSection === targetId || busy || uploading) {
+      setDraggedSection(null)
+      return
+    }
+    const next = [...order]
+    const oldIndex = next.indexOf(draggedSection)
+    const newIndex = next.indexOf(targetId)
+    if (oldIndex >= 0 && newIndex >= 0) {
+      next.splice(oldIndex, 1)
+      next.splice(newIndex, 0, draggedSection)
+      update('homepage_section_order', next)
+      setSelected(draggedSection)
+    }
+    setDraggedSection(null)
   }
   const toggle = id => {
     const list = new Set(hidden)
@@ -283,6 +302,11 @@ export default function HomeStudioPage() {
           }}>{label}</button>)}
       </div>
     </div>
+    <HomeStudioChecklist draft={draft} changed={changed} hasSavedDraft={hasSavedDraft}
+      conflict={conflict} onSelect={id => {
+        setSelected(id)
+        document.getElementById('studio-section-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }}/>
     {storageHealth && <div className={storageHealth.in_sync
       ? 'alert alert-light border small' : 'alert alert-warning small'} role="status">
       <strong>Almacenamiento visual:</strong> {!storageHealth.schema_ready
@@ -358,11 +382,16 @@ export default function HomeStudioPage() {
               <Plus size={14} className="me-1"/>Crear {label.toLowerCase()}
             </button>)}
           </div>
-          <p className="small text-secondary">Selecciona una sección para editarla. Las flechas cambian su posición; el interruptor controla su visibilidad.</p>
+          <p className="small text-secondary">Selecciona una sección para editarla. Arrastra para ordenarla, utiliza las flechas o marca su visibilidad. En celular utiliza las flechas.</p>
           <button type="button" className="btn btn-outline-secondary w-100 text-start mb-2"
             onClick={() => setSelected('hero')}>01 · Banner principal (siempre visible)</button>
-          {order.map((id, i) => <div key={id}
-            className={`d-flex gap-2 align-items-center border rounded px-2 py-2 mb-2 ${selected === id ? 'border-primary bg-light' : ''}`}>
+          {order.map((id, i) => <div key={id} draggable={!disabled}
+            onDragStart={event => { setDraggedSection(id); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', id) }}
+            onDragOver={event => { if (!disabled) event.preventDefault() }}
+            onDrop={event => { event.preventDefault(); dropSection(id) }}
+            onDragEnd={() => setDraggedSection(null)}
+            className={`hj-studio-section-row d-flex gap-2 align-items-center border rounded px-2 py-2 mb-2 ${selected === id ? 'border-primary bg-light' : ''} ${draggedSection === id ? 'is-dragging' : ''}`}>
+            <span className="hj-studio-drag-handle" title="Arrastra para cambiar de orden" aria-hidden="true">⋮⋮</span>
             <input type="checkbox" checked={!hidden.includes(id)} aria-label={`Mostrar ${id}`}
               onChange={() => toggle(id)} />
             <button type="button" className="btn btn-link text-dark text-start flex-grow-1 text-decoration-none p-0"
@@ -413,11 +442,11 @@ export default function HomeStudioPage() {
                 onChange={next => update('hero_carousel_settings', next)}/>
             </div>
             <div className="col-12">
-              <label className="form-label" htmlFor="studio-hero-photo">Agregar fotografía al carrusel principal (máx. 8)</label>
-              <p className="small text-secondary mb-2">Formatos JPG, PNG o WebP. Recortaremos la fotografía antes de incorporarla al borrador; revisa también la vista de celular.</p>
-              <input id="studio-hero-photo" className="form-control" type="file" accept="image/png,image/jpeg,image/webp"
+              <StorefrontImageDropzone id="studio-hero-photo"
+                label="Agregar fotografía al banner principal (máx. 8)"
+                hint="Arrastra o selecciona JPG, PNG o WebP. Podrás recortarla antes de guardar."
                 disabled={disabled || (draft.hero_images || []).length >= 8}
-                onChange={e => { startCrop('hero_images',0,e.target.files?.[0]);e.target.value='' }}/>
+                onFile={file => startCrop('hero_images', 0, file)} />
             </div>
             {(draft.hero_images || []).map((image,i) => <div className="col-6" key={image}>
               <img src={imageSrc(image)} alt={`Imagen principal ${i+1}`}
@@ -462,12 +491,12 @@ export default function HomeStudioPage() {
               <CampaignDestinationEditor id={`studio-campaign-${i}`} value={b}
                 onChange={next => update('homepage_banners',
                   draft.homepage_banners.map((item,j) => j === i ? next : item))}/>
-              {['image_url','mobile_image_url'].map(field => <label className="form-label d-block" key={field}>
-                {field==='image_url'?'Imagen escritorio':'Imagen celular (opcional)'}
-                <input type="file" className="form-control" accept="image/png,image/jpeg,image/webp"
-                  disabled={disabled}
-                  onChange={e => { startCrop(field,i,e.target.files?.[0]);e.target.value='' }}/>
-              </label>)}
+              {['image_url','mobile_image_url'].map(field => <StorefrontImageDropzone
+                key={field} id={`studio-campaign-${i}-${field}`}
+                label={field === 'image_url' ? 'Fotografía de escritorio' : 'Fotografía para celular (opcional)'}
+                hint={field === 'image_url' ? 'JPG, PNG o WebP · encuadre horizontal' : 'JPG, PNG o WebP · encuadre vertical'}
+                disabled={disabled} compact
+                onFile={file => startCrop(field, i, file)} />)}
               {['starts_at','ends_at'].map((field,j) => <label className="form-label d-block" key={field}>
                 {j===0?'Publicar desde (Bogotá)':'Retirar desde (Bogotá)'}
                 <input type="datetime-local" className="form-control" value={b[field]||''}
