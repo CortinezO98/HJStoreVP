@@ -58,3 +58,51 @@ Abrir:
 Validar la compra con productos sin variantes y la navegación al detalle con variantes, sin confirmar pedidos reales.
 
 La compilación, las pruebas de bundle y las pruebas visuales deben realizarse en el entorno local; la publicación de código por GitHub no equivale a validación exitosa.
+
+
+## Fase de estabilización y correcciones visuales
+
+- Búsqueda solo en el header (lupa o tecla `/`); eliminado el buscador lateral duplicado.
+- Color se obtiene de facetas de variantes. Cuando una categoría tiene productos individuales con colores explícitos en su nombre, se usan sus nombres reales como respaldo de frontend (negra, blanca, azul, beige, etc.). El catálogo todavía necesita un atributo normalizado por producto para filtrar de forma exacta a gran escala.
+- Tallas S/M, L/XL y Ajustable exclusivas de gorras; las no configuradas se muestran deshabilitadas. Guía contextual sin inventar medidas.
+- Puntos de color de variantes mediante ficha pública, y de productos individuales cuando el nombre identifica un color. `Desde` solo cuando el backend devuelve variantes con precios distintos.
+- Formato único de COP en vistas de compra y posventa: `$40.000`, sin espacios.
+- Paginación agrupada desde páginas reales por URL, sin estado local compartido entre filtros o historial. Pruebas Node para paginación, query params, colores y COP.
+- Imagen de categoría procedente de la ficha pública del primer producto de esa categoría; sin reservar espacio si no hay imagen.
+- La barra del catálogo sigue en `position: sticky`; el botón de filtros y el selector de orden comparten altura.
+
+### Pruebas automatizadas del catálogo
+
+```bat
+cd /d C:\Users\jjcor\Documents\Github\HJStoreVP\frontend
+npm run verify:catalog
+npm run verify:routes
+npm run verify:checkout
+npm run build
+npm run verify:bundle
+```
+
+### Capturas funcionales reproducibles (máquina del desarrollador)
+
+Para verificar *la tienda real que ejecutas*, arranca frontend/backend con Docker
+y ejecuta desde `frontend/`:
+
+```bat
+npm install --no-save playwright
+npx playwright install chromium
+npm run capture:catalog
+```
+
+Se guardan en `frontend/artifacts/catalog/` las capturas:
+1. `01-toolbar-sticky.png`
+2. `02-filtros-chips-url.png`
+3. `03-sin-resultados.png`
+4. `04-cargando.png`
+5. `05-error-api.png`
+6. `06-movil-375-filtros-abiertos.png`
+7. `07-buscador-abierto.png`
+
+Las capturas de carga y error interceptan temporalmente la API desde Playwright:
+*no modifican archivos ni registros del backend*. Los archivos resultantes se
+ignoran en Git. El script requiere que `localhost:5173` esté accesible desde
+Windows y que el backend local funcione para las escenas con datos reales.
