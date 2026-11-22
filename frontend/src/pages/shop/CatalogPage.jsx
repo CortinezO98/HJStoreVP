@@ -119,24 +119,27 @@ export default function CatalogPage() {
     : featured === 'true' ? '⭐ Productos destacados' : 'Catálogo'
 
   return (
-    <div className="editorial-catalog store-container store-section">
+    <div className="editorial-catalog store-container store-section store-catalog-premium">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="store-catalog-intro">
+        <div className="store-catalog-intro-copy">
+          <span className="store-catalog-eyebrow">HJ STOREVP / SELECCIÓN</span>
           <h1 className="editorial-catalog-title">{pageTitle.toUpperCase()}</h1>
           {!isLoading && (
-            <p className="text-gray-500 text-sm mt-1">
-              Mostrando {products?.length || 0} productos de esta página
+            <p className="store-catalog-subtitle">
+              Explora nuestra selección de productos. {products?.length || 0} referencias en esta página
               {currentSearch && <> para "<span className="font-medium text-gray-700">{currentSearch}</span>"</>}
             </p>
           )}
         </div>
 
         {/* Sort + filtros mobile */}
-        <div className="flex items-center gap-2">
+        <div className="store-catalog-intro-actions">
+          <label className="store-catalog-sort-label" htmlFor="catalog-sort-desktop">Ordenar por</label>
           <select
-            className="input text-sm py-2 hidden sm:block"
+            id="catalog-sort-desktop"
+            className="store-catalog-sort-select hidden sm:block"
             value={sort}
             onChange={e => setFilter('sort', e.target.value)}
           >
@@ -150,7 +153,7 @@ export default function CatalogPage() {
             type="button"
             aria-controls="catalog-filters"
             aria-expanded={filtersOpen}
-            className={`lg:hidden flex items-center gap-2 px-3 py-2 min-h-11 rounded-xl border text-sm font-medium transition-colors ${
+            className={`lg:hidden store-catalog-mobile-filter-trigger flex items-center gap-2 px-3 py-2 min-h-11 border text-sm font-medium transition-colors ${
               filtersOpen || activeFiltersCount > 0
                 ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-white text-gray-700 border-gray-200'
@@ -203,17 +206,17 @@ export default function CatalogPage() {
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-10">
+      <div className="store-catalog-layout flex flex-col lg:flex-row gap-10">
 
         {/* ── SIDEBAR FILTROS ─────────────────────────────────── */}
-        <aside id="catalog-filters" aria-label="Filtros de catálogo" className={`lg:w-56 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden lg:block'}`}>
-          <div className="editorial-catalog-filters sticky top-24 space-y-5">
+        <aside id="catalog-filters" aria-label="Filtros de catálogo" className={`store-catalog-sidebar lg:w-56 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden lg:block'}`}>
+          <div className="editorial-catalog-filters store-catalog-filter-panel sticky top-24 space-y-5">
             <div className="lg:hidden flex items-center justify-between">
               <span className="font-bold text-sm uppercase">Refinar búsqueda</span>
               <button type="button" className="store-filter-close" aria-label="Cerrar filtros"
                 onClick={() => setFiltersOpen(false)}><X size={19}/></button>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="store-catalog-filter-heading flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal size={16} className="text-brand-600" />
                 <span className="font-semibold text-sm">Filtros</span>
@@ -251,12 +254,14 @@ export default function CatalogPage() {
             {/* Categorías */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Categoría</p>
-              <div className="flex flex-col gap-0.5">
+              <div className="store-catalog-filter-options flex flex-col gap-0.5">
                 {categories.map((cat) => (
                   <button
+                    type="button"
+                    aria-pressed={categoria === cat.slug}
                     key={cat.slug}
                     onClick={() => setFilter('categoria', cat.slug)}
-                    className={`text-left text-sm px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                    className={`store-catalog-filter-option text-left text-sm px-3 py-2 transition-colors flex items-center gap-2 ${
                       categoria === cat.slug
                         ? 'bg-brand-100 text-brand-700 font-semibold'
                         : 'text-gray-600 hover:bg-gray-100'
@@ -290,14 +295,16 @@ export default function CatalogPage() {
             {/* Rango de precio */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Precio</p>
-              <div className="flex flex-col gap-0.5">
+              <div className="store-catalog-filter-options flex flex-col gap-0.5">
                 {PRICE_RANGES.map((range) => {
                   const isActive = minPrice === range.min && maxPrice === range.max
                   return (
                     <button
                       key={range.label}
+                      type="button"
+                      aria-pressed={isActive}
                       onClick={() => setPriceFilter(range.min, range.max)}
-                      className={`text-left text-sm px-3 py-2 rounded-lg transition-colors ${
+                      className={`store-catalog-filter-option text-left text-sm px-3 py-2 transition-colors ${
                         isActive
                           ? 'bg-brand-100 text-brand-700 font-semibold'
                           : 'text-gray-600 hover:bg-gray-100'
@@ -342,7 +349,7 @@ export default function CatalogPage() {
         </aside>
 
         {/* ── GRID PRODUCTOS ──────────────────────────────────── */}
-        <div className="flex-1 min-w-0">
+        <div className="store-catalog-content flex-1 min-w-0">
           <div className="store-catalog-results-header" aria-live="polite">
             <span>{isLoading ? 'Actualizando productos...' : `${products?.length || 0} referencias en esta página`}</span>
             <span>{activeFiltersCount > 0 ? `${activeFiltersCount} filtros activos` : 'Explora la colección'}</span>
@@ -371,7 +378,7 @@ export default function CatalogPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
+              <div className="store-catalog-product-grid grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
