@@ -175,7 +175,7 @@ function NewSaleModal({ onClose }) {
     }, [isAdmin, sellerStock, adminStockRaw])
 
     const filteredProducts = availableProducts.filter((p) =>
-        `${p.name} ${p.sku}`.toLowerCase().includes(search.toLowerCase())
+        normalizeSearch(`${p.name} ${p.sku}`).includes(normalizeSearch(search.trim()))
     )
 
     const addProduct = (product) => {
@@ -533,6 +533,8 @@ function NewSaleModal({ onClose }) {
     )
 }
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 export default function OrdersPage() {
     const [showNewSale, setShowNewSale] = useState(false)
     const [selectedSale, setSelectedSale] = useState(null)
@@ -556,9 +558,9 @@ export default function OrdersPage() {
     }, [sales])
 
     const filteredSales = useMemo(() => {
-      const term = historySearch.trim().toLocaleLowerCase('es')
+      const term = normalizeSearch(historySearch.trim())
       return sales.filter(sale => !term || [sale.order_number, sale.location_name]
-        .filter(Boolean).join(' ').toLocaleLowerCase('es').includes(term))
+        .filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').includes(term))
         .sort((a,b) => {
           if (historySort === 'highest') return Number(b.total_amount || 0) - Number(a.total_amount || 0)
           if (historySort === 'lowest') return Number(a.total_amount || 0) - Number(b.total_amount || 0)
@@ -637,13 +639,14 @@ export default function OrdersPage() {
             <div>
                 <h2 className="font-bold text-gray-900">Historial de ventas físicas</h2>
                 <p className="text-xs text-gray-500 mt-1">
-                {filteredSales.length} ventas encontradas
+                {listError ? "Datos no disponibles" : `${filteredSales.length.toLocaleString("es-CO")} ventas encontradas`}
                 </p>
             </div>
             </div>
 
-            <div className="table-responsive">
+            <div className="table-responsive admin-list-table-scroll" role="region" aria-label="Historial de ventas físicas" tabIndex={0}>
             <table className="table table-hover align-middle admin-pos-table mb-0">
+                <caption className="visually-hidden">Ventas físicas, punto de venta, importes, utilidad, estado y detalle</caption>
                 <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th className="text-left px-4 py-3 text-gray-500 font-semibold">Orden</th>
