@@ -114,14 +114,14 @@ export default function PromotionsPage() {
         <Save size={16}/>{save.isPending?'Guardando…':'Guardar cupón'}
       </button>
     </form>}
-    <section className="card space-y-4">
+    <section className="card space-y-4" aria-label="Listado de promociones y cupones">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-bold text-lg">Campañas registradas</h2>
+        <div><h2 className="font-bold text-lg">Campañas registradas</h2>{!isLoading && !isError && <p className="text-xs text-slate-500 mt-1">{coupons.length.toLocaleString("es-CO")} campañas registradas</p>}</div>
         <button type="button" className="btn-secondary" onClick={()=>refetch()}>Actualizar</button>
       </div>
-      {isLoading?<p role="status">Cargando campañas…</p>:isError?<p role="alert" className="text-red-700">No fue posible consultar las campañas.</p>:
+      {isLoading?<p role="status">Cargando campañas…</p>:isError?<div role="alert" className="admin-report-fetch-error"><p>No fue posible consultar las campañas.</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={()=>refetch()}>Reintentar</button></div>:
         !coupons.length?<p className="text-slate-500 text-sm py-8">Todavía no hay cupones creados.</p>:
-        <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm">
+        <div className="overflow-x-auto admin-list-table-scroll" role="region" tabIndex={0} aria-label="Cupones y campañas"><table className="w-full min-w-[720px] text-sm"><caption className="visually-hidden">Campañas promocionales, condiciones de uso y acciones</caption>
           <thead><tr className="border-b text-left">{['Código','Descuento','Usos activos','Vigencia','Estado','Acciones'].map(h=><th className="p-3" key={h}>{h}</th>)}</tr></thead>
           <tbody>{coupons.map(c=><tr key={c.id} className="border-b border-slate-100">
             <td className="p-3 font-mono font-bold">{c.code}</td>
