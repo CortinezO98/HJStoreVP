@@ -2,16 +2,14 @@ import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { normalizeCatalogPage } from '../utils/catalogPagination'
 
-const SORT_VALUES = new Set(['featured', 'newest', 'price_asc', 'price_desc'])
-const ALIASES = { sort: 'orden', in_stock: 'disponible' }
+import { normalizeCatalogSort, updateCatalogSearchParams } from '../utils/catalogFilters'
 
 export function useCatalogFilters() {
   const [params, setParams] = useSearchParams()
   const filters = useMemo(() => ({
     categoria: params.get('categoria') || '',
     q: params.get('q') || '',
-    orden: SORT_VALUES.has(params.get('orden') || params.get('sort'))
-      ? (params.get('orden') || params.get('sort')) : 'featured',
+    orden: normalizeCatalogSort(params),
     color: params.get('color') || '',
     talla: params.get('talla') || '',
     presentacion: params.get('presentacion') || '',
@@ -21,19 +19,7 @@ export function useCatalogFilters() {
     featured: params.get('featured') === 'true',
     page: normalizeCatalogPage(params.get('page') || '1'),
   }), [params])
-  const setMany = updates => {
-    const next = new URLSearchParams(params)
-    for (const [key, raw] of Object.entries(updates)) {
-      const normalized = ALIASES[key] || key
-      const value = typeof raw === 'boolean' ? (raw ? '1' : '') : String(raw ?? '').trim()
-      if (value && !(normalized === 'orden' && value === 'featured')) next.set(normalized, value)
-      else next.delete(normalized)
-      if (normalized === 'orden') next.delete('sort')
-      if (normalized === 'disponible') next.delete('in_stock')
-    }
-    if (!Object.hasOwn(updates, 'page')) next.delete('page')
-    setParams(next)
-  }
+  const setMany = updates => setParams(updateCatalogSearchParams(params, updates))
   const clear = () => setParams(new URLSearchParams())
   const apiFilters = {
     category: filters.categoria || undefined,
