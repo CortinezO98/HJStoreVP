@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { storefrontSettingsApi } from '../services/api'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../components/products/ImageCropModal'
+import StorefrontWorkflowGuide from '../components/storefront/StorefrontWorkflowGuide'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
@@ -255,6 +256,7 @@ export default function StorefrontSettingsPage() {
         </div>
       </header>
 
+      <StorefrontWorkflowGuide context="settings" />
       {loading && <div className="d-flex align-items-center gap-3 card p-4" role="status">
         <span className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
         Cargando configuración…
@@ -302,6 +304,7 @@ export default function StorefrontSettingsPage() {
               </div>
             </div>
 
+            {index === 1 && <p className="hj-settings-hero-note small mb-3">Para crear, ocultar o reordenar secciones de la portada, agregar campañas o previsualizar antes de publicar, usa el <Link to="/estudio-inicio">Estudio visual del inicio</Link>. Los cambios de este formulario se publican inmediatamente al guardar.</p>}
             <div className="row g-3">
               {group.fields.map(([key, label]) => <div key={key}
                 className={LONG_FIELDS.has(key) ? 'col-12' : 'col-12 col-md-6'}>
@@ -580,14 +583,14 @@ export default function StorefrontSettingsPage() {
               <span className={dirty ? 'badge text-bg-warning' : 'badge text-bg-light border text-secondary'}>
                 {dirty ? 'Cambios pendientes' : 'Todo guardado'}
               </span>
-              <small className="text-secondary">Solo el superadministrador puede publicar.</small>
+              <small className="text-secondary">Solo el superadministrador puede publicar. Estos cambios se aplican a la tienda pública al guardar.</small>
             </div>
             <div className="d-flex flex-wrap gap-2">
               <button type="button" className="btn btn-outline-secondary"
                 disabled={!dirty || busy || !!uploading || visualUploading || !!campaignCrop || cropQueue.length > 0} onClick={() => setForm(saved)}>
                 Descartar cambios
               </button>
-              <button type="submit" className="btn btn-primary"
+              <button type="submit" className="btn btn-primary" title="Aplica los cambios generales directamente a la tienda pública"
                 disabled={!dirty || busy || !!uploading || visualUploading || !!campaignCrop || cropQueue.length > 0 || campaignImageBusy !== null || banners.some((banner) => banner.active && (!banner.image_url || !banner.title?.trim()))}>
                 {busy ? 'Publicando…' : 'Guardar y publicar'}
               </button>
