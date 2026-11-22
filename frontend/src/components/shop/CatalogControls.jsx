@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { SlidersHorizontal, X, LayoutGrid, Grid2X2, ChevronDown } from 'lucide-react'
+import { normalizeColor } from '../../utils/catalogColors'
 
 export const SORT_OPTIONS = [
   { value: 'featured', label: 'Destacados' },
@@ -27,7 +28,8 @@ export function CategoryChips({ categories, selected, setMany, counts = {}, comp
 }
 export function FilterFields({ filters, setMany, variants = {}, suggestedColors = [], allProducts = [], complete = false, categories = [] }) {
   const priceSelected = `${filters.min_price}:${filters.max_price}`
-  const colors = Array.from(new Set([...(variants.color || []), ...suggestedColors]))
+  const colors = [...new Map([...(variants.color || []), ...suggestedColors]
+    .map(value => [normalizeColor(value), value])).values()]
   const sizes = filters.categoria === 'gorras' ? ['S/M', 'L/XL', 'Ajustable'] : []
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
   const presentations = variants.presentacion || []
@@ -64,10 +66,10 @@ export function FilterFields({ filters, setMany, variants = {}, suggestedColors 
       <div className="hj-catalog-filter-title">Color</div>
       <div className="hj-catalog-color-options">
         {Array.from(new Set([filters.color, ...colors].filter(Boolean))).map(color => {
-          const normalized = color.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          return <button type="button" key={color} aria-pressed={filters.color === color}
+          const normalized = normalizeColor(color)
+          return <button type="button" key={normalized} aria-pressed={normalizeColor(filters.color) === normalized}
             aria-label={`Filtrar por color ${color}`}
-            onClick={() => setMany({ color: filters.color === color ? '' : color })}>
+            onClick={() => setMany({ color: normalizeColor(filters.color) === normalized ? '' : color })}>
             <span className="hj-catalog-color-swatch" data-color={normalized}/>
             <span>{color}</span>
           </button>
