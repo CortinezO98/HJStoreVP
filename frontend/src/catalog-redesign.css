@@ -64,7 +64,22 @@
 .hj-catalog-price-options button small { color: var(--hj-muted); }
 .hj-catalog-color-options { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 15px 8px; }
 .hj-catalog-color-options button { display: grid; justify-items: center; gap: 6px; font-size: 10px; color: var(--hj-muted); min-width: 0; overflow-wrap: anywhere; }
-.hj-catalog-color-swatch { background: var(--swatch); width: 26px; height: 26px; border-radius: 50%; border: 1px solid #BEBEB9; }
+.hj-catalog-color-swatch { width: 26px; height: 26px; border-radius: 50%; border: 1px solid #BEBEB9; }
+
+/* Colores accesibles de variantes: definidos solamente en la hoja de estilos. */
+.hj-catalog-color-swatch { background: #AAAAAA; }
+.hj-catalog-color-swatch[data-color="negro"] { background: #1D1D1D; }
+.hj-catalog-color-swatch[data-color="blanco"] { background: #EBEAE6; }
+.hj-catalog-color-swatch[data-color="azul"] { background: #23428F; }
+.hj-catalog-color-swatch[data-color="beige"] { background: #CEB99E; }
+.hj-catalog-color-swatch[data-color="rojo"] { background: #B30F17; }
+.hj-catalog-color-swatch[data-color="dorado"] { background: #C59B20; }
+.hj-catalog-color-swatch[data-color="gris"] { background: #8B8B86; }
+.hj-catalog-color-swatch[data-color="verde"] { background: #3E654C; }
+.hj-catalog-color-swatch[data-color="rosado"] { background: #CB8898; }
+.hj-catalog-color-swatch[data-color="cafe"],
+.hj-catalog-color-swatch[data-color="marron"] { background: #78533F; }
+
 .hj-catalog-color-options button[aria-pressed="true"] .hj-catalog-color-swatch { outline: 2px solid var(--hj-ink); outline-offset: 3px; }
 .hj-catalog-size-options { display: flex; flex-wrap: wrap; gap: 6px; }
 .hj-catalog-size-options button { min-height: 44px; min-width: 44px; padding: 9px 11px; border: 1px solid var(--hj-line-dark); border-radius: 2px; font-size: 11px; }
