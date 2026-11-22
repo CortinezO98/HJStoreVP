@@ -269,6 +269,74 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
 .admin-app-shell .table > :not(caption) > * > * { padding: .7rem .8rem; }
 .admin-app-shell .admin-main td .btn-sm + .btn-sm { margin-left: 4px; }
 
+/* Refinamiento transversal: tablas y filtros administrativos. */
+.admin-app-shell .admin-list-result-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  color: var(--hj-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.admin-app-shell .admin-list-result-count::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--hj-success);
+}
+.admin-app-shell .admin-list-empty {
+  min-height: 180px;
+  border: 1px dashed var(--hj-line-strong);
+  border-radius: var(--hj-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  gap: 12px;
+  padding: 28px 18px;
+  color: var(--hj-muted);
+  background: var(--hj-card);
+}
+.admin-app-shell .admin-list-empty p { margin: 0; }
+.admin-app-shell .admin-list-table-scroll {
+  max-width: 100%;
+  border-radius: var(--hj-radius-sm);
+  scrollbar-width: thin;
+  scrollbar-color: var(--hj-line-strong) transparent;
+}
+.admin-app-shell .admin-list-table-scroll:focus-visible {
+  outline: 2px solid var(--hj-ink) !important;
+  outline-offset: 2px;
+}
+.admin-app-shell .admin-table-action {
+  border-radius: var(--hj-radius-sm);
+  padding: 5px 8px;
+  white-space: nowrap;
+  transition: background-color .15s ease;
+}
+.admin-app-shell .admin-table-action:hover,
+.admin-app-shell .admin-table-action:focus-visible {
+  background: var(--hj-hover);
+  color: var(--hj-ink);
+}
+.admin-app-shell .admin-form-dialog {
+  border: 1px solid var(--hj-line);
+  box-shadow: var(--hj-shadow-lg);
+}
+@media (max-width: 575px) {
+  .admin-app-shell .admin-list-table-scroll {
+    margin-inline: -8px;
+  }
+  .admin-app-shell .admin-form-dialog {
+    width: 100%;
+    padding: 18px;
+  }
+}
+
 /* ---------- Modales y capas ---------- */
 .admin-app-shell .admin-main .fixed.inset-0[class*="bg-"],
 .admin-app-shell [class*="-overlay"], .admin-app-shell [class*="-backdrop"] { backdrop-filter: blur(2px); }
