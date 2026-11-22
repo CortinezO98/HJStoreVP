@@ -28,9 +28,9 @@ function Tile({ item, mobile }) {
         position === 'center' ? '50%' : 'auto',
         bottom: position === 'bottom' ? 0 : 'auto',
         transform: position === 'center' ? 'translateY(-50%)' : undefined }}>
-      <small>{item.subtitle || ''}</small>
-      <strong className="d-block fs-5 lh-sm text-uppercase">{item.title || 'NUEVA COLECCIÓN'}</strong>
-      <small className="d-inline-flex bg-white text-black px-2 py-1 mt-2">
+      <small data-studio-field="subtitle">{item.subtitle || ''}</small>
+      <strong data-studio-field="title" className="d-block fs-5 lh-sm text-uppercase">{item.title || 'NUEVA COLECCIÓN'}</strong>
+      <small data-studio-field="button_text" className="d-inline-flex bg-white text-black px-2 py-1 mt-2">
         {item.button_text || 'VER AHORA'} <ArrowUpRight size={14}/>
       </small>
     </div>
@@ -173,10 +173,10 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
           paddingTop: loyalty.text_position === 'bottom' ? (mobile ? 110 : 145) :
             loyalty.text_position === 'center' ? (mobile ? 70 : 100) : 0,
         }}>
-          <small>{loyalty.eyebrow}</small>
+          <small data-studio-field="eyebrow">{loyalty.eyebrow}</small>
           <h2 data-studio-field="title" style={{ fontWeight:900,fontSize:mobile ? 28 : 42 }}>{loyalty.title}</h2>
           <p data-studio-field="description">{loyalty.description}</p>
-          <span className="d-inline-flex bg-white text-black px-3 py-2">{loyalty.button_text}</span>
+          <span data-studio-field="button_text" className="d-inline-flex bg-white text-black px-3 py-2">{loyalty.button_text}</span>
         </div>
       </div> :
       id === 'categories' && categoryPhotos.length > 0 ? <div className="p-3">
