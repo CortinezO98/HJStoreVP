@@ -60,8 +60,9 @@ export default function CatalogPage() {
   })
   // La API filtra variantes por color. Los productos independientes cuyo
   // color está explícito en el nombre se filtran en cliente cuando no hay faceta.
-  const standaloneColorFallback = Boolean(filters.color) &&
-    !(variants.color || []).some(value => normalizeColor(value) === normalizeColor(filters.color))
+  const matchingVariantColor = (variants.color || [])
+    .find(value => normalizeColor(value) === normalizeColor(filters.color))
+  const standaloneColorFallback = Boolean(filters.color) && !matchingVariantColor
   const { data: listing, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['catalog-redesign', apiFilters.category, apiFilters.search, apiFilters.sort,
       apiFilters.min_price, apiFilters.max_price, apiFilters.in_stock, apiFilters.featured,
@@ -71,7 +72,7 @@ export default function CatalogPage() {
       const pages = await Promise.all(
         Array.from({ length: apiFilters.page }, (_, index) =>
           productsApi.list({ ...apiFilters,
-            color: standaloneColorFallback ? undefined : apiFilters.color,
+            color: standaloneColorFallback ? undefined : (matchingVariantColor || apiFilters.color),
             page: index + 1 }).then(response => response.data))
       )
       return mergeCatalogPages(pages)
