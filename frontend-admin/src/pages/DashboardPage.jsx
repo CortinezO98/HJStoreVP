@@ -457,7 +457,7 @@ export default function DashboardPage() {
             </div>
           ) : topProductsError ? (
             <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
-          : topProductsByRevenue.length === 0 ? (
+          ) : topProductsByRevenue.length === 0 ? (
             <p className="text-sm text-gray-400">No hay datos disponibles</p>
           ) : (
             <HorizontalBars
@@ -485,7 +485,7 @@ export default function DashboardPage() {
             </div>
           ) : salesByLocationError ? (
             <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
-          : topLocations.length === 0 ? (
+          ) : topLocations.length === 0 ? (
             <p className="text-sm text-gray-400">No hay datos disponibles</p>
           ) : (
             <HorizontalBars
@@ -519,7 +519,7 @@ export default function DashboardPage() {
             </div>
           ) : lowStockError ? (
             <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
-          : lowStock.length === 0 ? (
+          ) : lowStock.length === 0 ? (
             <p className="text-sm text-gray-400">No hay alertas de stock por ahora</p>
           ) : (
             <div className="space-y-3">
@@ -568,7 +568,7 @@ export default function DashboardPage() {
             </div>
           ) : lowRotationError ? (
             <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
-          : lowRotation.length === 0 ? (
+          ) : lowRotation.length === 0 ? (
             <p className="text-sm text-gray-400">No hay productos en baja rotación</p>
           ) : (
             <div className="space-y-3">
@@ -623,7 +623,7 @@ export default function DashboardPage() {
             </div>
           ) : webOrdersError ? (
             <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
-          : lastOrders.length === 0 ? (
+          ) : lastOrders.length === 0 ? (
             <p className="text-sm text-gray-400">No hay pedidos web recientes</p>
           ) : (
             <div className="space-y-3">
@@ -673,7 +673,7 @@ export default function DashboardPage() {
             </div>
           ) : physicalSalesError ? (
             <p className="admin-dashboard-inline-error" role="status">No se pudo cargar esta información.</p>
-          : lastPhysicalSales.length === 0 ? (
+          ) : lastPhysicalSales.length === 0 ? (
             <p className="text-sm text-gray-400">No hay ventas físicas recientes</p>
           ) : (
             <div className="space-y-3">
