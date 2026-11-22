@@ -1,12 +1,10 @@
+import { formatCOP } from '../../utils/currency'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle2, XCircle, Clock3, LoaderCircle, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react'
 import { apiClient } from '../../services/api'
 
-const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(amount) || 0)
 
 const STATES = {
   paid: {
