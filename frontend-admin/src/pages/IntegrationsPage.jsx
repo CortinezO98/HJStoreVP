@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { AlertCircle, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react'
 import { integrationsApi } from '../services/api'
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 const STATUS = {
   modulo_disponible: { text: 'Disponible', color: 'bg-emerald-50 text-emerald-700', type: 'available' },
   habilitado_por_configuracion: { text: 'Configurado', color: 'bg-blue-50 text-blue-700', type: 'configured' },
@@ -39,8 +41,8 @@ export default function IntegrationsPage() {
   const groups = useMemo(() => [...new Set(integrations.map(item => item.group))], [integrations])
   const visible = useMemo(() => integrations.filter(item =>
     (group === 'all' || item.group === group) &&
-    (item.title.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')) ||
-      item.group.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
+    (normalizeSearch(item.title).includes(normalizeSearch(search.trim())) ||
+      normalizeSearch(item.group).includes(normalizeSearch(search.trim())))
   ), [integrations, group, search])
 
   const counts = integrations.reduce((result, item) => {
@@ -53,16 +55,16 @@ export default function IntegrationsPage() {
     <div className="mx-auto max-w-5xl space-y-5">
       <header className="flex flex-wrap justify-between items-start gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Centro de integraciones</h1>
+          <p className="admin-page-kicker">Administración técnica</p><h1 className="admin-page-heading">Centro de integraciones</h1>
           <p className="mt-1 text-sm text-slate-500">Consulta rápida de módulos y configuraciones.</p>
         </div>
         <button type="button" onClick={refresh} disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50">
+          className="btn btn-outline-secondary inline-flex items-center gap-2 disabled:opacity-50">
           <RefreshCw size={16} aria-hidden="true" /> Actualizar
         </button>
       </header>
 
-      {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {error && <div role="alert" className="admin-report-fetch-error"><p>{error}</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={refresh}>Reintentar</button></div>}
       {loading && <p role="status" className="text-sm text-slate-500">Consultando integraciones…</p>}
 
       {data && (
@@ -97,6 +99,7 @@ export default function IntegrationsPage() {
                 </select>
               </label>
             </div>
+            <p className="admin-list-result-count px-4 pt-3" role="status" aria-live="polite">{visible.length.toLocaleString("es-CO")} de {integrations.length.toLocaleString("es-CO")} integraciones</p>
             <div className="divide-y divide-slate-100">
               {visible.length === 0 && <p className="p-6 text-center text-sm text-slate-500">No hay integraciones que coincidan con el filtro.</p>}
               {visible.map(item => {
