@@ -785,50 +785,157 @@ def restore_homepage_version_as_draft(
     return {"restored_as_draft": True, "published_unchanged": True}
 
 
-# Biblioteca de marca persistente sobre el almacenamiento ya existente.
-# Sin borrado físico: un archivo podría seguir referenciado en portada o historial.
+# La biblioteca conserva metadatos privados en la misma fila JSON.
+# No altera campos publicados, borradores, versiones ni archivos físicos.
+MEDIA_KEY = "_media_library_metadata"
+MEDIA_FILENAME_RE = __import__("re").compile(r"^[0-9a-f]{32}\\.(?:webp|png|jpg|jpeg|gif)$", __import__("re").IGNORECASE)
+IMAGE_FIELDS = frozenset(("image_url", "mobile_image_url", "hero_image_url", "logo_url"))
+
+
+def media_image_references(source: dict) -> set[str]:
+    """Recolectar únicamente URLs de marca de campos fotográficos conocidos."""
+    found: set[str] = set()
+
+    def visit(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in IMAGE_FIELDS and isinstance(item, str):
+                    if item.startswith("/uploads/branding/"):
+                        found.add(item)
+                elif key in ("hero_images", "statement_images") and isinstance(item, list):
+                    found.update(url for url in item if isinstance(url, str) and url.startswith("/uploads/branding/"))
+                elif isinstance(item, (dict, list)):
+                    visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    visit(source)
+    return found
+
+
+def media_usage(stored: dict) -> dict[str, list[str]]:
+    used: dict[str, list[str]] = {}
+
+    def add(section: str, data: dict):
+        for url in media_image_references(data):
+            used.setdefault(url, []).append(section)
+
+    add("published", {key: val for key, val in stored.items() if not key.startswith("_")})
+    saved = stored.get(DRAFT_KEY)
+    if isinstance(saved, dict) and isinstance(saved.get("data"), dict):
+        add("draft", saved["data"])
+    for version in stored.get(HISTORY_KEY) or []:
+        if isinstance(version, dict) and isinstance(version.get("data"), dict):
+            add("history", version["data"])
+    return used
+
+
+class MediaMetadataUpdate(BaseModel):
+    title: str = Field(default="", max_length=90)
+    tags: list[str] = Field(default_factory=list, max_length=8)
+
+    @field_validator("title")
+    @classmethod
+    def clean_title(cls, value: str) -> str:
+        value = value.strip()
+        if any(ord(char) < 32 for char in value):
+            raise ValueError("El nombre contiene caracteres de control")
+        return value
+
+    @field_validator("tags")
+    @classmethod
+    def clean_tags(cls, value: list[str]) -> list[str]:
+        tags: list[str] = []
+        for tag in value:
+            tag = tag.strip()
+            if not 1 <= len(tag) <= 30 or any(ord(char) < 32 for char in tag):
+                raise ValueError("Las etiquetas deben tener entre 1 y 30 caracteres")
+            if tag.casefold() not in {item.casefold() for item in tags}:
+                tags.append(tag)
+        return tags
+
+
 @router.get("/admin/media-library")
 def list_brand_images(
     page: int = 1,
     page_size: int = 24,
     search: str = "",
+    usage: Literal["all", "published", "draft", "history", "unused"] = "all",
+    db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
     if settings.STORAGE_BACKEND != "local":
-        raise HTTPException(
-            status_code=409,
-            detail="La biblioteca multimedia requiere almacenamiento local configurado",
-        )
-    if page < 1 or not 1 <= page_size <= 60:
-        raise HTTPException(status_code=422, detail="Paginación no válida")
-    if len(search) > 100:
-        raise HTTPException(status_code=422, detail="Búsqueda demasiado larga")
+        raise HTTPException(status_code=409, detail="La biblioteca multimedia requiere almacenamiento local")
+    if page < 1 or not 1 <= page_size <= 60 or len(search) > 100:
+        raise HTTPException(status_code=422, detail="Filtros o paginación no válidos")
+    row = db.get(StorefrontSettings, ROW_ID)
+    stored = dict(row.settings_data or {}) if row else {}
+    metadata = stored.get(MEDIA_KEY) or {}
+    references = media_usage(stored)
     folder = Path(settings.UPLOAD_DIR).resolve() / "branding"
-    if not folder.exists():
+    if not folder.is_dir():
         return {"items": [], "total": 0, "page": page, "page_size": page_size}
-    # Solo los archivos que el propio cargador genera; ignorar symlinks,
-    # rutas ajenas y archivos temporales.
-    import re
-    pattern = re.compile(r"^[0-9a-f]{32}\.(?:webp|png|jpg|jpeg|gif)$", re.IGNORECASE)
-    query = search.strip().lower()
+    query = search.strip().casefold()
     files = []
     for entry in folder.iterdir():
-        if not pattern.fullmatch(entry.name) or entry.is_symlink() or not entry.is_file():
+        if not MEDIA_FILENAME_RE.fullmatch(entry.name) or entry.is_symlink() or not entry.is_file():
             continue
-        if query and query not in entry.name.lower():
+        url = f"/uploads/branding/{entry.name}"
+        sections = references.get(url, [])
+        if usage == "unused" and sections or usage in ("published", "draft", "history") and usage not in sections:
             continue
-        info = entry.stat()
-        files.append((info.st_mtime, entry.name, info.st_size))
+        details = metadata.get(entry.name, {}) if isinstance(metadata, dict) else {}
+        title = details.get("title", "") if isinstance(details, dict) else ""
+        tags = details.get("tags", []) if isinstance(details, dict) else []
+        if query and not any(query in text.casefold() for text in [entry.name, title, *tags]):
+            continue
+        stat = entry.stat()
+        files.append((stat.st_mtime, entry.name, stat.st_size, title, tags, sections))
     files.sort(key=lambda item: (item[0], item[1]), reverse=True)
     offset = (page - 1) * page_size
     return {
         "items": [
-            {"url": f"/uploads/branding/{name}", "filename": name,
-             "bytes": size, "updated_at": datetime.fromtimestamp(timestamp).isoformat()}
-            for timestamp, name, size in files[offset:offset + page_size]
+            {"url": f"/uploads/branding/{name}", "filename": name, "bytes": size,
+             "updated_at": datetime.fromtimestamp(timestamp).isoformat(),
+             "title": title, "tags": tags, "used_in": sections}
+            for timestamp, name, size, title, tags, sections in files[offset:offset + page_size]
         ],
         "total": len(files), "page": page, "page_size": page_size,
     }
+
+
+@router.put("/admin/media-library/{filename}/metadata")
+def update_media_metadata(
+    filename: str,
+    payload: MediaMetadataUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    if settings.STORAGE_BACKEND != "local":
+        raise HTTPException(status_code=409, detail="La biblioteca multimedia requiere almacenamiento local")
+    if not MEDIA_FILENAME_RE.fullmatch(filename):
+        raise HTTPException(status_code=422, detail="Nombre de archivo no válido")
+    folder = Path(settings.UPLOAD_DIR).resolve() / "branding"
+    file_path = folder / filename
+    if file_path.is_symlink() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Fotografía no encontrada")
+    row = db.query(StorefrontSettings).filter(StorefrontSettings.id == ROW_ID).with_for_update().first()
+    if row is None:
+        raise HTTPException(status_code=409, detail="Inicializa la configuración de la tienda antes de organizar imágenes")
+    stored = dict(row.settings_data or {})
+    metadata = dict(stored.get(MEDIA_KEY) or {})
+    details = payload.model_dump()
+    if details["title"] or details["tags"]:
+        metadata[filename] = details
+    else:
+        metadata.pop(filename, None)
+    stored[MEDIA_KEY] = metadata
+    row.settings_data = stored
+    row.updated_by = current_user.id
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    return {"filename": filename, **details}
 
 
 @router.post("/admin/upload-image", status_code=201)
