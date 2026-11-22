@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, CheckCircle2, Eye, RotateCcw, Save, Send, Smartphon
 import { Link } from 'react-router-dom'
 import { storefrontSettingsApi } from '../services/api'
 import HomeStudioPreview from '../components/storefront/HomeStudioPreview'
+import HomeStudioInspector from '../components/storefront/HomeStudioInspector'
 import HomeVisualBlocksEditor from '../components/storefront/HomeVisualBlocksEditor'
 import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
@@ -60,6 +61,8 @@ export default function HomeStudioPage() {
   const [crop, setCrop] = useState(null)
   const [device, setDevice] = useState('desktop')
   const [selected, setSelected] = useState('hero')
+  const [selectedCampaignIndex, setSelectedCampaignIndex] = useState(0)
+  const [focusField, setFocusField] = useState('')
   const [draggedSection, setDraggedSection] = useState(null)
   const [showPreview, setShowPreview] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -101,6 +104,20 @@ export default function HomeStudioPage() {
   }
   useEffect(() => { load() }, [])
   const update = (key, value) => setDraft(current => ({ ...current, [key]: value }))
+  const selectFromPreview = (id, detail = {}) => {
+    setSelected(id)
+    setFocusField(detail.field || '')
+    if (id === 'campaigns') setSelectedCampaignIndex(detail.index || 0)
+  }
+  const openFullEditor = (id, index = 0) => {
+    setSelected(id)
+    if (id === 'campaigns') setSelectedCampaignIndex(index)
+    document.getElementById('studio-section-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const updateCustomField = (id, key, value) => {
+    update('homepage_custom_sections', (draft.homepage_custom_sections || []).map(block =>
+      block.id === id ? { ...block, [key]: value } : block))
+  }
   const createCustomSection = type => {
     if ((draft.homepage_custom_sections || []).length >= 12) {
       toast.error('Máximo 12 secciones personalizadas')
@@ -569,9 +586,15 @@ export default function HomeStudioPage() {
                 onClick={() => setDevice('mobile')} type="button"><Smartphone size={16}/> Celular</button>
             </div>
           </div>
-          <div style={{ maxHeight:'70vh',overflow:'auto',background:'#e5e5e5',padding:12 }}>
+          <HomeStudioInspector draft={draft} selected={selected} disabled={disabled}
+            selectedCampaignIndex={selectedCampaignIndex} focusField={focusField} hidden={hidden}
+            onFieldChange={update} onCampaignChange={updateBanner}
+            onLoyaltyChange={(key, value) => update('homepage_loyalty_banner', { ...draft.homepage_loyalty_banner, [key]: value })}
+            onCustomChange={updateCustomField} onVisibilityChange={toggle}
+            onOpenEditor={openFullEditor}/>
+          <div className="hj-studio-preview-canvas" style={{ maxHeight:'70vh',overflow:'auto',background:'#e5e5e5',padding:12 }}>
             <HomeStudioPreview draft={draft} mobile={device==='mobile'}
-              selected={selected} onSelect={setSelected}/>
+              selected={selected} onSelect={selectFromPreview}/>
           </div>
         </div>
       </div>}
