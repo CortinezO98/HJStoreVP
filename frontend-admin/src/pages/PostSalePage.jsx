@@ -167,13 +167,13 @@ export default function PostSalePage() {
     </header>
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="card flex items-center gap-3"><ArrowLeftRight size={24} className="text-zinc-600"/>
-        <div><p className="text-xs text-slate-500">Solicitudes visibles</p><p className="font-black text-2xl">{cases.length}</p></div>
+        <div><p className="text-xs text-slate-500">Solicitudes visibles</p><p className="font-black text-2xl">{isError ? "—" : isLoading ? "…" : cases.length}</p></div>
       </div>
       <div className="card flex items-center gap-3"><PackageCheck size={24} className="text-emerald-600"/>
-        <div><p className="text-xs text-slate-500">Recepciones</p><p className="font-black text-2xl">{cases.filter(c=>c.status==='received').length}</p></div>
+        <div><p className="text-xs text-slate-500">Recepciones</p><p className="font-black text-2xl">{isError ? '—' : isLoading ? '…' : cases.filter(c=>c.status==='received').length}</p></div>
       </div>
       <div className="card flex items-center gap-3"><CircleAlert size={24} className="text-amber-600"/>
-        <div><p className="text-xs text-slate-500">Reembolsos por gestionar</p><p className="font-black text-2xl">{cases.filter(c=>c.refund_status==='pending_external').length}</p></div>
+        <div><p className="text-xs text-slate-500">Reembolsos por gestionar</p><p className="font-black text-2xl">{isError ? '—' : isLoading ? '…' : cases.filter(c=>c.refund_status==='pending_external').length}</p></div>
       </div>
     </div>
     <div className="card space-y-4">
@@ -187,11 +187,12 @@ export default function PostSalePage() {
       </div>
       {isLoading ? <p role="status" className="py-10 text-center text-slate-500">Cargando casos…</p>
       : isError ? <div className="py-10 text-center text-red-700" role="alert">
-          No pudimos consultar los casos. <button type="button" className="underline" onClick={()=>refetch()}>Reintentar</button>
+          No pudimos consultar los casos. <button type="button" className="btn btn-outline-danger btn-sm ms-2" onClick={()=>refetch()}>Reintentar</button>
         </div>
-      : cases.length === 0 ? <p className="py-10 text-center text-slate-500">No existen solicitudes para este filtro.</p>
-      : <div className="overflow-x-auto">
+      : cases.length === 0 ? <p className="py-10 text-center text-slate-500">No existen solicitudes para este estado. Prueba seleccionando otro filtro.</p>
+      : <div className="overflow-x-auto admin-list-table-scroll" role="region" aria-label="Solicitudes de posventa" tabIndex={0}>
           <table className="w-full min-w-[740px] text-sm">
+            <caption className="visually-hidden">Solicitudes de devolución e incidencias, estado del caso y reembolso</caption>
             <thead><tr className="text-left border-b">
               {['Caso','Pedido','Tipo','Estado','Reembolso','Acción'].map(h=><th className="p-3" key={h}>{h}</th>)}
             </tr></thead>
@@ -201,7 +202,7 @@ export default function PostSalePage() {
               <td className="p-3">{item.kind==='return'?'Devolución':'Incidencia'}</td>
               <td className="p-3"><span className="badge-blue">{STATUSES[item.status] || item.status}</span></td>
               <td className="p-3">{REFUND[item.refund_status] || item.refund_status}</td>
-              <td className="p-3"><button type="button" className="btn-secondary" onClick={()=>setSelected(item.id)}>
+              <td className="p-3"><button type="button" className="btn-secondary" aria-label={`Gestionar caso ${item.id}`} aria-current={selected === item.id ? "true" : undefined} onClick={()=>setSelected(item.id)}>
                 <ShieldCheck size={15} className="inline mr-1"/> Gestionar</button></td>
             </tr>)}</tbody>
           </table>
