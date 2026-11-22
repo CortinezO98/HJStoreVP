@@ -111,6 +111,26 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-brand { justify-content: center; padding: 0; }
 }
 
+/* Navegación contraída: separadores de grupos y alertas visibles. */
+@media (min-width: 1024px) {
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-group + .admin-sidebar-group {
+    border-top: 1px solid rgba(255,255,255,.09);
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-link .hj-nav-badge {
+    display: inline-block;
+  }
+}
+/* El foco debe contrastar sobre el fondo negro del menú. */
+.admin-app-shell .admin-sidebar :focus-visible {
+  outline: 2px solid #FFFFFF !important;
+  outline-offset: 2px;
+}
+.admin-app-shell .admin-mobile-sidebar {
+  overscroll-behavior: contain;
+}
+
 /* Topbar */
 .admin-app-shell .admin-topbar {
   min-height: var(--hj-topbar-h); padding: 0 clamp(16px, 2.4vw, 32px); gap: 16px;
