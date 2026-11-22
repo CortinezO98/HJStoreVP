@@ -39,13 +39,13 @@ export default function CashPage() {
     enabled: admin,
   })
   const physical = useMemo(() => locations.filter((loc) => loc.type === 'physical'), [locations])
-  const { data: sessions = [], isLoading } = useQuery({
+  const { data: sessions = [], isLoading, isError: sessionsError, refetch: retrySessions } = useQuery({
     queryKey: ['cash-sessions', admin ? locationId : 'seller'],
     queryFn: () => cashApi.sessions(admin && locationId ? { location_id: Number(locationId) } : {}).then((r) => r.data),
   })
   const active = sessions.find((item) => item.status === 'open')
   const selected = sessions.find((item) => item.id === selectedId) || active || sessions[0]
-  const { data: movements = [] } = useQuery({
+  const { data: movements = [], isLoading: movementsLoading, isError: movementsError, refetch: retryMovements } = useQuery({
     queryKey: ['cash-movements', selected?.id],
     queryFn: () => cashApi.movements(selected.id).then((r) => r.data),
     enabled: Boolean(selected),
@@ -94,15 +94,17 @@ export default function CashPage() {
 
       <div className="row g-3" aria-label="Resumen de caja">
         {[
-          { label: 'Turnos encontrados', value: sessions.length.toLocaleString('es-CO'), icon: Wallet },
-          { label: 'Turnos abiertos', value: sessions.filter(session => session.status === 'open').length.toLocaleString('es-CO'), icon: CheckCircle2 },
-          { label: 'Saldo esperado (turno seleccionado)', value: selected ? money(selected.expected_amount) : 'Sin turno', icon: Landmark },
+          { label: 'Turnos encontrados', value: sessionsError ? 'No disponible' : isLoading ? '…' : sessions.length.toLocaleString('es-CO'), icon: Wallet },
+          { label: 'Turnos abiertos', value: sessionsError ? 'No disponible' : isLoading ? '…' : sessions.filter(session => session.status === 'open').length.toLocaleString('es-CO'), icon: CheckCircle2 },
+          { label: 'Saldo esperado (turno seleccionado)', value: sessionsError ? 'No disponible' : isLoading ? '…' : selected ? money(selected.expected_amount) : 'Sin turno', icon: Landmark },
         ].map(({label,value,icon:Icon}) => <div className="col-12 col-sm-6 col-xl-4" key={label}>
           <div className="admin-catalog-stat"><span className="d-flex align-items-center gap-2"><Icon size={16}/>{label}</span>
             <strong className="admin-cash-stat-value">{value}</strong>
           </div>
         </div>)}
       </div>
+
+      {sessionsError && <div className="admin-report-fetch-error" role="alert"><p>No se pudieron consultar los turnos de caja. No se mostrarán saldos estimados.</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => retrySessions()}>Reintentar</button></div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <div className="card admin-cash-card space-y-4">
@@ -124,7 +126,7 @@ export default function CashPage() {
 
         <div className="card admin-cash-card space-y-3">
           <h2 className="admin-cash-section-heading"><ReceiptText size={19}/> Turnos y arqueos</h2>
-          {isLoading ? <p className="text-sm">Cargando turnos...</p> : sessions.length === 0 ? <p className="text-sm text-gray-500">Aún no existen turnos en este filtro.</p> : (
+          {isLoading ? <p className="text-sm" role="status">Cargando turnos...</p> : sessionsError ? <p className="text-sm text-danger" role="alert">No fue posible cargar los turnos.</p> : sessions.length === 0 ? <p className="text-sm text-gray-500">Aún no existen turnos en este filtro.</p> : (
             <div className="max-h-72 overflow-y-auto space-y-2">
               {sessions.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)}
                 className={`admin-cash-session w-full border rounded-xl p-3 text-left text-sm ${selected?.id === item.id ? 'admin-cash-session-selected' : 'border-gray-200'}`} aria-pressed={selected?.id === item.id}>
@@ -138,7 +140,7 @@ export default function CashPage() {
         </div>
       </div>
 
-      {selected && <div className="space-y-5">
+      {!sessionsError && selected && <div className="space-y-5">
         <div className="card">
           <h2 className="admin-cash-section-heading mb-3"><Landmark size={19}/> Resumen del turno #{selected.id}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -181,16 +183,17 @@ export default function CashPage() {
 
         <div className="card">
           <h2 className="admin-cash-section-heading mb-3"><ReceiptText size={18}/> Historial de movimientos</h2>
-          <div className="table-responsive"><table className="table table-hover align-middle admin-cash-movements-table mb-0">
+          <div className="table-responsive admin-list-table-scroll" role="region" aria-label="Historial de movimientos de caja" tabIndex={0}><table className="table table-hover align-middle admin-cash-movements-table mb-0">
+            <caption className="visually-hidden">Movimientos de caja con fecha, tipo, motivo e importe</caption>
             <thead><tr className="border-b text-left"><th className="py-2">Fecha</th><th>Tipo</th><th>Motivo</th><th className="text-right">Importe</th></tr></thead>
-            <tbody>{movements.map((item) => <tr key={item.id} className="border-b border-gray-100">
+            <tbody>{!movementsLoading && !movementsError && movements.map((item) => <tr key={item.id} className="border-b border-gray-100">
               <td className="py-2 pr-3">{dateTime(item.created_at)}</td>
               <td className="pr-3">{({ sale: 'Venta', income: 'Ingreso', expense: 'Egreso', withdrawal: 'Retiro' })[item.movement_type] || item.movement_type}</td>
               <td className="pr-3">{item.note}</td>
               <td className="text-right whitespace-nowrap">{money(item.amount)}</td>
             </tr>)}</tbody>
           </table></div>
-          {movements.length === 0 && <p className="text-sm text-gray-500 mt-3">Sin movimientos registrados.</p>}
+          {movementsLoading ? <p className="text-sm text-gray-500 mt-3" role="status">Cargando movimientos…</p> : movementsError ? <div role="alert" className="admin-report-fetch-error mt-3"><p>No fue posible consultar los movimientos del turno.</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => retryMovements()}>Reintentar</button></div> : movements.length === 0 ? <p className="text-sm text-gray-500 mt-3">Sin movimientos registrados.</p> : null}
         </div>
       </div>}
     </div>
