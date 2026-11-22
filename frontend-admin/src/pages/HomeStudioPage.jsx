@@ -12,6 +12,7 @@ import ImageCropModal from '../components/products/ImageCropModal'
 import StorefrontWorkflowGuide from '../components/storefront/StorefrontWorkflowGuide'
 import StorefrontImageDropzone from '../components/storefront/StorefrontImageDropzone'
 import HomeStudioChecklist from '../components/storefront/HomeStudioChecklist'
+import StorefrontImageLibrary, { collectStorefrontImages } from '../components/storefront/StorefrontImageLibrary'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 import { confirmAction } from '../components/ui/ConfirmDialog'
 
@@ -68,6 +69,7 @@ export default function HomeStudioPage() {
   const order = useMemo(() => normalizeOrder(draft?.homepage_section_order,
     draft?.homepage_custom_sections), [draft?.homepage_section_order, draft?.homepage_custom_sections])
   const hidden = useMemo(() => draft?.homepage_hidden_sections || [], [draft?.homepage_hidden_sections])
+  const libraryImages = useMemo(() => collectStorefrontImages(draft), [draft])
 
   const load = async () => {
     setBusy(true)
@@ -423,7 +425,7 @@ export default function HomeStudioPage() {
               'custom:' + item.id === selected)
             return block ? <HomeVisualBlocksEditor key={block.id} blocks={[block]}
               allowCreate={false} allowDelete={false}
-              onBusyChange={setUploading}
+              onBusyChange={setUploading} libraryImages={libraryImages}
               onChange={next => updateCustomSection(block.id, next)}/> : null
           })()}
           {selected === 'hero' && <div className="row g-3">
@@ -447,12 +449,38 @@ export default function HomeStudioPage() {
                 hint="Arrastra o selecciona JPG, PNG o WebP. Podrás recortarla antes de guardar."
                 disabled={disabled || (draft.hero_images || []).length >= 8}
                 onFile={file => startCrop('hero_images', 0, file)} />
+              <StorefrontImageLibrary images={libraryImages} disabled={disabled || (draft.hero_images || []).length >= 8}
+                onSelect={url => update('hero_images', [...(draft.hero_images || []), url].slice(0, 8))} />
             </div>
-            {(draft.hero_images || []).map((image,i) => <div className="col-6" key={image}>
-              <img src={imageSrc(image)} alt={`Imagen principal ${i+1}`}
-                className="w-100 rounded" style={{ aspectRatio:'16/9', objectFit:'cover' }}/>
-              <button className="btn btn-sm btn-outline-danger mt-1" type="button"
-                onClick={() => update('hero_images',draft.hero_images.filter((_,j)=>i!==j))}>Quitar</button>
+            {(draft.hero_images || []).map((image,i) => <div className="col-6 col-lg-4" key={`${i}-${image}`}>
+              <div className="hj-home-image-card">
+                <img src={imageSrc(image)} alt={`Imagen principal ${i+1}`} loading="lazy" />
+                <div className="hj-home-image-card-actions">
+                  <strong>Foto {i + 1}</strong>
+                  <div>
+                    <button className="btn btn-outline-secondary btn-sm" type="button"
+                      disabled={disabled || i===0} title="Mover fotografía hacia el inicio"
+                      aria-label={`Mover foto ${i+1} a la izquierda`}
+                      onClick={() => {
+                        const next = [...draft.hero_images]
+                        ;[next[i-1], next[i]] = [next[i], next[i-1]]
+                        update('hero_images',next)
+                      }}>←</button>
+                    <button className="btn btn-outline-secondary btn-sm" type="button"
+                      disabled={disabled || i===draft.hero_images.length-1} title="Mover fotografía hacia el final"
+                      aria-label={`Mover foto ${i+1} a la derecha`}
+                      onClick={() => {
+                        const next = [...draft.hero_images]
+                        ;[next[i], next[i+1]] = [next[i+1], next[i]]
+                        update('hero_images',next)
+                      }}>→</button>
+                    <button className="btn btn-outline-danger btn-sm" type="button" disabled={disabled}
+                      onClick={() => update('hero_images',draft.hero_images.filter((_,j)=>i!==j))}>Quitar</button>
+                  </div>
+                </div>
+                <StorefrontImageLibrary images={libraryImages} title="Reemplazar con existente"
+                  disabled={disabled} onSelect={url => update('hero_images',draft.hero_images.map((value,j) => i===j ? url : value))} />
+              </div>
             </div>)}
           </div>}
           {selected === 'statement' && <div>
@@ -497,6 +525,9 @@ export default function HomeStudioPage() {
                 hint={field === 'image_url' ? 'JPG, PNG o WebP · encuadre horizontal' : 'JPG, PNG o WebP · encuadre vertical'}
                 disabled={disabled} compact
                 onFile={file => startCrop(field, i, file)} />)}
+              {['image_url','mobile_image_url'].map(field => <StorefrontImageLibrary key={field}
+                images={libraryImages} title={field === 'image_url' ? 'Usar foto de escritorio existente' : 'Usar foto móvil existente'}
+                disabled={disabled} onSelect={url => updateBanner(i, field, url)} />)}
               {['starts_at','ends_at'].map((field,j) => <label className="form-label d-block" key={field}>
                 {j===0?'Publicar desde (Bogotá)':'Retirar desde (Bogotá)'}
                 <input type="datetime-local" className="form-control" value={b[field]||''}
@@ -512,9 +543,10 @@ export default function HomeStudioPage() {
             tiles={draft.homepage_category_tiles || []} loyalty={draft.homepage_loyalty_banner}
             onTilesChange={tiles => update('homepage_category_tiles', tiles)}
             onLoyaltyChange={banner => update('homepage_loyalty_banner', banner)}
-            onBusyChange={setUploading}/>}
+            onBusyChange={setUploading} libraryImages={libraryImages}/>}
           {selected === 'visual' && <HomeVisualBlocksEditor blocks={draft.homepage_visual_blocks || []}
-            onBusyChange={setUploading} onChange={blocks => update('homepage_visual_blocks',blocks)}/>}
+            onBusyChange={setUploading} libraryImages={libraryImages}
+            onChange={blocks => update('homepage_visual_blocks',blocks)}/>}
           {!['hero','visual','campaigns','categories','loyalty','statement'].includes(selected) && !selected.startsWith('custom:') && <div>
             <p className="text-secondary">Esta sección utiliza los componentes comerciales actuales de HJStoreVP.
               Puedes cambiar su orden o visibilidad desde el panel superior, sin afectar sus datos.</p>
