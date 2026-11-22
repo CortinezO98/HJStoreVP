@@ -133,7 +133,7 @@ function statusBadge(active) {
 
     return (
         <div className="admin-users-overlay">
-        <div className="admin-users-modal" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar usuario" : "Nuevo usuario"}>
+        <div className="admin-users-modal admin-refined-form" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar usuario" : "Nuevo usuario"}>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
                 <h3 className="text-lg font-bold text-gray-900">
@@ -153,10 +153,11 @@ function statusBadge(active) {
             </button>
             </div>
 
-            <div className="admin-users-form-grid">
+            <div className="admin-users-form-grid" aria-busy={mutation.isPending}>
+            <p className="admin-required-hint md:col-span-2">Los campos marcados con * son obligatorios.</p>
             <div className="md:col-span-2">
-                <label className="form-label">Nombre completo *</label>
-                <input
+                <label className="form-label" htmlFor="admin-user-full-name">Nombre completo *</label>
+                <input id="admin-user-full-name" required autoComplete="name"
                 className="form-control"
                 value={form.full_name}
                 onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))}
@@ -165,8 +166,8 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="form-label">Correo *</label>
-                <input
+                <label className="form-label" htmlFor="admin-user-email">Correo *</label>
+                <input id="admin-user-email" required autoComplete="email"
                 type="email"
                 className="form-control"
                 value={form.email}
@@ -177,8 +178,8 @@ function statusBadge(active) {
             </div>
 
             <div>
-                <label className="form-label">Teléfono</label>
-                <input
+                <label className="form-label" htmlFor="admin-user-phone">Teléfono</label>
+                <input id="admin-user-phone" autoComplete="tel"
                 className="form-control"
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
@@ -189,7 +190,7 @@ function statusBadge(active) {
             {!isEdit && <div>
                 <label className="form-label" htmlFor="new-user-password">Contraseña temporal * (mínimo 12 caracteres)</label>
                 <input
-                id="new-user-password"
+                id="new-user-password" required
                 type="password"
                 className="form-control"
                 minLength={12}
@@ -201,8 +202,8 @@ function statusBadge(active) {
             </div>}
 
             <div>
-                <label className="form-label">Rol *</label>
-                <select
+                <label className="form-label" htmlFor="admin-user-role">Rol *</label>
+                <select id="admin-user-role" required
                 className="form-select"
                 value={form.role}
                 onChange={(e) =>
@@ -222,8 +223,8 @@ function statusBadge(active) {
 
             {form.role === 'seller' && (
                 <div className="md:col-span-2">
-                <label className="form-label">Punto físico *</label>
-                <select
+                <label className="form-label" htmlFor="admin-user-location">Punto físico *</label>
+                <select id="admin-user-location" required
                     className="form-select"
                     value={form.location_id}
                     onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
@@ -248,11 +249,11 @@ function statusBadge(active) {
             </div>}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
-            <button onClick={onClose} className="btn btn-outline-secondary">
+            <div className="admin-refined-form-actions px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+            <button type="button" onClick={onClose} className="btn btn-outline-secondary">
                 Cancelar
             </button>
-            <button
+            <button type="button"
                 onClick={() => mutation.mutate()}
                 disabled={mutation.isPending}
                 className="btn btn-primary d-inline-flex align-items-center gap-2"
