@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { recommendationsApi } from '../../services/api'
@@ -8,9 +9,7 @@ import { PageHeading, EmptyState, QuantityStepper } from '../../components/shop/
 import toast from 'react-hot-toast'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
-const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(amount) || 0)
+
 
 function imageUrl(product) {
   const value = product.primary_image
