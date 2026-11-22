@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingBag, Package, Clock, CheckCircle2, Truck, XCircle, LogOut, UserRound, ArrowRight } from 'lucide-react'
@@ -9,9 +10,6 @@ import PostSaleCustomer from '../../components/shop/PostSaleCustomer'
 import PurchaseReceipt from '../../components/shop/PurchaseReceipt'
 import CustomerEngagement from '../../components/shop/CustomerEngagement'
 
-const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(amount) || 0)
 
 const formatDate = (value) => {
   if (!value) return 'Sin fecha'
