@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../products/ImageCropModal'
+import StorefrontImageDropzone from './StorefrontImageDropzone'
 import { BannerPresentationControls } from './PresentationControls'
 import CampaignDestinationEditor from './CampaignDestinationEditor'
 import { categoriesApi, storefrontSettingsApi } from '../../services/api'
@@ -65,12 +66,12 @@ export default function HomeMarketingEditor({ tiles = [], loyalty = null, onTile
       throw error
     } finally { setUploading(false) }
   }
-  const photoInput = (target, index, field) => <label className="form-label d-block">
-    {field === 'image_url' ? 'Fotografía escritorio (16:9)' : 'Fotografía celular (9:16, opcional)'}
-    <input className="form-control mt-1" type="file" accept="image/jpeg,image/png,image/webp"
-      disabled={uploading || !!crop}
-      onChange={e => { queueCrop(target, index, field, e.target.files?.[0]); e.target.value = '' }}/>
-  </label>
+  const photoInput = (target, index, field) => <StorefrontImageDropzone
+    id={`marketing-${target}-${index}-${field}`}
+    label={field === 'image_url' ? 'Fotografía escritorio (16:9)' : 'Fotografía celular (9:16, opcional)'}
+    hint="Arrastra o selecciona una fotografía JPG, PNG o WebP"
+    disabled={uploading || !!crop} compact
+    onFile={file => queueCrop(target, index, field, file)} />
 
   return <div className="d-flex flex-column gap-4">
     {crop && <ImageCropModal key={crop.target + crop.index + crop.field + crop.file.name}
