@@ -225,7 +225,7 @@
 .hj-search-result-copy strong { font-size: 13px; line-height: 1.35; font-weight: 800; }
 .hj-search-result-copy mark { background: #F9DDE0; color: var(--hj-ink); }
 .hj-search-result-copy span { font-size: 13px; font-weight: 800; }
-.hj-search-result-copy small { font-size: 11px; color: #177345; font-weight: 700; }
+.hj-search-result-copy small { font-size: 11px; color: #4A4A46; font-weight: 700; }
 .hj-search-result-copy small.is-unavailable { color: var(--hj-error); }
 .hj-search-view-all { background: var(--hj-ink); color: #fff; margin-top: 22px;
   min-height: 49px; display: inline-flex; align-items: center; gap: 10px;
