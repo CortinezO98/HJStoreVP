@@ -9,7 +9,7 @@ const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
 }).format(Number(amount) || 0)
 
-export default function ProductCard({ product, label }) {
+export default function ProductCard({ product, label, catalogMode = false, hideCategory = false, compact = false }) {
   const addItem = useCartStore((state) => state.addItem)
   const toggleFavorite = useWishlistStore((state) => state.toggle)
   const favorite = useWishlistStore((state) => state.items.some((item) => item.id === product.id))
@@ -31,8 +31,8 @@ export default function ProductCard({ product, label }) {
   }
 
   return (
-    <article className="editorial-product">
-      <div className="editorial-product-media">
+    <article className={`editorial-product ${catalogMode ? 'hj-catalog-product' : ''} ${compact ? 'is-crosssell' : ''}`}>
+      <div className={`editorial-product-media ${soldOut && catalogMode ? 'is-unavailable' : ''}`}>
         <Link to={`/producto/${product.slug}`} aria-label={`Ver ${product.name}`}>
           <ProductImage src={image} alt={product.name}
             category={product.category_name} loading="lazy" fetchPriority="low"/>
@@ -50,7 +50,7 @@ export default function ProductCard({ product, label }) {
           toggleFavorite(product)
         }}
           className="store-favorite-action absolute top-3 right-3 z-10 rounded-full bg-white/95 shadow-sm p-2 hover:bg-white"
-          aria-label={favorite ? `Quitar ${product.name} de favoritos` : `Guardar ${product.name} en favoritos`}
+          aria-label={favorite ? `Quitar ${product.name} de favoritos` : `Agregar ${product.name} a favoritos`}
           aria-pressed={favorite} title={favorite ? 'Quitar de favoritos' : 'Guardar en favoritos'}>
           <Heart size={18} fill={favorite ? 'currentColor' : 'none'} />
         </button>
@@ -67,15 +67,18 @@ export default function ProductCard({ product, label }) {
         )}
       </div>
       <div className="editorial-product-details">
-        {product.category_name && <span className="editorial-product-category">{product.category_name}</span>}
+        {!hideCategory && product.category_name && <span className="editorial-product-category">{product.category_name}</span>}
         <Link to={`/producto/${product.slug}`} className="editorial-product-info">
           <span className="editorial-product-name">{product.name}</span>
           <span className="editorial-product-price">
             {product.has_variants ? 'Desde ' : ''}{formatCOP(product.sale_price)}
           </span>
         </Link>
+        {catalogMode && soldOut && <span className="hj-catalog-stock is-soldout">Agotado</span>}
+        {catalogMode && !soldOut && Number(stock) > 0 && Number(stock) <= Number(product.stock_min_alert || 3) &&
+          <span className="hj-catalog-stock">Quedan {stock} unidades</span>}
         <Link to={`/producto/${product.slug}`} className="store-product-quick-link">
-          {soldOut ? 'VER PRODUCTO' : product.has_variants ? 'ELEGIR OPCIONES' : 'VER DETALLES'}
+          {soldOut ? 'VER PRODUCTO' : product.has_variants ? (catalogMode ? 'ELEGIR COLOR Y TALLA' : 'ELEGIR OPCIONES') : 'VER DETALLES'}
           <ArrowUpRight size={14} aria-hidden="true"/>
         </Link>
       </div>
