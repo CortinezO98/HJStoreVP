@@ -1,4 +1,5 @@
 import { ArrowLeft, Eye, EyeOff, Image as ImageIcon, MousePointer2 } from 'lucide-react'
+import StorefrontImageLibrary from './StorefrontImageLibrary'
 
 const SECTION_NAMES = {
   hero: 'Banner principal', statement: 'Campaña de estilo',
@@ -29,7 +30,8 @@ const loyaltyFields = [
 
 export default function HomeStudioInspector({
   draft, selected, selectedCampaignIndex = 0, focusField = '',
-  disabled = false, hidden = [], onFieldChange, onCampaignChange,
+  disabled = false, hidden = [], device = 'desktop', selectedMedia = null,
+  libraryImages = [], onMediaChange, onFieldChange, onCampaignChange,
   onLoyaltyChange, onCustomChange, onVisibilityChange, onOpenEditor,
 }) {
   const custom = selected.startsWith('custom:')
@@ -41,6 +43,27 @@ export default function HomeStudioInspector({
   const loyalty = draft.homepage_loyalty_banner
   const isHidden = selected !== 'hero' && hidden.includes(selected)
   const heading = custom?.title || SECTION_NAMES[selected] || 'Sección seleccionada'
+  const media = selectedMedia?.kind === selected ||
+    (selected.startsWith('custom:') && selectedMedia?.kind === 'custom')
+    ? selectedMedia : null
+  const target = (() => {
+    if (!media) return null
+    const index = media.index
+    if (!Number.isInteger(index) || index < 0) return null
+    if (media.kind === 'hero') return (draft.hero_images || [])[index]
+      ? { image_url: draft.hero_images[index] } : null
+    if (media.kind === 'statement') return (draft.statement_images || [])[index]
+      ? { image_url: draft.statement_images[index] } : null
+    if (media.kind === 'campaigns') return (draft.homepage_banners || [])[index] || null
+    if (media.kind === 'loyalty') return draft.homepage_loyalty_banner || null
+    if (media.kind === 'categories') return (draft.homepage_category_tiles || [])[index] || null
+    const key = media.kind === 'visual' ? 'homepage_visual_blocks' : 'homepage_custom_sections'
+    return (draft[key] || []).find(block => block.id === media.blockId)?.items?.[index] || null
+  })()
+  const mediaField = device === 'mobile' && target?.mobile_image_url ? 'mobile_image_url' : 'image_url'
+  const mediaSrc = target?.[mediaField] || ''
+  const API_URL = import.meta.env.VITE_API_URL || ''
+  const previewSrc = mediaSrc?.startsWith('/') ? `${API_URL}${mediaSrc}` : mediaSrc
 
   let fields = []
   let data = null
@@ -96,6 +119,32 @@ export default function HomeStudioInspector({
       {selected === 'campaigns' ? 'Todavía no hay campañas. Puedes crear una desde el editor completo.'
         : 'Esta sección utiliza componentes propios de la tienda. Edita su contenido en el formulario correspondiente.'}
     </p>}
+    {target && <div className="hj-inspector-image-panel" aria-label="Fotografía seleccionada">
+      <div className="hj-inspector-image-heading">
+        <strong><ImageIcon size={16} aria-hidden="true" /> Fotografía seleccionada</strong>
+        <small>{media.kind === 'hero' || media.kind === 'statement'
+          ? `Diapositiva ${media.index + 1}` : media.kind === 'categories'
+            ? `Categoría ${media.index + 1}` : media.kind === 'campaigns'
+              ? `Campaña ${media.index + 1}` : `Imagen ${media.index + 1}`}</small>
+      </div>
+      <div className="hj-inspector-image-preview">
+        {mediaSrc ? <img src={previewSrc} alt="Fotografía actual de la sección" loading="lazy"/> :
+          <span>Sin fotografía</span>}
+      </div>
+      <small className="d-block text-secondary mt-2">Vista {device === 'mobile' ? 'celular' : 'escritorio'}.
+        {device === 'mobile' && mediaField === 'image_url' && ' Se muestra la foto de escritorio porque todavía no hay una versión móvil.'}
+      </small>
+      <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
+        <StorefrontImageLibrary images={libraryImages} disabled={disabled}
+          title="Reemplazar desde biblioteca"
+          onSelect={url => onMediaChange(media, mediaField, url)} />
+        <button type="button" className="btn btn-outline-secondary btn-sm mt-2"
+          onClick={() => onOpenEditor(selected, selectedCampaignIndex)}>
+          Subir y recortar otra fotografía
+        </button>
+      </div>
+      <small className="d-block text-secondary mt-2">El reemplazo permanece en el borrador. Puedes guardar y publicar únicamente desde los controles superiores.</small>
+    </div>}
     {selected !== 'hero' && <label className="hj-inspector-toggle">
       <input type="checkbox" checked={!isHidden} disabled={disabled}
         onChange={() => onVisibilityChange(selected)}/>
