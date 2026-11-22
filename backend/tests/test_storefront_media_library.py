@@ -18,6 +18,12 @@ def test_media_library_requires_authentication():
 
 
 def test_media_library_lists_only_valid_images_and_paginates(tmp_path, monkeypatch):
+    # El endpoint consulta la configuración para obtener referencias de uso.
+    # Crear exclusivamente las tablas de la SQLite aislada por conftest.py.
+    from app.db.session import Base, engine
+    if engine.dialect.name != "sqlite":
+        raise RuntimeError("Prueba bloqueada fuera de SQLite aislada")
+    Base.metadata.create_all(bind=engine)
     monkeypatch.setattr(settings, "STORAGE_BACKEND", "local")
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
     folder = tmp_path / "branding"
