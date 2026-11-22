@@ -57,16 +57,15 @@ export default function StoreMetadata() {
   useEffect(() => {
     const product = pathname.startsWith('/producto/')
     const params = new URLSearchParams(search)
-    const categoryOnly = pathname === '/catalogo' && params.has('categoria') &&
+    const categorySlug = pathname === '/catalogo' ? params.get('categoria') || '' : ''
+    const categoryOnly = Boolean(categorySlug) &&
       [...params.keys()].every((key) => key === 'categoria')
-    const categoryName = categoryOnly
-      ? params.get('categoria').replace(/-/g, ' ')
-      : ''
-    const description = categoryOnly
-      ? `Explora ${categoryName} en HJStoreVP. Descubre productos y accesorios disponibles en Colombia.`
+    const categoryName = categorySlug.replace(/-/g, ' ')
+    const description = categorySlug
+      ? `Descubre ${categoryName} en HJStoreVP. Explora referencias, precios y disponibilidad para comprar en Colombia.`
       : DEFAULT_DESCRIPTION
     const title = product ? 'Detalle de producto'
-      : categoryOnly ? `${categoryName} | Catálogo`
+      : categorySlug ? `${categoryName} | Catálogo`
       : TITLES[pathname] || 'Moda y accesorios'
     document.title = `${title} | HJStoreVP`
     updateMeta('name', 'description', description)
