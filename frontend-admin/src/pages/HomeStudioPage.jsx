@@ -63,6 +63,7 @@ export default function HomeStudioPage() {
   const [selected, setSelected] = useState('hero')
   const [selectedCampaignIndex, setSelectedCampaignIndex] = useState(0)
   const [focusField, setFocusField] = useState('')
+  const [selectedMedia, setSelectedMedia] = useState(null)
   const [draggedSection, setDraggedSection] = useState(null)
   const [showPreview, setShowPreview] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -107,7 +108,37 @@ export default function HomeStudioPage() {
   const selectFromPreview = (id, detail = {}) => {
     setSelected(id)
     setFocusField(detail.field || '')
-    if (id === 'campaigns') setSelectedCampaignIndex(detail.index || 0)
+    setSelectedMedia(detail.media || null)
+    if (id === 'campaigns') setSelectedCampaignIndex(detail.index || detail.media?.index || 0)
+  }
+  const replaceSelectedMedia = (media, field, url) => {
+    if (!media || !url || busy || uploading) return
+    const index = media.index
+    if (!Number.isInteger(index) || index < 0) return
+    if (media.kind === 'hero') {
+      const list = [...(draft.hero_images || [])]
+      if (index >= list.length) return
+      list[index] = url
+      update('hero_images', list)
+    } else if (media.kind === 'statement') {
+      const list = [...(draft.statement_images || [])]
+      if (index >= list.length) return
+      list[index] = url
+      update('statement_images', list)
+    } else if (media.kind === 'campaigns') {
+      if (index >= (draft.homepage_banners || []).length) return
+      updateBanner(index, field, url)
+    } else if (media.kind === 'loyalty') {
+      update('homepage_loyalty_banner', { ...draft.homepage_loyalty_banner, [field]: url })
+    } else if (media.kind === 'categories') {
+      update('homepage_category_tiles', (draft.homepage_category_tiles || []).map((tile, i) =>
+        i === index ? { ...tile, [field]: url } : tile))
+    } else if (media.kind === 'visual' || media.kind === 'custom') {
+      const key = media.kind === 'visual' ? 'homepage_visual_blocks' : 'homepage_custom_sections'
+      update(key, (draft[key] || []).map(block => block.id !== media.blockId ? block :
+        { ...block, items: (block.items || []).map((item, i) =>
+          i === index ? { ...item, [field]: url } : item) }))
+    }
   }
   const openFullEditor = (id, index = 0) => {
     setSelected(id)
@@ -588,13 +619,15 @@ export default function HomeStudioPage() {
           </div>
           <HomeStudioInspector draft={draft} selected={selected} disabled={disabled}
             selectedCampaignIndex={selectedCampaignIndex} focusField={focusField} hidden={hidden}
+            device={device} selectedMedia={selectedMedia} libraryImages={libraryImages}
+            onMediaChange={replaceSelectedMedia}
             onFieldChange={update} onCampaignChange={updateBanner}
             onLoyaltyChange={(key, value) => update('homepage_loyalty_banner', { ...draft.homepage_loyalty_banner, [key]: value })}
             onCustomChange={updateCustomField} onVisibilityChange={toggle}
             onOpenEditor={openFullEditor}/>
           <div className="hj-studio-preview-canvas" style={{ maxHeight:'70vh',overflow:'auto',background:'#e5e5e5',padding:12 }}>
             <HomeStudioPreview draft={draft} mobile={device==='mobile'}
-              selected={selected} onSelect={selectFromPreview}/>
+              selected={selected} selectedMedia={selectedMedia} onSelect={selectFromPreview}/>
           </div>
         </div>
       </div>}
