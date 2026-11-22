@@ -98,6 +98,7 @@
 .hj-catalog-page .hj-catalog-product .editorial-product-category { font-size: 9px; font-weight: 750; }
 .hj-catalog-page .hj-catalog-product .editorial-product-label { background: var(--hj-red); color: #fff; border-radius: 2px; font-size: 10px; padding: 5px 8px; }
 .hj-catalog-page .hj-catalog-product .editorial-product-label.is-sold-out { background: var(--hj-ink); }
+.hj-catalog-page .hj-catalog-product .editorial-product-label.is-low-stock { background: #fff; color: var(--hj-ink); border: 1px solid var(--hj-ink); }
 .hj-catalog-page .hj-catalog-product .store-favorite-action { border-radius: 50%; width: 44px; height: 44px; background: #fff; }
 .hj-catalog-page .hj-catalog-product .editorial-product-add { background: var(--hj-ink); width: 44px; height: 44px; }
 .hj-catalog-page .hj-catalog-product .editorial-product-add:hover { background: var(--hj-red); }
