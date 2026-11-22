@@ -785,6 +785,57 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   .admin-app-shell .hj-library-tile img { width: 90px; height: 76px; flex: none; }
 }
 
+/* Organización y trazabilidad de fotografías de portada. */
+.admin-app-shell .hj-media-filter-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin: -4px 0 15px;
+}
+.admin-app-shell .hj-media-filter-row label {
+  font-size: 12px; font-weight: 700; color: var(--hj-ink);
+}
+.admin-app-shell .hj-media-filter-row select { width: min(290px, 100%); }
+.admin-app-shell .hj-library-media-card {
+  display: flex; flex-direction: column; min-width: 0;
+  border: 1px solid var(--hj-line); border-radius: var(--hj-radius-sm);
+  padding: 5px; background: #fff;
+}
+.admin-app-shell .hj-library-media-card > .hj-library-tile {
+  padding: 0; border: 0; flex: 1; width: 100%;
+}
+.admin-app-shell .hj-library-media-card > .hj-library-tile:hover {
+  box-shadow: none; outline: 2px solid var(--hj-ink); outline-offset: 2px;
+}
+.admin-app-shell .hj-library-media-card .hj-library-tile strong {
+  padding: 8px 4px 3px; text-align: left; font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.admin-app-shell .hj-library-card-details {
+  display: flex; flex-direction: column; gap: 7px; padding: 6px 3px 4px;
+}
+.admin-app-shell .hj-library-card-details small {
+  font-size: 11px; color: var(--hj-muted); overflow-wrap: anywhere;
+}
+.admin-app-shell .hj-library-card-details .btn { font-size: 11px; }
+.admin-app-shell .hj-library-usage {
+  align-self: flex-start; border-radius: 6px; padding: 3px 6px;
+  font-weight: 700; font-size: 10px; line-height: 1.5;
+  background: var(--hj-success-soft); color: var(--hj-success);
+}
+.admin-app-shell .hj-library-usage.is-unused {
+  background: var(--hj-hover); color: var(--hj-muted);
+}
+.admin-app-shell .hj-library-metadata-editor {
+  margin-top: 16px; border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius); background: var(--hj-bg);
+  padding: 14px;
+}
+.admin-app-shell .hj-library-metadata-editor label {
+  font-size: 12px; font-weight: 600;
+}
+@media (max-width: 575px) {
+  .admin-app-shell .hj-media-filter-row select { width: 100%; }
+}
+
 /* ---------- Estados (error de módulo, vacío, carga) ---------- */
 .hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
 .hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
