@@ -4,6 +4,8 @@ import { Truck, Plus, Pencil, X, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { shippingApi } from '../services/api'
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 const formatCOP = (value) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
 }).format(Number(value) || 0)
@@ -39,7 +41,7 @@ function RateForm({ initial, onCancel, onSave, saving }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50"
       role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel() }}>
       <section role="dialog" aria-modal="true" aria-labelledby="shipping-dialog-title"
-        className="w-full max-w-2xl max-h-[90dvh] overflow-y-auto bg-white rounded-2xl p-5 sm:p-8">
+        className="admin-form-dialog w-full max-w-2xl max-h-[90dvh] overflow-y-auto bg-white rounded-2xl p-5 sm:p-8">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div><h2 id="shipping-dialog-title" className="font-black text-xl">
             {initial ? 'Editar tarifa' : 'Nueva tarifa'}
@@ -113,7 +115,7 @@ export default function ShippingRatesPage() {
   })
   const visible = rates.filter((rate) =>
     [rate.department, rate.city, rate.carrier, rate.service].some(
-      (value) => String(value || '').toLocaleLowerCase('es-CO').includes(search.toLocaleLowerCase('es-CO'))
+      (value) => normalizeSearch(value).includes(normalizeSearch(search.trim()))
     )
   )
   const openForm = (rate = null) => { setEditing(rate); setModalOpen(true) }
@@ -136,17 +138,26 @@ export default function ShippingRatesPage() {
           </div>
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-3 text-slate-400" size={16}/>
-            <input className="input pl-9" aria-label="Buscar tarifas" value={search}
+            <input className="input pl-9" type="search" aria-label="Buscar tarifas" value={search}
               onChange={(event) => setSearch(event.target.value)} placeholder="Buscar destino o transportadora"/>
           </div>
         </div>
+        {!isLoading && !isError && <p className="admin-list-result-count" role="status" aria-live="polite">
+          {visible.length.toLocaleString('es-CO')} de {rates.length.toLocaleString('es-CO')} tarifas
+        </p>}
         {isLoading ? <p role="status" className="py-12 text-center text-slate-500">Cargando tarifas…</p>
           : isError ? <div role="alert" className="py-12 text-center text-red-700">No fue posible cargar las tarifas.
               <button className="btn-secondary ml-3" onClick={() => refetch()}>Reintentar</button></div>
-            : !visible.length ? <p className="py-12 text-center text-slate-500">No se encontraron tarifas. Crea la primera para habilitar envíos.</p>
+            : !visible.length ? <div className="admin-list-empty" role="status">
+                <p>{rates.length ? 'Ninguna tarifa coincide con la búsqueda.' : 'Todavía no hay tarifas configuradas.'}</p>
+                {rates.length
+                  ? <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setSearch('')}>Limpiar búsqueda</button>
+                  : <button type="button" className="btn btn-primary btn-sm" onClick={() => openForm()}>Crear primera tarifa</button>}
+              </div>
               : (
-                <div className="overflow-x-auto">
+                <div className="admin-list-table-scroll overflow-x-auto" role="region" aria-label="Listado de tarifas de envío" tabIndex={0}>
                   <table className="w-full text-sm min-w-[760px]">
+                    <caption className="visually-hidden">Tarifas por departamento, ciudad, transportadora y servicio</caption>
                     <thead><tr className="text-left border-b">
                       {['Departamento','Ciudad','Transportadora','Servicio','Costo','Entrega estimada','Estado','Acción'].map(x=>
                         <th key={x} className="px-3 py-3">{x}</th>)}
@@ -163,7 +174,7 @@ export default function ShippingRatesPage() {
                           {rate.active ? 'Activa' : 'Inactiva'}</span></td>
                         <td className="px-3 py-4">
                           <button type="button" onClick={() => openForm(rate)}
-                            className="inline-flex gap-2 items-center text-zinc-700 font-semibold min-h-10">
+                            className="admin-table-action inline-flex gap-2 items-center text-zinc-700 font-semibold min-h-10">
                             <Pencil size={15}/> Editar
                           </button>
                         </td>
