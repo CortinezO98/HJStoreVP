@@ -112,7 +112,7 @@ export default function CatalogPage() {
         </form>
         <FilterFields {...sidebarProps}/>
       </aside>}
-      <main className="hj-catalog-main" aria-label="Productos del catálogo">
+      <section className="hj-catalog-main" aria-label="Productos del catálogo">
         {isLoading && !seen.length ? <CatalogSkeleton/> :
           isError ? <ErrorState onRetry={() => refetch()}/> : noResults ?
           <div className="hj-catalog-empty" role="status">
@@ -134,7 +134,7 @@ export default function CatalogPage() {
               CARGAR MÁS PRODUCTOS <ArrowRight size={16}/>
             </button>}
           </div>}
-      </main>
+      </section>
     </div>
     <div className="hj-catalog-wrap">
       <CrossSell category={filters.categoria} collection={allProducts}/>
