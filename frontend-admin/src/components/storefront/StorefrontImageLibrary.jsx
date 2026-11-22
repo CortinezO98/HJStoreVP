@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Images, Search } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -44,20 +44,48 @@ export function collectStorefrontImages(settings = {}) {
 export default function StorefrontImageLibrary({ images = [], onSelect, disabled = false, title = 'Reutilizar fotografía' }) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
+  const dialogRef = useRef(null)
+  const triggerRef = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const previousFocus = document.activeElement
+    dialogRef.current?.querySelector('button')?.focus()
+    const onKeyDown = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setOpen(false)
+      }
+      if (event.key === 'Tab' && dialogRef.current) {
+        const controls = [...dialogRef.current.querySelectorAll('button:not([disabled]),input:not([disabled])')]
+        if (!controls.length) return
+        if (event.shiftKey && document.activeElement === controls[0]) {
+          event.preventDefault(); controls.at(-1).focus()
+        } else if (!event.shiftKey && document.activeElement === controls.at(-1)) {
+          event.preventDefault(); controls[0].focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previousFocus?.isConnected) previousFocus.focus()
+      else triggerRef.current?.focus()
+    }
+  }, [open])
   const available = useMemo(() => {
     const term = filter.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     return images.filter(image => image.source.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(term))
   }, [images, filter])
   if (!images.length) return null
   return <>
-    <button type="button" className="btn btn-outline-secondary btn-sm mt-2"
+    <button ref={triggerRef} type="button" className="btn btn-outline-secondary btn-sm mt-2"
       disabled={disabled} onClick={() => { setFilter(''); setOpen(true) }}>
       <Images size={15} aria-hidden="true" /> {title} ({images.length})
     </button>
     {open && <div className="hj-library-backdrop" role="presentation" onMouseDown={event => {
       if (event.target === event.currentTarget) setOpen(false)
     }}>
-      <div className="hj-library-dialog" role="dialog" aria-modal="true" aria-label="Biblioteca de fotografías">
+      <div ref={dialogRef} className="hj-library-dialog" role="dialog" aria-modal="true" aria-label="Biblioteca de fotografías">
         <div className="d-flex justify-content-between gap-2 align-items-start">
           <div><h3 className="h5 fw-bold mb-1">Fotografías del borrador</h3>
             <p className="small text-secondary mb-0">Selecciona una imagen ya utilizada. No se volverá a subir ni se publicará automáticamente.</p>
