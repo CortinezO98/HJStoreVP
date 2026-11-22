@@ -2769,3 +2769,26 @@
   .store-catalog-premium .editorial-product-add { width: 36px; height: 36px; }
   .store-catalog-premium .store-catalog-filter-panel { padding: 18px 15px; }
 }
+
+
+/* Filtros activos: identidad neutra con acento rojo, sin azul heredado. */
+.store-catalog-premium .store-catalog-mobile-filter-trigger.bg-brand-600 {
+  background: #151515;
+  border-color: #151515;
+  color: #fff;
+}
+.store-catalog-premium .bg-brand-100.text-brand-700 {
+  background: #f3f2ef;
+  color: #242424;
+  border: 1px solid #e6e5e1;
+}
+.store-catalog-premium .bg-brand-100.text-brand-700 button {
+  color: #8e1e23;
+}
+.store-catalog-premium .store-catalog-filter-panel .text-brand-600 {
+  color: #aa2029;
+}
+.store-catalog-premium .store-catalog-filter-option[aria-pressed="true"]:hover {
+  background: #313131;
+  color: #fff;
+}
