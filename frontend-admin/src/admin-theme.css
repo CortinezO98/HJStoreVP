@@ -836,6 +836,85 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   .admin-app-shell .hj-media-filter-row select { width: 100%; }
 }
 
+/* Inspector contextual conectado a la vista previa: solo cambia el borrador. */
+.admin-app-shell .hj-studio-inspector {
+  margin: 0 0 14px;
+  background: #fff;
+  border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius);
+  padding: clamp(14px, 1.7vw, 19px);
+}
+.admin-app-shell .hj-studio-inspector-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.admin-app-shell .hj-studio-inspector-heading > div { flex: 1 1 200px; }
+.admin-app-shell .hj-studio-inspector-heading .admin-page-kicker {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--hj-accent); font-weight: 800; margin: 0 0 7px;
+}
+.admin-app-shell .hj-studio-inspector-heading h3 {
+  color: var(--hj-ink); font-size: 19px; font-weight: 800;
+  margin: 0 0 6px;
+}
+.admin-app-shell .hj-studio-inspector-heading p {
+  color: var(--hj-muted); font-size: 12px; line-height: 1.55; margin: 0;
+}
+.admin-app-shell .hj-inspector-status {
+  display: inline-flex; gap: 6px; align-items: center;
+  color: var(--hj-muted); font-size: 12px;
+  border: 1px solid var(--hj-line);
+  border-radius: 99px; padding: 5px 9px;
+}
+.admin-app-shell .hj-studio-inspector-fields {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px;
+}
+.admin-app-shell .hj-studio-inspector-fields label {
+  display: block; min-width: 0; margin: 0;
+  color: var(--hj-text); font-size: 12px; font-weight: 600;
+}
+.admin-app-shell .hj-studio-inspector-fields label > span {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  margin-bottom: 5px;
+}
+.admin-app-shell .hj-inspector-selected {
+  background: var(--hj-accent-soft);
+  color: var(--hj-accent);
+  font-size: 10px; border-radius: 5px; padding: 2px 5px;
+}
+.admin-app-shell .hj-inspector-toggle {
+  display: flex; align-items: center; gap: 9px; margin: 14px 0 0;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.admin-app-shell .hj-studio-inspector-actions {
+  border-top: 1px solid var(--hj-line); margin-top: 14px;
+  padding-top: 13px; display: flex; align-items: flex-start;
+  flex-wrap: wrap; gap: 11px;
+}
+.admin-app-shell .hj-studio-inspector-actions .btn {
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.admin-app-shell .hj-studio-inspector-actions small,
+.admin-app-shell .hj-inspector-hint {
+  flex: 1 1 200px; color: var(--hj-muted);
+  font-size: 11.5px; line-height: 1.55;
+}
+.admin-app-shell .hj-inspector-hint { margin: 0; }
+.admin-app-shell .hj-studio-preview-canvas button {
+  cursor: pointer;
+}
+.admin-app-shell .hj-studio-preview-canvas button:hover {
+  filter: brightness(.96);
+}
+@media(max-width: 650px) {
+  .admin-app-shell .hj-studio-inspector-fields { grid-template-columns: 1fr; }
+  .admin-app-shell .hj-studio-inspector-actions .btn { width: 100%; justify-content: center; }
+}
+
 /* ---------- Estados (error de módulo, vacío, carga) ---------- */
 .hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
 .hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
