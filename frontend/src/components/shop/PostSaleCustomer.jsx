@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeftRight, ChevronDown, ChevronUp, MessageSquareWarning } from 'lucide-react'
@@ -13,9 +14,7 @@ const REFUNDS = {
   pending_external: 'Reembolso pendiente de gestión externa',
   externally_recorded: 'Reembolso externo registrado por administración',
 }
-const COP = n => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(n) || 0)
+const COP = formatCOP
 
 function SubmitCase({ order, onSuccess }) {
   const [kind, setKind] = useState('return')
