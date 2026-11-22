@@ -9,6 +9,7 @@ import HomeMarketingEditor from '../components/storefront/HomeMarketingEditor'
 import { BannerPresentationControls, CarouselPlaybackControls } from '../components/storefront/PresentationControls'
 import CampaignDestinationEditor from '../components/storefront/CampaignDestinationEditor'
 import ImageCropModal from '../components/products/ImageCropModal'
+import StorefrontWorkflowGuide from '../components/storefront/StorefrontWorkflowGuide'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
 import { confirmAction } from '../components/ui/ConfirmDialog'
 
@@ -265,6 +266,23 @@ export default function HomeStudioPage() {
       </div>
       <Link to="/configuracion-tienda" className="btn btn-outline-secondary">Configuración general</Link>
     </header>
+    <StorefrontWorkflowGuide context="studio" />
+    <div className="hj-studio-quick-actions" aria-label="Editar rápidamente la portada">
+      <strong>¿Qué quieres cambiar?</strong>
+      <div className="d-flex flex-wrap gap-2 mt-2">
+        {[
+          ['hero', 'Textos y fotografías del banner'],
+          ['campaigns', 'Campañas e imágenes'],
+          ['categories', 'Fotografías por categoría'],
+          ['visual', 'Bloques visuales'],
+        ].map(([id, label]) => <button key={id} type="button"
+          className={`btn btn-sm ${selected === id ? 'btn-dark' : 'btn-outline-secondary'}`}
+          aria-pressed={selected === id} onClick={() => {
+            setSelected(id)
+            document.getElementById('studio-section-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}>{label}</button>)}
+      </div>
+    </div>
     {storageHealth && <div className={storageHealth.in_sync
       ? 'alert alert-light border small' : 'alert alert-warning small'} role="status">
       <strong>Almacenamiento visual:</strong> {!storageHealth.schema_ready
@@ -285,7 +303,7 @@ export default function HomeStudioPage() {
       pero para publicar debes descartar el borrador y comenzar desde la versión actual.
     </div>}
     <div className="d-flex flex-wrap gap-2 align-items-center mb-4">
-      <span className={changed ? 'badge text-bg-warning' : hasSavedDraft ? 'badge text-bg-info' : 'badge text-bg-light border'}>
+      <span role="status" aria-live="polite" className={changed ? 'badge text-bg-warning' : hasSavedDraft ? 'badge text-bg-info' : 'badge text-bg-light border'}>
         {changed ? 'Cambios sin guardar' : hasSavedDraft ? 'Borrador privado guardado' : 'Igual que la portada publicada'}
       </span>
       <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setShowPreview(x => !x)}>
@@ -294,11 +312,12 @@ export default function HomeStudioPage() {
       <button className="btn btn-outline-secondary btn-sm" type="button" disabled={disabled || !hasSavedDraft && !changed}
         onClick={discard}><RotateCcw size={15} className="me-1"/>Descartar</button>
       <button className="btn btn-primary btn-sm" type="button"
+        title="Guarda el diseño en privado, sin cambiar la tienda pública"
         disabled={disabled || (!changed && hasSavedDraft)}
         onClick={saveDraft}><Save size={15} className="me-1"/>
         {!hasSavedDraft && !changed ? 'Inicializar borrador privado' : 'Guardar borrador'}
       </button>
-      <button className="btn btn-dark btn-sm" type="button" disabled={disabled || changed || !hasSavedDraft || conflict}
+      <button className="btn btn-dark btn-sm" type="button" title={changed ? "Guarda los cambios del borrador antes de publicar" : !hasSavedDraft ? "Primero inicializa y guarda un borrador privado" : conflict ? "Revisa el conflicto con la portada publicada" : "Publica el borrador actual"} disabled={disabled || changed || !hasSavedDraft || conflict}
         onClick={publish}><Send size={15} className="me-1"/>Publicar portada</button>
     </div>
     <details className="admin-settings-section mb-4">
@@ -362,7 +381,7 @@ export default function HomeStudioPage() {
             </button>}
           </div>)}
         </div>
-        <div className="admin-settings-section">
+        <div className="admin-settings-section" id="studio-section-editor">
           <h2 className="admin-settings-section-title">
             Editar · {selected === 'hero' ? 'Banner principal' :
               selected.startsWith('custom:')
@@ -394,8 +413,9 @@ export default function HomeStudioPage() {
                 onChange={next => update('hero_carousel_settings', next)}/>
             </div>
             <div className="col-12">
-              <label className="form-label">Agregar fotografía al carrusel principal (máx. 8)</label>
-              <input className="form-control" type="file" accept="image/png,image/jpeg,image/webp"
+              <label className="form-label" htmlFor="studio-hero-photo">Agregar fotografía al carrusel principal (máx. 8)</label>
+              <p className="small text-secondary mb-2">Formatos JPG, PNG o WebP. Recortaremos la fotografía antes de incorporarla al borrador; revisa también la vista de celular.</p>
+              <input id="studio-hero-photo" className="form-control" type="file" accept="image/png,image/jpeg,image/webp"
                 disabled={disabled || (draft.hero_images || []).length >= 8}
                 onChange={e => { startCrop('hero_images',0,e.target.files?.[0]);e.target.value='' }}/>
             </div>
@@ -496,8 +516,8 @@ export default function HomeStudioPage() {
       </div>}
     </div>
     <p className="text-secondary small mt-3">
-      Los cambios de este estudio permanecen privados hasta seleccionar «Publicar portada».
-      La configuración general de la tienda sigue funcionando de manera independiente.
+      Este estudio guarda un borrador privado hasta seleccionar «Publicar portada».
+      Los cambios guardados desde Configuración de tienda se publican directamente; evita editar los mismos textos en ambas pantallas simultáneamente.
     </p>
   </div>
 }
