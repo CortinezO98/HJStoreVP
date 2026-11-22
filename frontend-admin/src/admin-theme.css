@@ -337,6 +337,49 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   }
 }
 
+/* Formularios de edición: jerarquía, obligatoriedad y acciones adaptables. */
+.admin-app-shell .admin-refined-form {
+  max-height: min(92dvh, 960px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.admin-app-shell .admin-required-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--hj-muted);
+}
+.admin-app-shell .admin-refined-form .form-label,
+.admin-app-shell .admin-refined-form label[for] {
+  font-weight: 600;
+}
+.admin-app-shell .admin-refined-form [aria-busy="true"] {
+  cursor: progress;
+}
+.admin-app-shell .admin-refined-form-options {
+  padding: 10px 0;
+  border-top: 1px solid var(--hj-line);
+}
+.admin-app-shell .admin-refined-form-actions {
+  background: var(--hj-card);
+  gap: 10px;
+}
+@media (max-width: 575px) {
+  .admin-app-shell .admin-refined-form {
+    width: min(100%, 560px);
+    max-height: 94dvh;
+  }
+  .admin-app-shell .admin-refined-form-actions {
+    flex-wrap: wrap;
+  }
+  .admin-app-shell .admin-refined-form-actions > .btn,
+  .admin-app-shell .admin-refined-form-actions > .btn-primary,
+  .admin-app-shell .admin-refined-form-actions > .btn-secondary {
+    min-height: 42px;
+  }
+}
+
 /* ---------- Modales y capas ---------- */
 .admin-app-shell .admin-main .fixed.inset-0[class*="bg-"],
 .admin-app-shell [class*="-overlay"], .admin-app-shell [class*="-backdrop"] { backdrop-filter: blur(2px); }
