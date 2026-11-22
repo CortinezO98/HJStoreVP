@@ -4,6 +4,8 @@ import { Plus, Pencil, ToggleLeft, ToggleRight, Tag, Search, Layers3 } from 'luc
 import { apiClient } from '../services/api'
 import toast from 'react-hot-toast'
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 const EMOJIS = ['🧢','🌸','⌚','👜','🎽','👟','💍','🕶️','🧣','🎒','💄','🛍️']
 
 function CategoryModal({ category, onClose }) {
@@ -94,8 +96,8 @@ export default function CategoriesPage() {
   const totalProducts = categories.reduce((total, category) => total + Number(category.product_count || 0), 0)
   const activeCount = categories.filter(category => category.active).length
   const filtered = useMemo(() => categories.filter(category => {
-    const term = search.trim().toLocaleLowerCase('es')
-    const text = `${category.name} ${category.slug} ${category.description || ''}`.toLocaleLowerCase('es')
+    const term = normalizeSearch(search.trim())
+    const text = normalizeSearch(`${category.name} ${category.slug} ${category.description || ''}`)
     return (!term || text.includes(term)) && (status === 'all' || (status === 'active') === Boolean(category.active))
   }).sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)), [categories, search, status])
   const clear = () => { setSearch(''); setStatus('all') }
@@ -150,6 +152,8 @@ export default function CategoriesPage() {
         </div>
       </section>
 
+      {!isLoading && !isError && <p className="admin-list-result-count" role="status" aria-live="polite">{filtered.length.toLocaleString('es-CO')} de {categories.length.toLocaleString('es-CO')} categorías visibles con los filtros actuales</p>}
+
       {isError ? <div className="alert alert-danger" role="alert">
         No se pudieron consultar las categorías.
         <button type="button" className="btn btn-outline-danger btn-sm ms-3" onClick={() => refetch()}>Reintentar</button>
@@ -170,7 +174,7 @@ export default function CategoriesPage() {
         <>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h2 className="h6 fw-bold m-0">Listado de categorías</h2>
-            <span className="text-secondary small">{filtered.length} resultados</span>
+            <span className="text-secondary small">{filtered.length.toLocaleString('es-CO')} resultados</span>
           </div>
           <div className="row g-3">
             {filtered.map((cat, index) => <div className="col-12 col-md-6 col-xl-4" key={cat.id}>
