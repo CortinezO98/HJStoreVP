@@ -125,8 +125,9 @@
 .hj-catalog-crosssell-heading h2 span { font-size: inherit; }
 .hj-catalog-crosssell-heading a { display: flex; align-items: center; gap: 7px; min-height: 44px; background: var(--hj-ink); color: #fff; padding: 12px 15px; font-size: 10px; font-weight: 850; }
 .hj-catalog-crosssell-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 15px; }
-.hj-catalog-crosssell-grid .editorial-product-add,.hj-catalog-crosssell-grid .store-product-quick-link { display: none; }
-.hj-catalog-crosssell-grid .editorial-product-media > a { aspect-ratio: 1/1; }
+.hj-catalog-page .hj-catalog-crosssell-grid .editorial-product-add,
+.hj-catalog-page .hj-catalog-crosssell-grid .store-product-quick-link { display: none; }
+.hj-catalog-page .hj-catalog-crosssell-grid .editorial-product-media > a { aspect-ratio: 1/1; }
 .hj-catalog-trust { background: var(--hj-surface-2); border-top: 1px solid var(--hj-line); padding: 17px 0; }
 .hj-catalog-trust .hj-catalog-wrap { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 17px; }
 .hj-catalog-trust .hj-catalog-wrap > div,.hj-catalog-trust .hj-catalog-wrap > a { display: flex; align-items: flex-start; gap: 12px; }
