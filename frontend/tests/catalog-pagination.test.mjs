@@ -8,12 +8,13 @@ const page = (start, length = CATALOG_PAGE_SIZE) =>
   Array.from({ length }, (_, index) => ({ id: start + index, name: `Producto ${start + index}` }))
 
 test('normaliza páginas inválidas sin consultas infinitas ni valores negativos', () => {
-  for (const value of [undefined, '', '0', '-3', 'NaN', 'Infinity', '2.5', '1e9']) {
+  for (const value of [undefined, '', '0', '-3', 'NaN', 'Infinity', '2.5', 'not-a-page']) {
     assert.equal(normalizeCatalogPage(value), 1)
   }
   assert.equal(normalizeCatalogPage('1'), 1)
   assert.equal(normalizeCatalogPage('3'), 3)
   assert.equal(normalizeCatalogPage('999999'), MAX_CATALOG_PAGE)
+  assert.equal(normalizeCatalogPage('1e9'), MAX_CATALOG_PAGE)
 })
 
 test('primera página completa habilita cargar más', () => {
