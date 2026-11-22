@@ -14,11 +14,7 @@ export const PRICE_OPTIONS = [
   { value: '100000:200000', title: '$100.000 a $200.000', min: '100000', max: '200000' },
   { value: '200000:', title: 'Más de $200.000', min: '200000', max: '' },
 ]
-const COLOR_HEX = {
-  negro: '#1D1D1D', blanco: '#EBEAE6', azul: '#23428F', beige: '#CEB99E',
-  rojo: '#B30F17', dorado: '#C59B20', gris: '#8B8B86', verde: '#3E654C',
-  rosado: '#CB8898', cafe: '#78533F', marrón: '#78533F',
-}
+
 export function CategoryChips({ categories, selected, setMany, counts = {}, complete = false }) {
   return <nav className="hj-category-chips" aria-label="Categorías del catálogo">
     {categories.map(cat => <button type="button" key={cat.slug || 'all'}
@@ -71,7 +67,7 @@ export function FilterFields({ filters, setMany, variants = {}, allProducts = []
           return <button type="button" key={color} aria-pressed={filters.color === color}
             aria-label={`Filtrar por color ${color}`}
             onClick={() => setMany({ color: filters.color === color ? '' : color })}>
-            <span className="hj-catalog-color-swatch" style={{ '--swatch': COLOR_HEX[normalized] || '#AAAAAA' }}/>
+            <span className="hj-catalog-color-swatch" data-color={normalized}/>
             <span>{color}</span>
           </button>
         })}
@@ -112,7 +108,7 @@ export function CatalogToolbar({
   ].filter(([, value]) => Boolean(value))
   return <div className="hj-catalog-toolbar">
     <button type="button" className="hj-catalog-filter-toggle" onClick={onToggleFilters}
-      aria-expanded={filtersVisible} aria-controls="hj-catalog-filters">
+      aria-expanded={filtersVisible} aria-controls="hj-catalog-filters hj-catalog-mobile-filters">
       <SlidersHorizontal size={16} aria-hidden="true"/>
       <span className="hj-filter-desktop-label">{filtersVisible ? 'Ocultar filtros' : 'Mostrar filtros'}</span>
       <span className="hj-filter-mobile-label">Filtros{active ? ` (${active})` : ''}</span>
@@ -168,7 +164,7 @@ export function FilterSheet({ open, onClose, filters, setMany, clear, variants, 
   return <div className="hj-filter-sheet-backdrop" onMouseDown={e => {
     if (e.target === e.currentTarget) onClose()
   }}>
-    <section className="hj-filter-sheet" id="hj-catalog-filters" role="dialog" aria-modal="true" aria-label="Filtros del catálogo">
+    <section className="hj-filter-sheet" id="hj-catalog-mobile-filters" role="dialog" aria-modal="true" aria-label="Filtros del catálogo">
       <header><h2>FILTROS<span>.</span></h2>
         <button type="button" ref={closeRef} onClick={onClose} aria-label="Cerrar filtros"><X size={25}/></button>
       </header>
