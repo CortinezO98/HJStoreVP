@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, CreditCard, PackageCheck, RefreshCw } from 'lucide-react'
@@ -37,6 +37,7 @@ export default function CatalogPage() {
   const { filters, apiFilters, active, setMany, clear } = useCatalogFilters()
   const [desktopFilters, setDesktopFilters] = useState(true)
   const [mobileFilters, setMobileFilters] = useState(false)
+  const closeMobileFilters = useCallback(() => setMobileFilters(false), [])
   const [density, setDensity] = useState(readDensity)
   const [searchText, setSearchText] = useState(filters.q)
   useEffect(() => setSearchText(filters.q), [filters.q])
@@ -145,7 +146,7 @@ export default function CatalogPage() {
         <Link to="/politicas/devoluciones"><RefreshCw size={20}/><span><strong>Cambios y devoluciones</strong><small>Consulta las condiciones aplicables.</small></span></Link>
       </div>
     </div>
-    <FilterSheet open={mobileFilters} onClose={() => setMobileFilters(false)}
+    <FilterSheet open={mobileFilters} onClose={closeMobileFilters}
       filters={filters} setMany={setMany} clear={clear} {...{
         variants, allProducts, categories: activeCategories,
       }} complete={false} count={resultCount}/>
