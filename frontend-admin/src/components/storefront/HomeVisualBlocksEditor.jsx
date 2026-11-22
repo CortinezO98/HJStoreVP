@@ -4,6 +4,7 @@ import { storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 import ImageCropModal from '../products/ImageCropModal'
 import StorefrontImageDropzone from './StorefrontImageDropzone'
+import StorefrontImageLibrary from './StorefrontImageLibrary'
 import { BannerPresentationControls, CarouselPlaybackControls } from './PresentationControls'
 import CampaignDestinationEditor from './CampaignDestinationEditor'
 
@@ -19,7 +20,7 @@ const emptyItem = () => ({
   button_text: 'VER AHORA', link: '/catalogo',
 })
 
-export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyChange = () => {}, allowCreate = true, allowDelete = true }) {
+export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyChange = () => {}, allowCreate = true, allowDelete = true, libraryImages = [] }) {
   const [uploading, setUploading] = useState('')
   const [preview, setPreview] = useState('desktop')
   const [cropTask, setCropTask] = useState(null)
@@ -187,6 +188,8 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
               hint={field === 'image_url' ? 'Arrastra o selecciona una imagen horizontal' : 'Arrastra o selecciona una imagen vertical'}
               disabled={!!uploading || !!cropTask} compact
               onFile={file => queueCrop(blockIndex, itemIndex, field, file)} />
+            <StorefrontImageLibrary images={libraryImages} disabled={!!uploading || !!cropTask}
+              title="Usar foto existente" onSelect={url => replaceItem(blockIndex, itemIndex, { [field]: url })} />
             {field === 'mobile_image_url' && item.mobile_image_url &&
               <button type="button" className="btn btn-outline-secondary btn-sm mt-2"
                 onClick={() => replaceItem(blockIndex, itemIndex, { mobile_image_url: '' })}>Eliminar imagen móvil</button>}
