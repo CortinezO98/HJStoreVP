@@ -124,7 +124,7 @@ export default function CatalogPage() {
       {/* Header */}
       <div className="store-catalog-intro">
         <div className="store-catalog-intro-copy">
-          <span className="store-catalog-eyebrow">HJ STOREVP / SELECCIÓN</span>
+          <span className="store-catalog-eyebrow">HJ STOREVP <span aria-hidden="true">/</span> CURADURÍA DE ESTILO</span>
           <h1 className="editorial-catalog-title">{pageTitle.toUpperCase()}</h1>
           {!isLoading && (
             <p className="store-catalog-subtitle">
@@ -378,7 +378,7 @@ export default function CatalogPage() {
             </div>
           ) : (
             <>
-              <div className="store-catalog-product-grid grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
+              <div className="store-catalog-product-grid grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-10 sm:gap-x-8 sm:gap-y-12">
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
