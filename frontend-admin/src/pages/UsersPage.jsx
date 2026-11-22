@@ -48,9 +48,9 @@ function roleBadge(role) {
         case 'super_admin':
         return 'bg-zinc-100 text-zinc-700'
         case 'admin':
-        return 'bg-brand-100 text-brand-700'
+        return 'bg-zinc-100 text-zinc-800'
         case 'seller':
-        return 'bg-blue-100 text-blue-700'
+        return 'bg-slate-100 text-slate-700'
         case 'customer':
         return 'bg-gray-100 text-gray-700'
         default:
