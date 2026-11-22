@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -24,13 +25,7 @@ import { updateMeta, updateCanonical, updateStructuredData } from '../../compone
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
-function formatCOP(amount) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Number(amount || 0))
-}
+
 
 function buildImageUrl(url) {
   if (!url) return null
