@@ -22,7 +22,8 @@ function CatalogSkeleton() {
 }
 function CrossSell({ category, collection }) {
   if (!category) return null
-  const choices = (collection || []).filter(p => p.category_slug !== category && p.total_stock !== 0).slice(0, 4)
+  const otherProducts = (collection || []).filter(p => p.category_slug && p.category_slug !== category && p.total_stock !== 0)
+  const choices = [...new Map(otherProducts.map(product => [product.category_slug, product])).values()].slice(0, 4)
   if (!choices.length) return null
   return <section className="hj-catalog-crosssell" aria-labelledby="hj-crosssell-title">
     <div className="hj-catalog-crosssell-heading"><div>
@@ -67,7 +68,7 @@ export default function CatalogPage() {
       apiFilters.color, apiFilters.talla, apiFilters.presentacion, apiFilters.page],
     queryFn: () => productsApi.list(apiFilters).then(r => r.data),
   })
-  const { data: allProducts = [] } = useQuery({
+  const { data: allProducts = [], isSuccess: allProductsReady } = useQuery({
     queryKey: ['catalog-cross-sell-products'],
     queryFn: () => productsApi.list({ page: 1, per_page: 100, sort: 'featured' }).then(r => r.data),
     staleTime: 60000,
@@ -83,8 +84,9 @@ export default function CatalogPage() {
   const hasNext = Array.isArray(products) && products.length === 24
   const resultCount = isLoading ? 0 : visibleProducts.length
   const categoryOptions = [{ name: 'Todo', slug: '' }, ...activeCategories]
+  const completePriceCounts = allProductsReady && allProducts.length < 100
   const setCategory = values => setMany(values)
-  const sidebarProps = { filters, setMany, variants, allProducts, complete: false, categories: activeCategories }
+  const sidebarProps = { filters, setMany, variants, allProducts, complete: completePriceCounts, categories: activeCategories }
   const noResults = !isLoading && !isError && products.length === 0 && filters.page === 1
   return <div className="hj-catalog-page">
     <div className="hj-catalog-wrap">
@@ -149,6 +151,6 @@ export default function CatalogPage() {
     <FilterSheet open={mobileFilters} onClose={closeMobileFilters}
       filters={filters} setMany={setMany} clear={clear} {...{
         variants, allProducts, categories: activeCategories,
-      }} complete={false} count={resultCount}/>
+      }} complete={completePriceCounts} count={resultCount}/>
   </div>
 }
