@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SlidersHorizontal, X, LayoutGrid, Grid2X2, ChevronDown } from 'lucide-react'
 
 export const SORT_OPTIONS = [
@@ -28,7 +28,8 @@ export function CategoryChips({ categories, selected, setMany, counts = {}, comp
 export function FilterFields({ filters, setMany, variants = {}, allProducts = [], complete = false, categories = [] }) {
   const priceSelected = `${filters.min_price}:${filters.max_price}`
   const colors = variants.color || []
-  const sizes = variants.talla || []
+  const sizes = filters.categoria === 'gorras' ? ['S/M', 'L/XL', 'Ajustable'] : []
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
   const presentations = variants.presentacion || []
   const categoryName = categories.find(c => c.slug === filters.categoria)?.name || ''
   return <div className="hj-catalog-filter-fields">
@@ -59,7 +60,7 @@ export function FilterFields({ filters, setMany, variants = {}, allProducts = []
         })}
       </div>
     </section>
-    {(colors.length > 0 || filters.color) && <section>
+    <section>
       <div className="hj-catalog-filter-title">Color</div>
       <div className="hj-catalog-color-options">
         {Array.from(new Set([filters.color, ...colors].filter(Boolean))).map(color => {
@@ -72,15 +73,25 @@ export function FilterFields({ filters, setMany, variants = {}, allProducts = []
           </button>
         })}
       </div>
-    </section>}
-    {(sizes.length > 0 || filters.talla) && <section>
+      {!colors.length && <p className="hj-filter-help">No hay opciones de color configuradas para esta selección.</p>}
+    </section>
+    {filters.categoria === 'gorras' && <section>
       <div className="hj-catalog-filter-title">Talla</div>
       <div className="hj-catalog-size-options">
-        {Array.from(new Set([filters.talla, ...sizes].filter(Boolean))).map(size =>
-          <button type="button" key={size} aria-pressed={filters.talla === size}
-            onClick={() => setMany({ talla: filters.talla === size ? '' : size })}>{size}</button>)}
+        {sizes.map(size => {
+          const available = (variants.talla || []).some(item => item.toLocaleLowerCase('es') === size.toLocaleLowerCase('es'))
+          return <button type="button" key={size} aria-pressed={filters.talla === size}
+            disabled={!available && filters.talla !== size}
+            title={!available ? 'Todavía no hay variantes con esta talla' : undefined}
+            onClick={() => setMany({ talla: filters.talla === size ? '' : size })}>{size}</button>
+        })}
       </div>
-      {filters.categoria === 'gorras' && <small className="hj-filter-help">Consulta la talla en la descripción de cada producto.</small>}
+      <button type="button" className="hj-catalog-size-guide" aria-expanded={sizeGuideOpen}
+        onClick={() => setSizeGuideOpen(value => !value)}>Guía de tallas</button>
+      {sizeGuideOpen && <p className="hj-filter-help" role="status">
+        S/M y L/XL dependen de la medida indicada por el fabricante; «Ajustable» corresponde a modelos con cierre regulable.
+        Revisa la ficha del producto antes de comprar.
+      </p>}
     </section>}
     {(presentations.length > 0 || filters.presentacion) && <section>
       <div className="hj-catalog-filter-title">Presentación</div>
