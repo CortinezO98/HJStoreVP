@@ -109,3 +109,6 @@ backups/
 
 # E.5.5: historial operativo local (no publicar snapshots)
 backend/monitoring/
+
+# Capturas locales de QA del frontend (no subir pruebas visuales)
+frontend/artifacts/
