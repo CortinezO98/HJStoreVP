@@ -19,7 +19,7 @@ export function CategoryChips({ categories, selected, setMany, counts = {}, comp
   return <nav className="hj-category-chips" aria-label="Categorías del catálogo">
     {categories.map(cat => <button type="button" key={cat.slug || 'all'}
       aria-pressed={selected === cat.slug} className="hj-category-chip"
-      onClick={() => setMany({ categoria: cat.slug, color: '', talla: '', presentacion: '' })}>
+      onClick={() => setMany({ categoria: cat.slug, featured: '', color: '', talla: '', presentacion: '' })}>
       {cat.name}
       {complete && counts[cat.slug] !== undefined && <small>{counts[cat.slug]}</small>}
     </button>)}
