@@ -9,6 +9,7 @@ import CategoryHero from '../../components/shop/CategoryHero'
 import { CategoryChips, CatalogToolbar, FilterFields, FilterSheet } from '../../components/shop/CatalogControls'
 import { ErrorState } from '../../components/shop/StoreUI'
 import { mergeCatalogPages } from '../../utils/catalogPagination'
+import { colorsFromProductNames, hasProductNameColor, normalizeColor } from '../../utils/catalogColors'
 
 function readDensity() {
   try { return window.localStorage.getItem('hj-catalog-density') === 'compact' ? 'compact' : 'large' }
@@ -57,6 +58,10 @@ export default function CatalogPage() {
       category: filters.categoria || undefined, search: filters.q || undefined,
     }).then(r => r.data),
   })
+  // La API filtra variantes por color. Los productos independientes cuyo
+  // color está explícito en el nombre se filtran en cliente cuando no hay faceta.
+  const standaloneColorFallback = Boolean(filters.color) &&
+    !(variants.color || []).some(value => normalizeColor(value) === normalizeColor(filters.color))
   const { data: listing, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['catalog-redesign', apiFilters.category, apiFilters.search, apiFilters.sort,
       apiFilters.min_price, apiFilters.max_price, apiFilters.in_stock, apiFilters.featured,
@@ -64,7 +69,9 @@ export default function CatalogPage() {
     queryFn: async () => {
       const pages = await Promise.all(
         Array.from({ length: apiFilters.page }, (_, index) =>
-          productsApi.list({ ...apiFilters, page: index + 1 }).then(response => response.data))
+          productsApi.list({ ...apiFilters,
+            color: standaloneColorFallback ? undefined : apiFilters.color,
+            page: index + 1 }).then(response => response.data))
       )
       return mergeCatalogPages(pages)
     },
@@ -74,7 +81,9 @@ export default function CatalogPage() {
     queryFn: () => productsApi.list({ page: 1, per_page: 100, sort: 'featured' }).then(r => r.data),
     staleTime: 60000,
   })
-  const visibleProducts = listing?.products || []
+  const visibleProducts = standaloneColorFallback
+    ? (listing?.products || []).filter(item => hasProductNameColor(item, filters.color))
+    : listing?.products || []
   // La API de categorías no publica image_url, pero la ficha del producto sí
   // devuelve su categoría completa. Una única consulta reutiliza esa imagen.
   const firstCategoryProduct = visibleProducts.find(item => item.category_slug === filters.categoria)
@@ -96,7 +105,8 @@ export default function CatalogPage() {
     ...activeCategories.map(cat => [cat.slug, allProducts.filter(product => product.category_slug === cat.slug).length]),
   ])
   const setCategory = values => setMany(values)
-  const sidebarProps = { filters, setMany, variants, allProducts, complete: completePriceCounts, categories: activeCategories }
+  const suggestedColors = colorsFromProductNames(allProducts, filters.categoria)
+  const sidebarProps = { filters, setMany, variants, suggestedColors, allProducts, complete: completePriceCounts, categories: activeCategories }
   const noResults = !isLoading && !isError && visibleProducts.length === 0
   return <div className="hj-catalog-page">
     <div className="hj-catalog-wrap">
@@ -153,7 +163,7 @@ export default function CatalogPage() {
     </div>
     <FilterSheet open={mobileFilters} onClose={closeMobileFilters}
       filters={filters} setMany={setMany} clear={clear} {...{
-        variants, allProducts, categories: activeCategories,
+        variants, suggestedColors, allProducts, categories: activeCategories,
       }} complete={completePriceCounts} count={resultCount}/>
   </div>
 }
