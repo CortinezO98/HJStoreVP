@@ -58,6 +58,7 @@ const NAV_GROUPS = [
 
 const ROLE_LABEL = { super_admin: 'Super Admin', admin: 'Administrador', seller: 'Vendedor' }
 const STORE_URL = import.meta.env.VITE_STORE_URL || '/'
+const normalizeSearch = (value = '') => value.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 function readStored(key, fallback) {
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback } catch { return fallback }
@@ -72,11 +73,11 @@ function BrandMark({ collapsed }) {
     : <span className="hj-brand-word">HJSTORE<small>VP</small><i>.</i></span>
 }
 
-function AdminNavigation({ items, counts, mobile, onNavigate, openGroups, toggleGroup }) {
+function AdminNavigation({ items, counts, mobile, collapsed, onNavigate, openGroups, toggleGroup }) {
   const [query, setQuery] = useState('')
-  const filter = query.trim().toLocaleLowerCase('es')
+  const filter = normalizeSearch(query.trim())
   const visible = items.filter((item) => !item.hidden)
-  const matches = (item) => !filter || item.label.toLocaleLowerCase('es').includes(filter)
+  const matches = (item) => !filter || normalizeSearch(item.label).includes(filter)
   return (
     <nav className="admin-sidebar-nav" aria-label="Módulos de administración">
       <div className="admin-sidebar-search-wrap">
@@ -87,7 +88,7 @@ function AdminNavigation({ items, counts, mobile, onNavigate, openGroups, toggle
       {NAV_GROUPS.map((group) => {
         const links = visible.filter((item) => group.links.includes(item.to) && matches(item))
         if (!links.length) return null
-        const open = Boolean(filter) || openGroups.includes(group.label)
+        const open = collapsed || Boolean(filter) || openGroups.includes(group.label)
         const groupId = `nav-group-${group.label.replace(/\s+/g, '-').toLowerCase()}${mobile ? '-m' : ''}`
         return (
           <div className="admin-sidebar-group" key={group.label}>
@@ -161,6 +162,8 @@ export default function AdminLayout() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const mobileSidebarRef = useRef(null)
+  const mobileTriggerRef = useRef(null)
   const [commandOpen, setCommandOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => readStored('hj-admin-collapsed', false))
   const [openGroups, setOpenGroups] = useState(() => readStored('hj-admin-groups', NAV_GROUPS.map((g) => g.label)))
@@ -204,11 +207,38 @@ export default function AdminLayout() {
 
   useEffect(() => {
     if (!mobileOpen) return undefined
-    const onKeyDown = (event) => { if (event.key === 'Escape') setMobileOpen(false) }
-    document.addEventListener('keydown', onKeyDown)
-    const previous = document.body.style.overflow
+    const sidebar = mobileSidebarRef.current
+    const previous = document.activeElement
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    return () => { document.removeEventListener('keydown', onKeyDown); document.body.style.overflow = previous }
+    sidebar?.querySelector('button, a, input')?.focus()
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMobileOpen(false)
+        return
+      }
+      if (event.key !== 'Tab' || !sidebar) return
+      const focusable = Array.from(sidebar.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])'))
+        .filter((element) => element.getClientRects().length > 0)
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      if (previous?.isConnected) previous.focus()
+      else mobileTriggerRef.current?.focus()
+    }
   }, [mobileOpen])
 
   const toggleGroup = (label) => setOpenGroups((current) =>
@@ -228,7 +258,7 @@ export default function AdminLayout() {
           <button type="button" onClick={() => setMobileOpen(false)} className="admin-sidebar-close" aria-label="Cerrar menú"><X size={20} /></button>
         )}
       </div>
-      <AdminNavigation items={navItems} counts={counts} mobile={mobile} openGroups={openGroups} toggleGroup={toggleGroup}
+      <AdminNavigation items={navItems} counts={counts} mobile={mobile} collapsed={!mobile && collapsed} openGroups={openGroups} toggleGroup={toggleGroup}
         onNavigate={mobile ? () => setMobileOpen(false) : undefined} />
       <div className="admin-sidebar-bottom">
         <a href={STORE_URL} target="_blank" rel="noopener noreferrer" className="admin-sidebar-store-link" title="Ver tienda pública">
@@ -255,7 +285,7 @@ export default function AdminLayout() {
       {mobileOpen && (
         <div className="admin-mobile-overlay" role="presentation">
           <button type="button" className="admin-mobile-backdrop" aria-label="Cerrar menú" onClick={() => setMobileOpen(false)} />
-          <aside id="admin-mobile-sidebar" className="admin-sidebar admin-sidebar-mobile" role="dialog" aria-modal="true" aria-label="Navegación">
+          <aside id="admin-mobile-sidebar" ref={mobileSidebarRef} className="admin-sidebar admin-sidebar-mobile" role="dialog" aria-modal="true" aria-label="Navegación">
             {sidebarBody(true)}
           </aside>
         </div>
@@ -264,7 +294,7 @@ export default function AdminLayout() {
       <div className="admin-workspace">
         <header className="admin-topbar">
           <div className="admin-topbar-main">
-            <button type="button" className="admin-icon-button admin-mobile-toggle" onClick={() => setMobileOpen(true)}
+            <button type="button" ref={mobileTriggerRef} className="admin-icon-button admin-mobile-toggle" onClick={() => setMobileOpen(true)}
               aria-label="Abrir menú de administración" aria-controls="admin-mobile-sidebar" aria-expanded={mobileOpen}>
               <Menu size={20} />
             </button>
