@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { storefrontSettingsApi } from '../../services/api'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
 import ImageCropModal from '../products/ImageCropModal'
+import StorefrontImageDropzone from './StorefrontImageDropzone'
 import { BannerPresentationControls, CarouselPlaybackControls } from './PresentationControls'
 import CampaignDestinationEditor from './CampaignDestinationEditor'
 
@@ -180,15 +181,12 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
           onChange={next => replaceItem(blockIndex, itemIndex, next)} />
         <div className="row g-3">
           {['image_url', 'mobile_image_url'].map(field => <div className="col-12 col-md-6" key={field}>
-            <label className="form-label" htmlFor={`visual-${block.id}-${itemIndex}-${field}`}>
-              {field === 'image_url' ? 'Imagen escritorio (obligatoria)' : 'Imagen celular (opcional)'}
-            </label>
-            <input id={`visual-${block.id}-${itemIndex}-${field}`} className="form-control"
-              type="file" accept="image/jpeg,image/png,image/webp" disabled={!!uploading}
-              onChange={event => {
-                queueCrop(blockIndex, itemIndex, field, event.target.files?.[0])
-                event.target.value = ''
-              }}/>
+            <StorefrontImageDropzone
+              id={`visual-${block.id}-${itemIndex}-${field}`}
+              label={field === 'image_url' ? 'Fotografía de escritorio' : 'Fotografía para celular (opcional)'}
+              hint={field === 'image_url' ? 'Arrastra o selecciona una imagen horizontal' : 'Arrastra o selecciona una imagen vertical'}
+              disabled={!!uploading || !!cropTask} compact
+              onFile={file => queueCrop(blockIndex, itemIndex, field, file)} />
             {field === 'mobile_image_url' && item.mobile_image_url &&
               <button type="button" className="btn btn-outline-secondary btn-sm mt-2"
                 onClick={() => replaceItem(blockIndex, itemIndex, { mobile_image_url: '' })}>Eliminar imagen móvil</button>}
@@ -209,6 +207,6 @@ export default function HomeVisualBlocksEditor({ blocks = [], onChange, onBusyCh
       <button type="button" className="btn btn-outline-secondary btn-sm" disabled={block.items.length >= 8 || !!uploading}
         onClick={() => replaceBlock(blockIndex, { active: false, items: [...block.items, emptyItem()] })}>+ Agregar imagen</button>
     </div>)}
-    <p className="text-secondary small mb-0">Los cambios se verán en la tienda únicamente después de pulsar «Guardar y publicar».</p>
+    <p className="text-secondary small mb-0">En Estudio visual, primero guarda el borrador privado y después selecciona «Publicar portada». Las imágenes no cambian la tienda hasta que publiques.</p>
   </section>
 }
