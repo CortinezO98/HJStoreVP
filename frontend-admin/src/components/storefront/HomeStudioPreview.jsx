@@ -13,12 +13,13 @@ const ORDER = ['newest', 'statement', 'featured', 'campaigns', 'personalized',
   'visual', 'categories', 'loyalty', 'services', 'faq', 'closing']
 const placeholders = [1, 2, 3, 4]
 
-function Tile({ item, mobile }) {
+function Tile({ item, mobile, mediaIndex, blockId }) {
   const image = mobile ? item.mobile_image_url || item.image_url : item.image_url
   const align = item.text_align || 'left'
   const position = item.text_position || 'bottom'
   const opacity = (item.overlay_opacity ?? 65) / 100
-  return <div className="position-relative overflow-hidden bg-dark text-white" style={{ minHeight: mobile ? 220 : 245 }}>
+  return <div data-studio-media-index={mediaIndex} data-studio-block-id={blockId}
+    className="position-relative overflow-hidden bg-dark text-white" style={{ minHeight: mobile ? 220 : 245 }}>
     {image && <img src={src(image)} alt={item.title || 'Campaña'}
       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}/>}
     <div className="position-absolute inset-0" aria-hidden="true"
@@ -37,7 +38,7 @@ function Tile({ item, mobile }) {
   </div>
 }
 
-export default function HomeStudioPreview({ draft, mobile = false, onSelect, selected }) {
+export default function HomeStudioPreview({ draft, mobile = false, onSelect, selected, selectedMedia }) {
   if (!draft) return null
   const custom = draft.homepage_custom_sections || []
   const allowed = [...ORDER, ...custom.map(block => 'custom:' + block.id)]
@@ -49,17 +50,35 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
   const hidden = new Set(draft.homepage_hidden_sections || [])
   const banners = (draft.homepage_banners || []).map((item, index) => ({ ...item, __studioIndex: index })).filter(item => item.active && item.image_url)
   const visuals = (draft.homepage_visual_blocks || []).filter(block => block.active && block.items?.length)
-  const heroImage = (draft.hero_images || [])[0]
+  const heroIndex = selected === 'hero' && selectedMedia?.kind === 'hero'
+    ? Math.min(selectedMedia.index || 0, Math.max(0, (draft.hero_images || []).length - 1)) : 0
+  const heroImage = (draft.hero_images || [])[heroIndex]
   const statementImage = (draft.statement_images || [])[0]
   const categoryPhotos = (draft.homepage_category_tiles || []).filter(x => x.image_url)
   const loyalty = draft.homepage_loyalty_banner
   const heroPresentation = draft.hero_presentation || {}
   const statementPresentation = draft.statement_presentation || {}
   const click = (id, event) => {
-    const field = event?.target?.closest?.('[data-studio-field]')?.dataset.studioField || ''
-    const indexText = event?.target?.closest?.('[data-studio-index]')?.dataset.studioIndex
+    const target = event?.target
+    const field = target?.closest?.('[data-studio-field]')?.dataset.studioField || ''
+    const indexText = target?.closest?.('[data-studio-index]')?.dataset.studioIndex
+    const mediaElement = target?.closest?.('[data-studio-media-index]')
+    const mediaIndex = Number(mediaElement?.dataset.studioMediaIndex)
+    const blockId = mediaElement?.dataset.studioBlockId || ''
     const index = indexText === undefined ? 0 : Number(indexText)
-    onSelect?.(id, { field, index: Number.isInteger(index) ? index : 0 })
+    const categoryIndex = Number(target?.closest?.('[data-studio-category-index]')?.dataset.studioCategoryIndex)
+    const detail = { field, index: Number.isInteger(index) ? index : 0 }
+    if (mediaElement && Number.isInteger(mediaIndex) && mediaIndex >= 0) {
+      detail.media = { kind: id.startsWith('custom:') ? 'custom' : id,
+        blockId, index: mediaIndex }
+    } else if (id === 'categories' && Number.isInteger(categoryIndex)) {
+      detail.media = { kind: 'categories', index: categoryIndex }
+    } else if (id === 'hero') {
+      detail.media = { kind: 'hero', index: heroIndex }
+    } else if (id === 'statement' || id === 'loyalty') {
+      detail.media = { kind: id, index: 0 }
+    }
+    onSelect?.(id, detail)
   }
 
   return <div className="bg-white text-black mx-auto overflow-hidden"
@@ -113,6 +132,17 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
         </div>
       </div>
     </button>
+    {(draft.hero_images || []).length > 1 && <div className="hj-preview-hero-slides" role="group" aria-label="Seleccionar fotografía del carrusel principal">
+      {(draft.hero_images || []).map((image, index) =>
+        <button key={`${index}-${image}`} type="button"
+          aria-label={`Editar fotografía ${index + 1} del carrusel principal`}
+          aria-pressed={selected === 'hero' && heroIndex === index}
+          className={`hj-preview-hero-slide ${selected === 'hero' && heroIndex === index ? 'is-selected' : ''}`}
+          onClick={() => onSelect?.('hero', { media: { kind: 'hero', index } })}>
+          <img src={src(image)} alt="" loading="lazy" />
+          <span>{index + 1}</span>
+        </button>)}
+    </div>}
     {order.filter(id => !hidden.has(id)).map(id => <button
       key={id} type="button" onClick={event => click(id, event)}
       className="d-block w-100 text-start border-0 p-0 bg-white text-black"
@@ -133,7 +163,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
           {images.length ? <div className="d-grid gap-2 mt-2"
             style={{gridTemplateColumns: block.type === 'banner' || mobile ? '1fr' : 'repeat(2,1fr)'}}>
             {(block.type === 'banner' ? images.slice(0,1) : images).map((item,index) =>
-              <Tile key={index} item={item} mobile={mobile}/>)}
+              <Tile key={index} item={item} mobile={mobile} mediaIndex={block.items.indexOf(item)} blockId={block.id}/>)}
           </div> : <p className="small text-secondary mb-0">Agrega fotografías para mostrar esta sección.</p>}
         </div>
       })() :
@@ -150,7 +180,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       id === 'campaigns' ? banners.length > 0 && <div className="p-3">
         <h2 className="fw-black mb-3" style={{ fontSize: mobile ? 18 : 26 }}>{LABELS[id]}</h2>
         <div className="d-grid gap-2" style={{ gridTemplateColumns: mobile ? '1fr' : 'repeat(2,1fr)' }}>
-          {banners.map((item,i) => <div key={i} data-studio-index={item.__studioIndex}><Tile item={item} mobile={mobile}/></div>)}
+          {banners.map((item,i) => <div key={i} data-studio-index={item.__studioIndex}><Tile item={item} mobile={mobile} mediaIndex={item.__studioIndex}/></div>)}
         </div>
       </div> :
       id === 'visual' ? visuals.length > 0 && <div className="p-3">
@@ -159,7 +189,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
           <div className="d-grid gap-2" style={{
             gridTemplateColumns: block.type === 'banner' || mobile ? '1fr' : 'repeat(2,1fr)' }}>
             {(block.type === 'banner' ? block.items.slice(0, 1) : block.items).map((item,i) =>
-              <Tile item={item} mobile={mobile} key={i}/>)}
+              <Tile item={item} mobile={mobile} key={i} blockId={block.id} mediaIndex={block.items.indexOf(item)}/>)}
           </div>
         </div>)}
       </div> :
@@ -182,7 +212,7 @@ export default function HomeStudioPreview({ draft, mobile = false, onSelect, sel
       id === 'categories' && categoryPhotos.length > 0 ? <div className="p-3">
         <h2 style={{ fontSize: mobile ? 18 : 26 }}>{LABELS[id]}</h2>
         <div className="d-grid gap-2" style={{gridTemplateColumns:mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)'}}>
-          {categoryPhotos.map(tile => <div key={tile.category_slug} className="position-relative bg-dark text-white overflow-hidden"
+          {categoryPhotos.map(tile => <div key={tile.category_slug} data-studio-category-index={(draft.homepage_category_tiles || []).indexOf(tile)} className="position-relative bg-dark text-white overflow-hidden"
             style={{height:mobile ? 160 : 220}}>
             <img src={src(mobile ? tile.mobile_image_url || tile.image_url : tile.image_url)}
               alt={tile.title || tile.category_slug} className="w-100 h-100" style={{objectFit:'cover'}}/>
