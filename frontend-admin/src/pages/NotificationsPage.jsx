@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { confirmAction } from '../components/ui/ConfirmDialog'
 import { notificationsApi } from '../services/api'
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 const LABELS = {
   order_created: 'Pedido registrado',
   payment_confirmed: 'Pago confirmado',
@@ -46,13 +48,13 @@ export default function NotificationsPage() {
     },
     onError: err => toast.error(err?.response?.data?.detail || 'No fue posible reintentar'),
   })
-  const { data: totals = { pending: 0, sending: 0, sent: 0, failed: 0 } } = useQuery({
+  const { data: totals = { pending: 0, sending: 0, sent: 0, failed: 0 }, isLoading: statsLoading, isError: statsError, refetch: retryStats } = useQuery({
     queryKey: ['admin-notification-stats'],
     queryFn: () => notificationsApi.stats().then(r => r.data),
   })
   const visible = notifications.filter(n =>
     [n.event_key, n.recipient, n.kind, n.subject].some(
-      value => String(value || '').toLocaleLowerCase('es-CO').includes(search.toLocaleLowerCase('es-CO'))
+      value => normalizeSearch(value).includes(normalizeSearch(search.trim()))
     )
   )
   const counts = ['pending', 'sending', 'sent', 'failed'].map(key =>
@@ -81,11 +83,12 @@ export default function NotificationsPage() {
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <Icon size={17}/>{STATUS[item.key].text}
               </div>
-              <p className="text-2xl font-black mt-2">{item.count}</p>
+              <p className="text-2xl font-black mt-2">{statsError ? '—' : statsLoading ? '…' : item.count.toLocaleString('es-CO')}</p>
             </div>
           )
         })}
       </div>
+      {statsError && <div role="alert" className="admin-report-fetch-error"><p>No se pudieron consultar los indicadores de envíos. Sus valores no están disponibles.</p><button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => retryStats()}>Reintentar</button></div>}
       <div className="card space-y-5">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <h2 className="font-black text-lg flex gap-2 items-center"><Mail size={19}/> Cola e historial</h2>
@@ -97,20 +100,22 @@ export default function NotificationsPage() {
             </select>
             <div className="relative">
               <Search size={16} className="absolute top-3 left-3 text-slate-400"/>
-              <input className="input pl-9 sm:w-64" aria-label="Buscar avisos"
+              <input className="input pl-9 sm:w-64" type="search" aria-label="Buscar avisos"
                 placeholder="Correo, evento o referencia" value={search}
                 onChange={event=>setSearch(event.target.value)}/>
             </div>
           </div>
         </div>
+        {!isLoading && !isError && <p className="admin-list-result-count" role="status" aria-live="polite">{visible.length.toLocaleString("es-CO")} de {notifications.length.toLocaleString("es-CO")} avisos coinciden con el filtro</p>}
         {isLoading ? <p className="text-sm text-slate-500 py-10 text-center" role="status">Consultando notificaciones…</p>
           : isError ? <div role="alert" className="py-10 text-center text-red-700">
             No pudimos cargar las notificaciones.
             <button type="button" className="btn-secondary ml-2" onClick={()=>refetch()}>Reintentar</button>
           </div>
-            : visible.length === 0 ? <p className="py-12 text-center text-slate-500">No hay avisos para estos filtros.</p>
-              : <div className="overflow-x-auto">
+            : visible.length === 0 ? <div className="admin-list-empty" role="status"><p>{notifications.length ? "Ningún aviso coincide con la búsqueda." : "Todavía no existen avisos para este estado."}</p>{search && <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setSearch("")}>Limpiar búsqueda</button>}</div>
+              : <div className="overflow-x-auto admin-list-table-scroll" role="region" aria-label="Historial de notificaciones" tabIndex={0}>
                 <table className="w-full min-w-[850px] text-sm">
+                  <caption className="visually-hidden">Avisos de pedidos, destinatarios, estado de envío, intentos y acciones</caption>
                   <thead><tr className="border-b text-left">
                     {['Evento', 'Destinatario', 'Pedido / ID', 'Estado', 'Intentos', 'Fecha', 'Acción'].map(label=>
                       <th className="px-3 py-3" key={label}>{label}</th>)}
