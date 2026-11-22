@@ -60,8 +60,9 @@ export default function HomeStudioInspector({
     const key = media.kind === 'visual' ? 'homepage_visual_blocks' : 'homepage_custom_sections'
     return (draft[key] || []).find(block => block.id === media.blockId)?.items?.[index] || null
   })()
-  const mediaField = device === 'mobile' && target?.mobile_image_url ? 'mobile_image_url' : 'image_url'
-  const mediaSrc = target?.[mediaField] || ''
+  const supportsMobile = media && !['hero', 'statement'].includes(media.kind)
+  const mediaField = device === 'mobile' && supportsMobile ? 'mobile_image_url' : 'image_url'
+  const mediaSrc = target?.[mediaField] || target?.image_url || ''
   const API_URL = import.meta.env.VITE_API_URL || ''
   const previewSrc = mediaSrc?.startsWith('/') ? `${API_URL}${mediaSrc}` : mediaSrc
 
@@ -132,7 +133,7 @@ export default function HomeStudioInspector({
           <span>Sin fotografía</span>}
       </div>
       <small className="d-block text-secondary mt-2">Vista {device === 'mobile' ? 'celular' : 'escritorio'}.
-        {device === 'mobile' && mediaField === 'image_url' && ' Se muestra la foto de escritorio porque todavía no hay una versión móvil.'}
+        {device === 'mobile' && supportsMobile && !target?.mobile_image_url && ' Se muestra la foto de escritorio; reemplazarla aquí añadirá una imagen móvil independiente.'}
       </small>
       <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
         <StorefrontImageLibrary images={libraryImages} disabled={disabled}
