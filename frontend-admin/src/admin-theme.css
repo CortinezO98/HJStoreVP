@@ -258,6 +258,35 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
 .admin-app-shell .admin-settings-nav a { color: var(--hj-ink-2); }
 .admin-app-shell .admin-settings-nav a:hover, .admin-app-shell .admin-settings-nav a:focus-visible { background: var(--hj-hover); color: var(--hj-ink); }
 
+/* Coherencia de tarjetas del módulo de fidelización y otros resúmenes. */
+.admin-app-shell .admin-engagement-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 124px;
+  border-color: var(--hj-line);
+  background: #fff;
+}
+.admin-app-shell .admin-engagement-stat-value {
+  color: var(--hj-ink);
+  font-size: clamp(26px, 2.3vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+}
+.admin-app-shell .admin-engagement-notice {
+  border-radius: var(--hj-radius);
+  line-height: 1.55;
+}
+.admin-app-shell .admin-main .admin-page-intro {
+  gap: 16px;
+}
+@media (max-width: 575px) {
+  .admin-app-shell .admin-engagement-stat {
+    min-height: 108px;
+  }
+}
+
 /* ---------- Botones (Tailwind y Bootstrap) ---------- */
 .admin-app-shell .btn, .admin-app-shell .btn-primary, .admin-app-shell .btn-secondary, .admin-app-shell .btn-danger {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
