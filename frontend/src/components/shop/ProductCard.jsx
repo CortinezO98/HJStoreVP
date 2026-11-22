@@ -1,4 +1,5 @@
 import { formatCOP } from '../../utils/currency'
+import { useProductVariantSummary } from '../../hooks/useProductVariantSummary'
 import { Link } from 'react-router-dom'
 import { Plus, Heart, ArrowUpRight } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '../../store'
@@ -12,6 +13,7 @@ export default function ProductCard({ product, label, catalogMode = false, hideC
   const addItem = useCartStore((state) => state.addItem)
   const toggleFavorite = useWishlistStore((state) => state.toggle)
   const favorite = useWishlistStore((state) => state.items.some((item) => item.id === product.id))
+  const { colors, hasPriceRange } = useProductVariantSummary(product, catalogMode)
   const stock = product.total_stock ?? product.stock
   const soldOut = stock !== null && stock !== undefined && Number(stock) <= 0
   const image = product.primary_image
@@ -73,20 +75,31 @@ export default function ProductCard({ product, label, catalogMode = false, hideC
         )}
       </div>
       <div className="editorial-product-details">
+        {catalogMode && colors.length > 0 && <div className="hj-catalog-variant-colors" aria-label="Colores disponibles">
+          {colors.slice(0, 6).map(color => <span key={color}
+            title={color} aria-label={color} role="img" className="hj-catalog-variant-dot"
+            data-color={color.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')}/>)}
+          <small>{colors.length} colores</small>
+        </div>}
         {!hideCategory && product.category_name && <span className="editorial-product-category">{product.category_name}</span>}
         <Link to={`/producto/${product.slug}`} className="editorial-product-info">
           <span className="editorial-product-name">{product.name}</span>
           <span className="editorial-product-price">
-            {product.has_variants ? 'Desde ' : ''}{formatCOP(product.sale_price)}
+            {product.has_variants && (!catalogMode || hasPriceRange) ? 'Desde ' : ''}{formatCOP(product.sale_price)}
           </span>
         </Link>
         {catalogMode && soldOut && <span className="hj-catalog-stock is-soldout">Agotado</span>}
         {catalogMode && !soldOut && Number(stock) > 0 && Number(stock) <= Number(product.stock_min_alert || 3) &&
           <span className="hj-catalog-stock">Quedan {stock} unidades</span>}
-        <Link to={`/producto/${product.slug}`} className="store-product-quick-link">
-          {soldOut ? 'VER PRODUCTO' : product.has_variants ? (catalogMode ? 'ELEGIR COLOR Y TALLA' : 'ELEGIR OPCIONES') : 'VER DETALLES'}
-          <ArrowUpRight size={14} aria-hidden="true"/>
-        </Link>
+        {catalogMode && !soldOut && !product.has_variants
+          ? <button type="button" className="store-product-quick-link" onClick={addToCart}>
+              AGREGAR AL CARRITO <Plus size={14} aria-hidden="true"/>
+            </button>
+          : <Link to={`/producto/${product.slug}`} className="store-product-quick-link">
+              {soldOut ? 'VER PRODUCTO' : product.has_variants
+                ? (catalogMode ? 'ELEGIR COLOR Y TALLA' : 'ELEGIR OPCIONES') : 'VER DETALLES'}
+              <ArrowUpRight size={14} aria-hidden="true"/>
+            </Link>}
       </div>
     </article>
   )
