@@ -345,6 +345,7 @@ export const storefrontSettingsApi = {
   read: () => apiClient.get('/storefront-settings/admin'),
   readHomepageDraft: () => apiClient.get('/storefront-settings/admin/homepage-draft'),
   mediaLibrary: (params = {}) => apiClient.get('/storefront-settings/admin/media-library', { params }),
+  updateMediaMetadata: (filename, data) => apiClient.put(`/storefront-settings/admin/media-library/${encodeURIComponent(filename)}/metadata`, data),
   homepageStorageHealth: () => apiClient.get('/storefront-settings/admin/homepage-storage-health'),
   saveHomepageDraft: (draft) => apiClient.put('/storefront-settings/admin/homepage-draft', { draft }),
   publishHomepageDraft: () => apiClient.post('/storefront-settings/admin/homepage-publish'),
