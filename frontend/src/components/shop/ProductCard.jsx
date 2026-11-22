@@ -39,6 +39,8 @@ export default function ProductCard({ product, label, catalogMode = false, hideC
         </Link>
         {soldOut ? (
           <span className="editorial-product-label is-sold-out">AGOTADO</span>
+        ) : catalogMode && Number(stock) > 0 && Number(stock) <= Number(product.stock_min_alert || 3) ? (
+          <span className="editorial-product-label is-low-stock">ÚLTIMAS UNIDADES</span>
         ) : label ? (
           <span className="editorial-product-label">{label}</span>
         ) : product.featured ? (
