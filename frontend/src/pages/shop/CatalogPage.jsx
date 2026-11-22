@@ -52,7 +52,7 @@ export default function CatalogPage() {
   })
   const activeCategories = categories.filter(c => c.active !== false)
   const category = activeCategories.find(c => c.slug === filters.categoria)
-  const { data: variants = { color: [], talla: [], presentacion: [] } } = useQuery({
+  const { data: variants = { color: [], talla: [], presentacion: [] }, isSuccess: variantsReady } = useQuery({
     queryKey: ['catalog-variant-filters', filters.categoria, filters.q],
     queryFn: () => productsApi.filters({
       category: filters.categoria || undefined, search: filters.q || undefined,
@@ -65,7 +65,8 @@ export default function CatalogPage() {
   const { data: listing, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['catalog-redesign', apiFilters.category, apiFilters.search, apiFilters.sort,
       apiFilters.min_price, apiFilters.max_price, apiFilters.in_stock, apiFilters.featured,
-      apiFilters.color, apiFilters.talla, apiFilters.presentacion, apiFilters.page],
+      apiFilters.color, standaloneColorFallback, apiFilters.talla, apiFilters.presentacion, apiFilters.page],
+    enabled: !filters.color || variantsReady,
     queryFn: async () => {
       const pages = await Promise.all(
         Array.from({ length: apiFilters.page }, (_, index) =>
@@ -86,7 +87,8 @@ export default function CatalogPage() {
     : listing?.products || []
   // La API de categorías no publica image_url, pero la ficha del producto sí
   // devuelve su categoría completa. Una única consulta reutiliza esa imagen.
-  const firstCategoryProduct = visibleProducts.find(item => item.category_slug === filters.categoria)
+  const firstCategoryProduct = allProducts.find(item => item.category_slug === filters.categoria)
+    || visibleProducts.find(item => item.category_slug === filters.categoria)
   const { data: categoryDetails } = useQuery({
     queryKey: ['catalog-category-banner', filters.categoria, firstCategoryProduct?.slug],
     queryFn: () => productsApi.get(firstCategoryProduct.slug).then(response => response.data?.category),
@@ -107,7 +109,7 @@ export default function CatalogPage() {
   const setCategory = values => setMany(values)
   const suggestedColors = colorsFromProductNames(allProducts, filters.categoria)
   const sidebarProps = { filters, setMany, variants, suggestedColors, allProducts, complete: completePriceCounts, categories: activeCategories }
-  const noResults = !isLoading && !isError && visibleProducts.length === 0
+  const noResults = !isLoading && !isError && visibleProducts.length === 0 && !hasNext
   return <div className="hj-catalog-page">
     <div className="hj-catalog-wrap">
       <CategoryHero category={categoryWithImage} featured={filters.featured}/>
@@ -142,9 +144,9 @@ export default function CatalogPage() {
             {visibleProducts.map(product => <ProductCard key={product.id} product={product}
               catalogMode hideCategory={Boolean(category)} />)}
           </div>}
-        {!isError && !isLoading && visibleProducts.length > 0 &&
+        {!isError && !isLoading && (visibleProducts.length > 0 || hasNext) &&
           <div className="hj-catalog-pagination">
-            <p>Viste {visibleProducts.length} productos{filters.categoria ? ` de ${category?.name || filters.categoria}` : ''}.</p>
+            <p>{visibleProducts.length > 0 ? `Viste ${visibleProducts.length} productos${filters.categoria ? ` de ${category?.name || filters.categoria}` : ''}.` : 'Todavía hay más productos por revisar para este color.'}</p>
             {hasNext && <button type="button" onClick={() => setMany({ page: filters.page + 1 })}>
               CARGAR MÁS PRODUCTOS <ArrowRight size={16}/>
             </button>}
