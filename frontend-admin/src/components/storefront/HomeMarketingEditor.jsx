@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import ImageCropModal from '../products/ImageCropModal'
 import StorefrontImageDropzone from './StorefrontImageDropzone'
+import StorefrontImageLibrary from './StorefrontImageLibrary'
 import { BannerPresentationControls } from './PresentationControls'
 import CampaignDestinationEditor from './CampaignDestinationEditor'
 import { categoriesApi, storefrontSettingsApi } from '../../services/api'
@@ -16,7 +17,7 @@ const EMPTY_LOYALTY = {
   active: false, starts_at: '', ends_at: '',
 }
 
-export default function HomeMarketingEditor({ tiles = [], loyalty = null, onTilesChange, onLoyaltyChange, onBusyChange = () => {} }) {
+export default function HomeMarketingEditor({ tiles = [], loyalty = null, onTilesChange, onLoyaltyChange, onBusyChange = () => {}, libraryImages = [] }) {
   const [categories, setCategories] = useState([])
   const [crop, setCrop] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -66,12 +67,16 @@ export default function HomeMarketingEditor({ tiles = [], loyalty = null, onTile
       throw error
     } finally { setUploading(false) }
   }
-  const photoInput = (target, index, field) => <StorefrontImageDropzone
-    id={`marketing-${target}-${index}-${field}`}
-    label={field === 'image_url' ? 'Fotografía escritorio (16:9)' : 'Fotografía celular (9:16, opcional)'}
-    hint="Arrastra o selecciona una fotografía JPG, PNG o WebP"
-    disabled={uploading || !!crop} compact
-    onFile={file => queueCrop(target, index, field, file)} />
+  const photoInput = (target, index, field) => <div className="hj-marketing-photo-input" key={`${target}-${index}-${field}`}>
+    <StorefrontImageDropzone
+      id={`marketing-${target}-${index}-${field}`}
+      label={field === 'image_url' ? 'Fotografía escritorio (16:9)' : 'Fotografía celular (9:16, opcional)'}
+      hint="Arrastra o selecciona una fotografía JPG, PNG o WebP"
+      disabled={uploading || !!crop} compact
+      onFile={file => queueCrop(target, index, field, file)} />
+    <StorefrontImageLibrary images={libraryImages} disabled={uploading || !!crop}
+      onSelect={url => target === 'category' ? updateTile(index, { [field]: url }) : updateBanner({ [field]: url })}/>
+  </div>
 
   return <div className="d-flex flex-column gap-4">
     {crop && <ImageCropModal key={crop.target + crop.index + crop.field + crop.file.name}
