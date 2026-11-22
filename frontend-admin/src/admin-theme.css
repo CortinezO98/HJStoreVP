@@ -915,6 +915,92 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
   .admin-app-shell .hj-studio-inspector-actions .btn { width: 100%; justify-content: center; }
 }
 
+/* Selección de fotografías específicas en el inspector del inicio */
+.admin-app-shell .hj-inspector-image-panel {
+  border-top: 1px solid var(--hj-line);
+  margin-top: 15px;
+  padding-top: 14px;
+}
+.admin-app-shell .hj-inspector-image-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.admin-app-shell .hj-inspector-image-heading strong {
+  color: var(--hj-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+.admin-app-shell .hj-inspector-image-heading small {
+  color: var(--hj-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.admin-app-shell .hj-inspector-image-preview {
+  width: 100%;
+  max-height: 250px;
+  min-height: 130px;
+  border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius-sm);
+  background: var(--hj-bg);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.admin-app-shell .hj-inspector-image-preview img {
+  width: 100%;
+  height: 100%;
+  max-height: 250px;
+  object-fit: contain;
+}
+.admin-app-shell .hj-inspector-image-preview span {
+  color: var(--hj-muted);
+  font-size: 12px;
+}
+.admin-app-shell .hj-preview-hero-slides {
+  padding: 10px;
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  background: #fff;
+  border-bottom: 1px solid var(--hj-line);
+}
+.admin-app-shell .hj-preview-hero-slide {
+  position: relative;
+  flex: 0 0 84px;
+  height: 61px;
+  overflow: hidden;
+  background: var(--hj-bg);
+  border: 2px solid var(--hj-line);
+  border-radius: 7px;
+  padding: 0;
+  cursor: pointer;
+}
+.admin-app-shell .hj-preview-hero-slide.is-selected,
+.admin-app-shell .hj-preview-hero-slide[aria-pressed="true"] {
+  border-color: var(--hj-accent);
+}
+.admin-app-shell .hj-preview-hero-slide img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+.admin-app-shell .hj-preview-hero-slide span {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  color: #fff;
+  background: #0a0a0ad9;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
 /* ---------- Estados (error de módulo, vacío, carga) ---------- */
 .hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
 .hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
