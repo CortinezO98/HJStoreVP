@@ -7,8 +7,8 @@ const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').no
 
 const STATUS = {
   modulo_disponible: { text: 'Disponible', color: 'bg-emerald-50 text-emerald-700', type: 'available' },
-  habilitado_por_configuracion: { text: 'Configurado', color: 'bg-blue-50 text-blue-700', type: 'configured' },
-  credenciales_presentes: { text: 'Credenciales', color: 'bg-blue-50 text-blue-700', type: 'configured' },
+  habilitado_por_configuracion: { text: 'Configurado', color: 'bg-zinc-100 text-zinc-800', type: 'configured' },
+  credenciales_presentes: { text: 'Credenciales', color: 'bg-zinc-100 text-zinc-800', type: 'configured' },
   pendiente_configuracion: { text: 'Pendiente', color: 'bg-amber-50 text-amber-800', type: 'pending' },
   deshabilitado: { text: 'Deshabilitado', color: 'bg-slate-100 text-slate-600', type: 'pending' },
   no_integrado: { text: 'Pendiente', color: 'bg-slate-100 text-slate-600', type: 'pending' },
@@ -72,7 +72,7 @@ export default function IntegrationsPage() {
           <div className="grid grid-cols-3 gap-2 sm:gap-3" aria-label="Resumen de integraciones">
             {[
               { label: 'Disponibles', value: counts.available, color: 'text-emerald-700' },
-              { label: 'Configuradas', value: counts.configured, color: 'text-blue-700' },
+              { label: 'Configuradas', value: counts.configured, color: 'text-zinc-900' },
               { label: 'Pendientes', value: counts.pending, color: 'text-amber-700' },
             ].map(item => (
               <div key={item.label} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
