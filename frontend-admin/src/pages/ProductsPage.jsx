@@ -648,6 +648,8 @@ function ProductFormModal({ product, categories, onClose }) {
   )
 }
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 export default function ProductsPage() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
@@ -691,10 +693,10 @@ export default function ProductsPage() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const term = search.trim().toLowerCase()
+      const term = normalizeSearch(search.trim())
       const matchesSearch = !term
         ? true
-        : `${p.name} ${p.sku} ${p.category_name || ''}`.toLowerCase().includes(term)
+        : normalizeSearch(`${p.name} ${p.sku} ${p.category_name || ''}`).includes(term)
 
       const matchesCategory = categoryFilter
         ? String(p.category_id || '') === String(categoryFilter)
@@ -857,12 +859,13 @@ export default function ProductsPage() {
         <div className="px-5 py-4 border-b border-gray-100 d-flex flex-wrap align-items-center justify-content-between gap-2">
           <h2 className="font-bold text-gray-900">Listado de productos</h2>
           <p className="text-xs text-gray-500 mt-1">
-            {filteredProducts.length} productos encontrados
+            {listError ? 'No se pudo cargar el listado' : `${filteredProducts.length.toLocaleString('es-CO')} de ${products.length.toLocaleString('es-CO')} productos`}
           </p>
         </div>
 
-        <div className="table-responsive">
+        <div className="table-responsive admin-list-table-scroll" role="region" aria-label="Listado de productos" tabIndex={0}>
           <table className="table table-hover align-middle admin-catalog-table mb-0">
+            <caption className="visually-hidden">Productos del catálogo, costos, precios, estados y acciones</caption>
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-gray-500 font-semibold">Producto</th>
