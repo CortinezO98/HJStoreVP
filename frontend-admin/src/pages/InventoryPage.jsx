@@ -417,7 +417,7 @@ export default function InventoryPage() {
   const [showTransfer, setShowTransfer] = useState(false)
   const [matrixSearch, setMatrixSearch] = useState('')
   const [matrixPage, setMatrixPage] = useState(1)
-  const { data: matrix, isLoading: matrixLoading, isError: matrixError } = useQuery({
+  const { data: matrix, isLoading: matrixLoading, isError: matrixError, refetch: retryMatrix } = useQuery({
     queryKey: ['inventory-omnichannel-overview', matrixSearch, matrixPage],
     enabled: isAdmin,
     queryFn: () => inventoryApi.overview({
@@ -426,6 +426,8 @@ export default function InventoryPage() {
       per_page: 25,
     }).then((response) => response.data),
   })
+
+  const matrixValid = !matrix || (Array.isArray(matrix.locations) && Array.isArray(matrix.items) && Number.isFinite(Number(matrix.total_products)))
 
   const { data: products = [], isLoading: loadingProducts, isError: listError, refetch: retryList } = useQuery({
     queryKey: ['inventory-products', userRole],
@@ -561,8 +563,11 @@ export default function InventoryPage() {
             />
           </div>
         </div>
-        {matrixError ? (
-          <p role="alert" className="text-red-700">No se pudo cargar la matriz de existencias.</p>
+        {(matrixError || !matrixValid) ? (
+          <div role="alert" className="admin-report-fetch-error">
+            <p>No se pudo mostrar la matriz de existencias. La respuesta del servicio está incompleta o no disponible.</p>
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => retryMatrix()}>Reintentar</button>
+          </div>
         ) : matrixLoading ? (
           <p className="text-sm text-gray-500">Consultando existencias por sede...</p>
         ) : matrix && (
@@ -571,8 +576,9 @@ export default function InventoryPage() {
               {formatNumber(matrix.total_products)} referencias ·
               {' '}{matrix.locations.filter((loc) => loc.active).length} ubicaciones activas
             </p>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto admin-list-table-scroll" role="region" aria-label="Matriz de existencias por sede" tabIndex={0}>
               <table className="w-full text-sm">
+                <caption className="visually-hidden">Disponibilidad de productos y variantes por canal y sede</caption>
                 <thead>
                   <tr className="border-b text-left text-gray-600">
                     <th scope="col" className="py-2 px-2">Producto / SKU</th>
@@ -587,7 +593,7 @@ export default function InventoryPage() {
                 </thead>
                 <tbody>
                   {matrix.items.map((item) => {
-                    const stockByLocation = new Map(item.locations.map((loc) => [loc.location_id, loc]))
+                    const stockByLocation = new Map((Array.isArray(item.locations) ? item.locations : []).map((loc) => [loc.location_id, loc]))
                     return (
                       <tr key={item.product_id} className="border-b border-gray-100">
                         <td className="py-3 px-2">
