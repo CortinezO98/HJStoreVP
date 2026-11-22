@@ -16,31 +16,31 @@ export default function EngagementPage() {
     {label:'Puntos registrados (neto)',value:data.loyalty_points_issued_net,icon:HeartHandshake},
   ] : []
   return <main className="space-y-6">
-    <header className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
+    <header className="admin-page-intro flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
       <div>
-        <p className="admin-dashboard-overline">RETENCIÓN Y EXPERIENCIA</p>
-        <h1 className="text-3xl font-black tracking-tight">Fidelización y carritos</h1>
-        <p className="text-sm text-slate-500 mt-2">Indicadores operativos agregados, sin exponer carritos individuales ni información personal de los clientes.</p>
+        <p className="admin-page-kicker">RETENCIÓN Y EXPERIENCIA</p>
+        <h1 className="admin-page-heading">Fidelización y carritos</h1>
+        <p className="admin-page-description mt-2">Indicadores operativos agregados, sin exponer carritos individuales ni información personal de los clientes.</p>
       </div>
       <button type="button" onClick={()=>refetch()} className="btn-secondary inline-flex items-center gap-2 self-start">
         <RefreshCw size={16}/> Actualizar
       </button>
     </header>
-    <div className="bg-amber-50 border border-amber-200 p-4 flex gap-3 text-amber-900 text-sm">
+    <div className="admin-engagement-notice bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-amber-900 text-sm">
       <ShieldAlert className="shrink-0" size={20}/>
       <p><strong>Envíos deshabilitados por defecto.</strong> Los mensajes de recuperación requieren aceptación expresa del cliente y activación independiente del proceso SMTP. Los puntos aún no se pueden canjear por descuentos.</p>
     </div>
     {isLoading ? <p role="status" className="p-8 text-slate-500">Cargando métricas…</p>
       : isError ? <div role="alert" className="p-5 text-red-700">
         No fue posible consultar la fidelización.
-        <button className="underline ml-2" type="button" onClick={()=>refetch()}>Reintentar</button>
+        <button className="btn btn-outline-secondary btn-sm ml-2" type="button" onClick={()=>refetch()}>Reintentar</button>
       </div>
       : <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {cards.map(card=>{
           const Icon=card.icon
-          return <div className="card" key={card.label}>
-            <div className="flex gap-2 items-center text-xs font-bold text-slate-500"><Icon size={17}/>{card.label}</div>
-            <p className="text-3xl font-black mt-4">{Number(card.value||0).toLocaleString('es-CO')}</p>
+          return <div className="card admin-engagement-stat" key={card.label}>
+            <div className="flex gap-2 items-center text-xs font-semibold text-slate-500"><Icon size={17} aria-hidden="true"/>{card.label}</div>
+            <p className="admin-engagement-stat-value text-3xl font-black mt-4">{Number(card.value||0).toLocaleString('es-CO')}</p>
           </div>
         })}
       </div>}
