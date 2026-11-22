@@ -809,7 +809,7 @@ def list_brand_images(
     # Solo los archivos que el propio cargador genera; ignorar symlinks,
     # rutas ajenas y archivos temporales.
     import re
-    pattern = re.compile(r"^[0-9a-f]{32}\\.(?:webp|png|jpg|jpeg|gif)$", re.IGNORECASE)
+    pattern = re.compile(r"^[0-9a-f]{32}\.(?:webp|png|jpg|jpeg|gif)$", re.IGNORECASE)
     query = search.strip().lower()
     files = []
     for entry in folder.iterdir():
