@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
 import './storefront-polish.css'
+import './catalog-redesign.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
