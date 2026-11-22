@@ -94,7 +94,7 @@ export function FilterFields({ filters, setMany, variants = {}, allProducts = []
 }
 export function CatalogToolbar({
   filters, setMany, clear, active, productCount, sort, filtersVisible,
-  onToggleFilters, density, onDensity, isLoading,
+  onToggleFilters, density, onDensity, isLoading, mobileOpen = false,
 }) {
   const tokens = [
     ['categoria', filters.categoria && `Categoría: ${filters.categoria}`],
@@ -108,7 +108,9 @@ export function CatalogToolbar({
   ].filter(([, value]) => Boolean(value))
   return <div className="hj-catalog-toolbar">
     <button type="button" className="hj-catalog-filter-toggle" onClick={onToggleFilters}
-      aria-expanded={filtersVisible} aria-controls="hj-catalog-filters hj-catalog-mobile-filters">
+      aria-expanded={typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+        ? mobileOpen : filtersVisible}
+      aria-controls="hj-catalog-filters hj-catalog-mobile-filters">
       <SlidersHorizontal size={16} aria-hidden="true"/>
       <span className="hj-filter-desktop-label">{filtersVisible ? 'Ocultar filtros' : 'Mostrar filtros'}</span>
       <span className="hj-filter-mobile-label">Filtros{active ? ` (${active})` : ''}</span>
