@@ -186,7 +186,7 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
 .admin-app-shell .text-primary,
 .admin-app-shell .text-brand-600,
 .admin-app-shell .text-brand-700,
-.admin-app-shell .hover\\:text-brand-700:hover { color: var(--hj-ink) !important; }
+.admin-app-shell .hover\:text-brand-700:hover { color: var(--hj-ink) !important; }
 .admin-app-shell .bg-primary,
 .admin-app-shell .bg-brand-600 { background-color: var(--hj-ink) !important; }
 .admin-app-shell .border-primary,
