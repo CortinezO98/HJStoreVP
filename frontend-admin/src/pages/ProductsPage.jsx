@@ -449,7 +449,7 @@ function ProductFormModal({ product, categories, onClose }) {
   return (
     <>
       <div className="admin-catalog-overlay">
-        <div className="admin-catalog-modal" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar producto" : "Nuevo producto"}>
+        <div className="admin-catalog-modal admin-refined-form" role="dialog" aria-modal="true" aria-label={isEdit ? "Editar producto" : "Nuevo producto"}>
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-gray-900">
@@ -459,7 +459,7 @@ function ProductFormModal({ product, categories, onClose }) {
                 Gestiona costo, margen y precio automático
               </p>
             </div>
-            <button
+            <button type="button"
               onClick={onClose}
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
@@ -467,7 +467,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </button>
           </div>
 
-          <div className="admin-catalog-form-grid">
+          <div className="admin-catalog-form-grid" aria-busy={mutation.isPending}>
+            <p className="admin-required-hint md:col-span-2">Los campos marcados con * son obligatorios. El precio se calcula a partir del costo y el margen.</p>
             <div className="md:col-span-2">
               <label htmlFor="admin-product-name" className="block text-sm text-gray-600 mb-1">Nombre *</label>
               <input id="admin-product-name" required maxLength={200}
@@ -529,8 +530,8 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Precio de venta calculado</label>
-              <div className="admin-catalog-price-preview">
+              <label className="block text-sm text-gray-600 mb-1" id="admin-product-price-label">Precio de venta calculado</label>
+              <div className="admin-catalog-price-preview" role="status" aria-live="polite" aria-labelledby="admin-product-price-label">
                 {Number.isFinite(salePricePreview) && salePricePreview >= 0
                   ? formatCOP(salePricePreview)
                   : 'Revisa el costo y margen'}
@@ -559,7 +560,7 @@ function ProductFormModal({ product, categories, onClose }) {
               />
             </div>
 
-            <div className="flex items-center gap-6 md:col-span-2">
+            <div className="admin-refined-form-options flex flex-wrap items-center gap-6 md:col-span-2">
               <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
@@ -580,7 +581,7 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
           </div>
 
-          <div className="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <div className="admin-refined-form-actions px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
             <div className="flex gap-3">
               {isEdit && (
                 <>
@@ -613,10 +614,10 @@ function ProductFormModal({ product, categories, onClose }) {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={onClose} className="btn-secondary">
+              <button type="button" onClick={onClose} className="btn-secondary">
                 Cancelar
               </button>
-              <button
+              <button type="button"
                 onClick={() => mutation.mutate()}
                 disabled={mutation.isPending}
                 className="btn-primary flex items-center gap-2"
