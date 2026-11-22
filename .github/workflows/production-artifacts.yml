@@ -1,0 +1,49 @@
+name: Limpieza de artefactos de producción
+
+# Falla si una imagen o bundle de producción incluiría pruebas, semillas,
+# scripts de depuración, secretos, source maps, URLs localhost o pagos demo.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Contexto de la imagen de producción del backend
+        run: python scripts/ci/verify_production_context.py
+
+  frontend-bundles:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend, frontend-admin]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    env:
+      # Valores ficticios HTTPS solo para compilar; replican las variables de producción.
+      VITE_API_URL: https://api.example.com
+      VITE_ADMIN_URL: https://admin.example.com
+      VITE_STORE_URL: https://tienda.example.com
+      VITE_ENABLE_DEMO_PAYMENTS: 'false'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Bundle sin rastros de desarrollo
+        run: node scripts/verify-production-bundle.mjs dist

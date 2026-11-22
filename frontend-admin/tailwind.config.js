@@ -3,14 +3,18 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Identidad HJStoreVP: negro, blanco y rojo de marca.
         brand: {
-          50: '#f0f4ff', 100: '#dde6ff', 200: '#c3d0ff',
-          300: '#9db2ff', 400: '#7088ff', 500: '#4f5ff7',
-          600: '#3a3fec', 700: '#2f30d1', 800: '#2a2da9',
-          900: '#282c84', 950: '#1a1b52',
+          50: '#F6F6F5', 100: '#EDEDEA', 200: '#DADAD6', 300: '#B5B5B0',
+          400: '#8A8A85', 500: '#5C5C58', 600: '#0A0A0A', 700: '#2A2A2A',
+          800: '#171717', 900: '#0A0A0A', 950: '#000000',
         },
+        accent: { DEFAULT: '#E1141E', soft: '#FDECEC' },
       },
-      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+      fontFamily: {
+        sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Anton', 'Impact', 'sans-serif'],
+      },
     },
   },
   plugins: [],

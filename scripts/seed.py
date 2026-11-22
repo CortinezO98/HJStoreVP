@@ -1,9 +1,13 @@
 """
-seed.py — Datos iniciales para HJStoreVP
-Ejecutar desde el contenedor: python seed.py
+seed.py — Datos de DEMOSTRACIÓN para desarrollo local de HJStoreVP.
+Crea vendedores con contraseña conocida: NUNCA ejecutar en staging ni producción.
+Ejecutar: HJSTORE_ALLOW_DEMO_SEED=yes python scripts/seed.py
 """
 import sys
 import os
+
+if os.environ.get("ENVIRONMENT", "development").lower() != "development" or os.environ.get("HJSTORE_ALLOW_DEMO_SEED") != "yes":
+    sys.exit("Bloqueado: seed de demostración solo para desarrollo local (ENVIRONMENT=development y HJSTORE_ALLOW_DEMO_SEED=yes).")
 
 sys.path.insert(0, '/app')
 

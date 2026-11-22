@@ -139,8 +139,13 @@ def test_home_designer_create_and_delete_unsaved_section_without_publication():
             expect(page.get_by_text("Cambios sin guardar")).to_be_visible()
             remove = page.get_by_role("button", name="Eliminar sección")
             expect(remove).to_have_count(1)
-            page.once("dialog", lambda dialog: dialog.accept())
             remove.click()
+            # Confirmación accesible propia del panel (sustituye window.confirm).
+            confirm = page.get_by_role("alertdialog")
+            expect(confirm).to_be_visible(timeout=5000)
+            expect(confirm.get_by_role("button", name="Cancelar")).to_be_focused()
+            confirm.get_by_role("button", name="Eliminar", exact=True).click()
+            expect(confirm).to_be_hidden()
             expect(remove).to_have_count(0)
             assert page.request.get(url, headers=headers).json()["has_saved_draft"] is False
             assert page.request.get(API + "/api/v1/storefront-settings/public").json() == baseline_data

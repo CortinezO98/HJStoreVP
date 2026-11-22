@@ -130,8 +130,8 @@ export default function BillingPage() {
             <td className="p-3">{date(doc.created_at)}</td>
             <td className="p-3">
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={()=>setSelectedId(doc.id)} className="underline text-indigo-700">Detalle</button>
-                <button type="button" onClick={()=>save(doc)} className="underline text-indigo-700 inline-flex items-center gap-1">
+                <button type="button" onClick={()=>setSelectedId(doc.id)} className="underline text-zinc-700">Detalle</button>
+                <button type="button" onClick={()=>save(doc)} className="underline text-zinc-700 inline-flex items-center gap-1">
                   <Download size={14}/> Archivo HTML
                 </button>
               </div>

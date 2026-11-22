@@ -51,8 +51,8 @@ def _context(browser, viewport):
 
 def _login(page, email):
     page.goto("/login")
-    page.get_by_placeholder("admin@hjstorevp.com").fill(email)
-    page.locator('input[type="password"]').fill(PASSWORD)
+    page.get_by_label("Correo electrónico").fill(email)
+    page.get_by_label("Contraseña", exact=True).fill(PASSWORD)
     page.get_by_role("button", name="Ingresar", exact=True).click()
     expect(page).to_have_url(ADMIN + "/", timeout=15000)
     assert page.evaluate("() => Boolean(sessionStorage.getItem('access_token'))")

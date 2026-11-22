@@ -1,0 +1,307 @@
+/* ==========================================================================
+   HJStoreVP · Tema del panel administrativo
+   Se carga después de Bootstrap, index.css y admin-bootstrap.css y unifica
+   las tres capas con la identidad de marca (negro, blanco, rojo HJ).
+   Solo presentación: no altera reglas de negocio ni permisos.
+   ========================================================================== */
+:root {
+  --hj-ink: #0A0A0A;
+  --hj-ink-2: #2A2A2A;
+  --hj-text: #1C1C1A;
+  --hj-muted: #6B6B66;
+  --hj-subtle: #8F8F89;
+  --hj-line: #E6E6E2;
+  --hj-line-strong: #D4D4CF;
+  --hj-bg: #F6F6F4;
+  --hj-card: #FFFFFF;
+  --hj-hover: #F1F1EE;
+  --hj-accent: #E1141E;
+  --hj-accent-soft: #FDECEC;
+  --hj-success: #1F7A4D;
+  --hj-success-soft: #E8F5EE;
+  --hj-warning: #9A5B00;
+  --hj-warning-soft: #FFF4DB;
+  --hj-danger: #C81E1E;
+  --hj-danger-soft: #FDECEC;
+  --hj-info: #1D5FA8;
+  --hj-info-soft: #EAF2FB;
+  --hj-radius-sm: 8px;
+  --hj-radius: 12px;
+  --hj-shadow: 0 1px 2px rgba(10,10,10,.04), 0 4px 14px rgba(10,10,10,.035);
+  --hj-shadow-lg: 0 24px 60px rgba(10,10,10,.22);
+  --hj-sidebar-w: 252px;
+  --hj-sidebar-rail: 72px;
+  --hj-topbar-h: 64px;
+  --hj-ease: cubic-bezier(.2,.7,.2,1);
+}
+
+/* ---------- Base ---------- */
+body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Variable', Inter, system-ui, sans-serif; font-size: 14px; }
+.admin-app-shell {
+  --bs-primary: #0A0A0A; --bs-primary-rgb: 10,10,10;
+  --bs-link-color: #0A0A0A; --bs-link-color-rgb: 10,10,10; --bs-link-hover-color: #2A2A2A;
+  --bs-border-color: var(--hj-line); --bs-body-color: var(--hj-text);
+  --bs-body-font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  --bs-border-radius: var(--hj-radius-sm); --bs-border-radius-lg: var(--hj-radius);
+  --bs-focus-ring-color: rgba(10,10,10,.18);
+  --admin-bg: var(--hj-bg); --admin-border: var(--hj-line); --admin-accent: var(--hj-ink);
+  background: var(--hj-bg); font-family: var(--bs-body-font-family);
+}
+:focus-visible { outline: 2px solid var(--hj-ink) !important; outline-offset: 2px; }
+::selection { background: var(--hj-ink); color: #fff; }
+.admin-app-shell a { text-underline-offset: 3px; }
+
+/* ---------- Shell ---------- */
+.admin-app-shell .admin-sidebar {
+  width: var(--hj-sidebar-w); background: var(--hj-ink); border-right: 0; color: #fff;
+  transition: width .2s var(--hj-ease);
+}
+.admin-app-shell.is-collapsed .admin-sidebar-desktop { width: var(--hj-sidebar-rail); }
+.admin-app-shell .admin-sidebar-brand {
+  display: flex; align-items: center; gap: 10px; min-height: var(--hj-topbar-h);
+  padding: 0 16px; margin: 0; border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.hj-brand-word { font-family: Anton, Impact, sans-serif; font-size: 24px; line-height: 1; letter-spacing: .01em; color: #fff; white-space: nowrap; }
+.hj-brand-word small { font-family: 'Inter Variable', Inter, sans-serif; font-size: 10px; font-weight: 800; color: rgba(255,255,255,.55); margin-left: 2px; }
+.hj-brand-word i { color: var(--hj-accent); font-style: normal; }
+.hj-brand-mono { font-family: Anton, Impact, sans-serif; font-size: 22px; color: #fff; }
+.hj-brand-mono i { color: var(--hj-accent); font-style: normal; }
+.admin-app-shell .admin-sidebar-nav { padding: 12px 10px 16px; scrollbar-width: thin; scrollbar-color: #3A3A3A transparent; }
+.admin-app-shell .admin-sidebar-search-wrap {
+  background: #1A1A1A; border: 1px solid #2E2E2E; border-radius: var(--hj-radius-sm);
+  color: #A8A8A3; min-height: 40px; margin: 0 2px 14px;
+}
+.admin-app-shell .admin-sidebar-search-wrap:focus-within { border-color: #8A8A85; box-shadow: none; }
+.admin-app-shell .admin-sidebar-search::placeholder { color: #8A8A85; }
+.admin-app-shell .admin-shortcut { border-color: #3A3A3A; color: #8A8A85; }
+.admin-app-shell .admin-sidebar-group { margin-bottom: 6px; }
+.admin-app-shell .admin-sidebar-group-toggle {
+  color: #8A8A85; font-size: 10.5px; letter-spacing: .12em; padding: 10px 10px 6px; border-radius: 6px;
+}
+.admin-app-shell .admin-sidebar-group-toggle:hover { color: #fff; background: transparent; }
+.admin-app-shell .admin-sidebar-link {
+  position: relative; min-height: 38px; margin: 1px 0; padding: 8px 10px; gap: 11px;
+  font-size: 13.5px; font-weight: 500; color: #C9C9C4; border-radius: var(--hj-radius-sm);
+}
+.admin-app-shell .admin-sidebar-link:hover { background: #1C1C1C; color: #fff; }
+.admin-app-shell .admin-sidebar-link-active,
+.admin-app-shell .admin-sidebar-link-active:hover { background: #242424; color: #fff; font-weight: 600; box-shadow: none; }
+.admin-app-shell .admin-sidebar-link-active::before {
+  content: ''; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--hj-accent);
+}
+.admin-app-shell .admin-sidebar-arrow { display: none; }
+.hj-nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--hj-accent); color: #fff; font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; }
+.admin-app-shell .admin-sidebar-bottom { background: transparent; border-top: 1px solid rgba(255,255,255,.08); padding: 10px; }
+.admin-app-shell .admin-sidebar-store-link { color: #C9C9C4; font-size: 13px; padding: 9px 10px; border-radius: var(--hj-radius-sm); }
+.admin-app-shell .admin-sidebar-store-link:hover { background: #1C1C1C; color: #fff; }
+.hj-collapse-btn { display: none; }
+@media (min-width: 1024px) {
+  .hj-collapse-btn { display: inline-flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: var(--hj-radius-sm); color: #8A8A85; font-size: 12.5px; }
+  .hj-collapse-btn:hover { background: #1C1C1C; color: #fff; }
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .hj-hide-collapsed { display: none !important; }
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-link,
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-store-link,
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .hj-collapse-btn { justify-content: center; padding-inline: 0; }
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-link span,
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-store-link span,
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .hj-collapse-btn span,
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-group-toggle,
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-search-wrap { display: none; }
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .hj-nav-badge { position: absolute; top: 3px; right: 8px; min-width: 16px; height: 16px; line-height: 16px; font-size: 10px; padding: 0 4px; }
+  .admin-app-shell.is-collapsed .admin-sidebar-desktop .admin-sidebar-brand { justify-content: center; padding: 0; }
+}
+
+/* Topbar */
+.admin-app-shell .admin-topbar {
+  min-height: var(--hj-topbar-h); padding: 0 clamp(16px, 2.4vw, 32px); gap: 16px;
+  background: rgba(255,255,255,.92); backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--hj-line); box-shadow: none;
+}
+.hj-crumbs { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13.5px; color: var(--hj-muted); }
+.hj-crumbs strong { color: var(--hj-text); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hj-crumbs span { white-space: nowrap; }
+@media (max-width: 640px) { .hj-crumbs .hj-crumb-group, .hj-crumbs .hj-crumb-sep { display: none; } }
+.admin-app-shell .admin-topbar-search-cta {
+  min-width: 240px; height: 38px; padding: 0 12px; background: var(--hj-bg); border: 1px solid var(--hj-line);
+  border-radius: var(--hj-radius-sm); color: var(--hj-muted); font-size: 13px;
+}
+.admin-app-shell .admin-topbar-search-cta:hover { background: var(--hj-hover); border-color: var(--hj-line-strong); }
+.admin-app-shell .admin-search-shortcut { margin-left: auto; border-color: var(--hj-line-strong); color: var(--hj-muted); background: #fff; }
+@media (max-width: 1199px) { .admin-app-shell .admin-topbar-search-cta { min-width: 0; } }
+.admin-app-shell .admin-icon-button { position: relative; width: 38px; height: 38px; border-radius: var(--hj-radius-sm); color: var(--hj-ink-2); }
+.admin-app-shell .admin-icon-button:hover { background: var(--hj-hover); }
+.hj-dot-count { position: absolute; top: 2px; right: 1px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--hj-accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; border: 2px solid #fff; box-sizing: content-box; }
+.hj-user-btn { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 4px; border-radius: 999px; }
+.hj-user-btn:hover, .hj-user-btn[aria-expanded="true"] { background: var(--hj-hover); }
+.hj-avatar { width: 32px; height: 32px; border-radius: 999px; background: var(--hj-ink); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex: none; }
+.hj-user-meta { text-align: left; line-height: 1.15; }
+.hj-user-meta strong { display: block; font-size: 13px; color: var(--hj-text); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hj-user-meta small { font-size: 11.5px; color: var(--hj-muted); }
+@media (max-width: 767px) { .hj-user-meta { display: none; } }
+.hj-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: 260px; padding: 6px;
+  background: #fff; border: 1px solid var(--hj-line); border-radius: var(--hj-radius); box-shadow: var(--hj-shadow-lg);
+  animation: hj-pop .14s var(--hj-ease);
+}
+.hj-menu-head { padding: 10px 10px 12px; border-bottom: 1px solid var(--hj-line); margin-bottom: 6px; }
+.hj-menu-head strong { display: block; font-size: 14px; }
+.hj-menu-head span { font-size: 12.5px; color: var(--hj-muted); word-break: break-all; }
+.hj-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: var(--hj-radius-sm); font-size: 13.5px; color: var(--hj-text); text-decoration: none; text-align: left; }
+.hj-menu-item:hover, .hj-menu-item:focus-visible { background: var(--hj-hover); color: var(--hj-ink); }
+.hj-menu-item.is-danger { color: var(--hj-danger); }
+.hj-menu-sep { height: 1px; background: var(--hj-line); margin: 6px 4px; }
+.hj-role-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; background: var(--hj-hover); color: var(--hj-ink-2); font-size: 11.5px; font-weight: 600; margin-top: 6px; }
+
+.admin-app-shell .admin-main { padding: clamp(16px, 2.4vw, 32px); }
+.admin-app-shell .admin-main-inner { max-width: 1520px; }
+
+/* ---------- Encabezados de página ---------- */
+.admin-app-shell .admin-page-intro { align-items: flex-end; margin-bottom: 22px; flex-wrap: wrap; }
+.admin-app-shell .admin-page-kicker, .admin-app-shell .admin-dashboard-overline {
+  color: var(--hj-muted); font-size: 11px; font-weight: 700; letter-spacing: .12em; margin-bottom: 6px;
+}
+.admin-app-shell .admin-page-heading { font-size: 26px; font-weight: 800; letter-spacing: -.025em; color: var(--hj-ink); line-height: 1.2; }
+.admin-app-shell .admin-page-description { font-size: 14px; color: var(--hj-muted); max-width: 70ch; }
+.admin-app-shell .admin-main h1 { color: var(--hj-ink); letter-spacing: -.02em; }
+
+/* ---------- Superficies ---------- */
+.admin-app-shell .card, .admin-app-shell .admin-settings-section, .admin-app-shell .admin-settings-footer {
+  background: var(--hj-card); border: 1px solid var(--hj-line); border-radius: var(--hj-radius); box-shadow: var(--hj-shadow);
+}
+.admin-app-shell .admin-dashboard-metric::before { background: var(--hj-ink); height: 2px; opacity: 1; }
+.admin-app-shell .admin-dashboard-metric-label { color: var(--hj-muted); letter-spacing: .04em; }
+.admin-app-shell .admin-dashboard-metric-value { color: var(--hj-ink); font-variant-numeric: tabular-nums; }
+.admin-app-shell .admin-dashboard-metric-icon { border-color: var(--hj-line); background: var(--hj-bg); color: var(--hj-ink); }
+.admin-app-shell .admin-settings-info { background: var(--hj-info-soft); border-color: #D3E3F6; color: #17406F; }
+.admin-app-shell .admin-settings-nav a { color: var(--hj-ink-2); }
+.admin-app-shell .admin-settings-nav a:hover, .admin-app-shell .admin-settings-nav a:focus-visible { background: var(--hj-hover); color: var(--hj-ink); }
+
+/* ---------- Botones (Tailwind y Bootstrap) ---------- */
+.admin-app-shell .btn, .admin-app-shell .btn-primary, .admin-app-shell .btn-secondary, .admin-app-shell .btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 38px; padding: 0 14px; border-radius: var(--hj-radius-sm);
+  font-size: 13.5px; font-weight: 600; line-height: 1.2; box-shadow: none;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.admin-app-shell .btn-sm { min-height: 32px; padding: 0 10px; font-size: 12.5px; gap: 5px; }
+.admin-app-shell .btn-lg { min-height: 46px; padding: 0 20px; font-size: 15px; }
+.admin-app-shell .btn-primary, .admin-app-shell .btn-dark {
+  background: var(--hj-ink); border: 1px solid var(--hj-ink); color: #fff;
+}
+.admin-app-shell .btn-primary:hover:not(:disabled), .admin-app-shell .btn-dark:hover:not(:disabled) { background: var(--hj-ink-2); border-color: var(--hj-ink-2); color: #fff; }
+.admin-app-shell .btn-secondary, .admin-app-shell .btn-outline-secondary, .admin-app-shell .btn-light {
+  background: #fff; border: 1px solid var(--hj-line-strong); color: var(--hj-ink-2);
+}
+.admin-app-shell .btn-secondary:hover:not(:disabled), .admin-app-shell .btn-outline-secondary:hover:not(:disabled), .admin-app-shell .btn-light:hover:not(:disabled) {
+  background: var(--hj-hover); border-color: #BDBDB7; color: var(--hj-ink);
+}
+.admin-app-shell .btn-outline-primary, .admin-app-shell .btn-outline-dark { background: #fff; border: 1px solid var(--hj-ink); color: var(--hj-ink); }
+.admin-app-shell .btn-outline-primary:hover:not(:disabled), .admin-app-shell .btn-outline-dark:hover:not(:disabled) { background: var(--hj-ink); color: #fff; }
+.admin-app-shell .btn-danger { background: var(--hj-danger); border: 1px solid var(--hj-danger); color: #fff; }
+.admin-app-shell .btn-danger:hover:not(:disabled) { background: #A51818; border-color: #A51818; }
+.admin-app-shell .btn-outline-danger { background: #fff; border: 1px solid #F0C4C4; color: var(--hj-danger); }
+.admin-app-shell .btn-outline-danger:hover:not(:disabled) { background: var(--hj-danger-soft); border-color: var(--hj-danger); color: var(--hj-danger); }
+.admin-app-shell .btn-outline-warning { background: #fff; border: 1px solid #EBD3A0; color: var(--hj-warning); }
+.admin-app-shell .btn-outline-warning:hover:not(:disabled) { background: var(--hj-warning-soft); color: var(--hj-warning); }
+.admin-app-shell .btn-outline-success { background: #fff; border: 1px solid #BFE0CD; color: var(--hj-success); }
+.admin-app-shell .btn-outline-success:hover:not(:disabled) { background: var(--hj-success-soft); color: var(--hj-success); }
+.admin-app-shell .btn-success { background: var(--hj-success); border-color: var(--hj-success); color: #fff; }
+.admin-app-shell .btn-link { color: var(--hj-ink); font-weight: 600; text-decoration: underline; }
+.admin-app-shell .btn:disabled, .admin-app-shell .btn-primary:disabled, .admin-app-shell .btn-secondary:disabled { opacity: .45; }
+.admin-app-shell .btn:focus-visible { box-shadow: 0 0 0 3px rgba(10,10,10,.15); }
+
+/* ---------- Formularios ---------- */
+.admin-app-shell .input, .admin-app-shell .form-control, .admin-app-shell .form-select {
+  min-height: 40px; border: 1px solid var(--hj-line-strong); border-radius: var(--hj-radius-sm);
+  font-size: 14px; color: var(--hj-text); background-color: #fff;
+}
+.admin-app-shell .form-control-sm, .admin-app-shell .form-select-sm { min-height: 32px; font-size: 13px; }
+.admin-app-shell .input:hover, .admin-app-shell .form-control:hover, .admin-app-shell .form-select:hover { border-color: #BDBDB7; }
+.admin-app-shell .input:focus, .admin-app-shell .form-control:focus, .admin-app-shell .form-select:focus {
+  border-color: var(--hj-ink); box-shadow: 0 0 0 3px rgba(10,10,10,.08); outline: 0;
+}
+.admin-app-shell .is-invalid, .admin-app-shell [aria-invalid="true"] { border-color: var(--hj-danger) !important; }
+.admin-app-shell .form-label { font-size: 13px; font-weight: 600; color: var(--hj-ink-2); }
+.admin-app-shell .form-text { font-size: 12.5px; color: var(--hj-muted); }
+.admin-app-shell .form-check-input:checked { background-color: var(--hj-ink); border-color: var(--hj-ink); }
+.admin-app-shell .form-check-input:focus { box-shadow: 0 0 0 3px rgba(10,10,10,.12); border-color: var(--hj-ink); }
+.admin-app-shell input[type="checkbox"], .admin-app-shell input[type="radio"] { accent-color: var(--hj-ink); }
+
+/* ---------- Insignias de estado ---------- */
+.admin-app-shell .badge-green { background: var(--hj-success-soft); color: var(--hj-success); }
+.admin-app-shell .badge-yellow { background: var(--hj-warning-soft); color: var(--hj-warning); }
+.admin-app-shell .badge-red { background: var(--hj-danger-soft); color: var(--hj-danger); }
+.admin-app-shell .badge-blue { background: var(--hj-info-soft); color: var(--hj-info); }
+.admin-app-shell .badge-gray { background: var(--hj-hover); color: var(--hj-ink-2); }
+.admin-app-shell .badge-green, .admin-app-shell .badge-yellow, .admin-app-shell .badge-red, .admin-app-shell .badge-blue, .admin-app-shell .badge-gray { border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+.admin-app-shell .badge.text-bg-primary, .admin-app-shell .badge.bg-primary { background: var(--hj-ink) !important; }
+
+/* ---------- Tablas ---------- */
+.admin-app-shell .admin-main table { font-size: 13.5px; }
+.admin-app-shell .admin-main table thead th {
+  position: sticky; top: 0; z-index: 1; background: #FAFAF8; color: var(--hj-muted);
+  font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  border-bottom: 1px solid var(--hj-line); padding-top: 11px; padding-bottom: 11px;
+}
+.admin-app-shell .admin-main table tbody td { border-color: #EFEFEC; color: var(--hj-text); }
+.admin-app-shell .admin-main table tbody tr:hover > td { background: #FAFAF8; }
+.admin-app-shell .admin-main table tbody tr:last-child td { border-bottom: 0; }
+.admin-app-shell .table > :not(caption) > * > * { padding: .7rem .8rem; }
+.admin-app-shell .admin-main td .btn-sm + .btn-sm { margin-left: 4px; }
+
+/* ---------- Modales y capas ---------- */
+.admin-app-shell .admin-main .fixed.inset-0[class*="bg-"],
+.admin-app-shell [class*="-overlay"], .admin-app-shell [class*="-backdrop"] { backdrop-filter: blur(2px); }
+.admin-app-shell [class*="-modal"]:not([class*="-modal-"]), .admin-app-shell [class*="-dialog"] { border-radius: 14px; box-shadow: var(--hj-shadow-lg); }
+
+/* ---------- Estados (error de módulo, vacío, carga) ---------- */
+.hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
+.hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
+.hj-state p { max-width: 52ch; color: var(--hj-muted); }
+.hj-state code { font-size: 12px; color: var(--hj-subtle); }
+.hj-loading { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 50vh; color: var(--hj-muted); }
+.hj-spinner { width: 20px; height: 20px; border-radius: 999px; border: 2px solid var(--hj-line-strong); border-top-color: var(--hj-ink); animation: hj-spin .7s linear infinite; }
+
+/* ---------- Diálogo de confirmación ---------- */
+.hj-confirm-scrim { position: fixed; inset: 0; z-index: 90; background: rgba(10,10,10,.45); backdrop-filter: blur(2px); display: grid; place-items: center; padding: 16px; animation: hj-fade .14s; }
+.hj-confirm { width: min(440px, 100%); background: #fff; border-radius: 14px; box-shadow: var(--hj-shadow-lg); padding: 22px; animation: hj-pop .16s var(--hj-ease); }
+.hj-confirm h2 { font-size: 17px; font-weight: 800; color: var(--hj-ink); margin-bottom: 8px; }
+.hj-confirm p { color: var(--hj-ink-2); font-size: 14px; line-height: 1.55; }
+.hj-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.hj-confirm-icon { width: 40px; height: 40px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; background: var(--hj-hover); color: var(--hj-ink); }
+.hj-confirm-icon.is-danger { background: var(--hj-danger-soft); color: var(--hj-danger); }
+
+/* ---------- Paleta de comandos ---------- */
+.admin-app-shell .admin-command-dialog { border-radius: 14px; }
+.admin-app-shell .admin-command-result[aria-selected="true"], .admin-app-shell .admin-command-result:hover { background: var(--hj-hover); }
+
+/* ---------- Toasts ---------- */
+.hj-toast { font-size: 13.5px !important; font-weight: 500; border-radius: 10px !important; }
+
+/* ---------- Inicio de sesión ---------- */
+.hj-login { min-height: 100dvh; display: grid; background: var(--hj-bg); }
+@media (min-width: 960px) { .hj-login { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.hj-login-side { display: none; position: relative; overflow: hidden; background: var(--hj-ink); color: #fff; padding: 48px; }
+@media (min-width: 960px) { .hj-login-side { display: flex; flex-direction: column; justify-content: space-between; } }
+.hj-login-side h1 { font-family: Anton, Impact, sans-serif; font-weight: 400; text-transform: uppercase; font-size: clamp(56px, 6vw, 92px); line-height: .9; }
+.hj-login-side h1 i { color: var(--hj-accent); font-style: normal; }
+.hj-login-side p { color: rgba(255,255,255,.65); max-width: 40ch; margin-top: 18px; }
+.hj-login-main { display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
+.hj-login-card { width: 100%; max-width: 400px; }
+
+@keyframes hj-spin { to { transform: rotate(360deg); } }
+@keyframes hj-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hj-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .hj-menu, .hj-confirm, .hj-confirm-scrim { animation: none; } }
+
+/* Barra superior en pantallas pequeñas: búsqueda solo con ícono. */
+@media (max-width: 767px) {
+  .admin-app-shell .admin-topbar-search-cta { width: 38px; min-width: 38px; padding: 0; justify-content: center; background: transparent; border-color: transparent; }
+  .admin-app-shell .admin-topbar-search-cta span, .admin-app-shell .admin-topbar-search-cta kbd { display: none; }
+  .admin-app-shell .admin-topbar { padding: 0 12px; gap: 8px; }
+  .admin-app-shell .admin-topbar-actions { gap: 4px; }
+}
+/* Tablas de usuarios: acciones en una sola línea con desplazamiento horizontal. */
+.admin-app-shell .admin-users-table td:last-child { white-space: nowrap; }
+/* La miga activa conserva la clase histórica .admin-topbar-title (usada por las pruebas E2E). */
+.admin-app-shell .hj-crumbs .admin-topbar-title { font-size: 13.5px; font-weight: 700; letter-spacing: 0; color: var(--hj-text); }

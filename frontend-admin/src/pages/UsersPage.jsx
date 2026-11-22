@@ -44,7 +44,7 @@ function roleLabel(role) {
 function roleBadge(role) {
     switch (role) {
         case 'super_admin':
-        return 'bg-purple-100 text-purple-700'
+        return 'bg-zinc-100 text-zinc-700'
         case 'admin':
         return 'bg-brand-100 text-brand-700'
         case 'seller':

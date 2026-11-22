@@ -27,6 +27,7 @@ import ProductPhotoQuality from '../components/products/ProductPhotoQuality'
 import CatalogQualityPanel from '../components/products/CatalogQualityPanel'
 import AdminTableMessage from '../components/AdminTableMessage'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
+import { confirmAction } from '../components/ui/ConfirmDialog'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -600,7 +601,7 @@ function ProductFormModal({ product, categories, onClose }) {
                   </button>
 
                   <button
-                    onClick={() => { if (window.confirm(`¿Desactivar el producto "${product.name}"? No aparecerá en el catálogo público.`)) deactivateMutation.mutate() }}
+                    onClick={async () => { if (await confirmAction(`«${product.name}» dejará de aparecer en la tienda. Podrás activarlo de nuevo cuando quieras.`, { title: 'Desactivar producto', confirmLabel: 'Desactivar', danger: true })) deactivateMutation.mutate() }}
                     disabled={deactivateMutation.isPending}
                     className="btn-secondary flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
                   >

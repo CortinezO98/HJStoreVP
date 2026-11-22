@@ -27,6 +27,23 @@ if (!layout.includes('function AdminNavigation(') || !layout.includes('<AdminNav
   missing.push('Menú: falta montar AdminNavigation')
 }
 
+// Rediseño 2026-11: resiliencia y confirmaciones accesibles en todo el panel.
+for (const symbol of ['ModuleErrorBoundary', '<ConfirmHost', '<Suspense']) {
+  if (!layout.includes(symbol)) missing.push(`Layout: falta ${symbol}`)
+}
+{
+  const { readdirSync, statSync } = await import('node:fs')
+  const walk = (dir) => readdirSync(dir).flatMap((name) => {
+    const path = `${dir}/${name}`
+    return statSync(path).isDirectory() ? walk(path) : [path]
+  })
+  for (const file of walk(resolve(process.cwd(), 'src')).filter((f) => /\.jsx?$/.test(f))) {
+    const code = readFileSync(file, 'utf8')
+    if (/(^|[^.\w])(window\.)?confirm\(/m.test(code.replace(/confirmAction\(/g, ''))) {
+      missing.push(`${file.replace(process.cwd() + '/', '')}: usa confirm() nativo; usa confirmAction()`)
+    }
+  }
+}
 
 for (const [label, component, route] of routes) {
   if (!app.includes(`<${component}`)) missing.push(`Componente ${component}`)
@@ -126,7 +143,7 @@ for (const [file, required] of [
   ['src/pages/CashPage.jsx', [
     'authApi.me', 'cashApi.sessions', 'cashApi.movements', 'cashApi.open',
     'cashApi.movement', 'cashApi.close', "action === 'close'",
-    "window.confirm(", "sellerLocationId", "admin &&", "run.isPending",
+    "confirmAction(", "sellerLocationId", "admin &&", "run.isPending",
     'selected.expected_amount', 'selected.difference',
   ]],
 ]) {

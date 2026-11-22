@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import ImageCropModal from './ImageCropModal'
 import ProductPhotoQuality from './ProductPhotoQuality'
 import { verifyUploadedImage } from '../../utils/verifyUploadedImage'
+import { confirmAction } from '../ui/ConfirmDialog'
 
 const asMoney = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(v || 0))
 const detail = (error) => error?.response?.data?.detail || error?.message || 'No se pudo completar la operación'
@@ -283,8 +284,8 @@ export default function ProductVariantsManager({ product, onClose }) {
                       onClick={() => saveVariantAlt(item.id, img)}
                       className="text-xs text-brand-700 underline">Guardar descripción</button>
                     <button type="button" disabled={imageBusy}
-                      onClick={() => {
-                        if (window.confirm('¿Eliminar esta fotografía de la variante?')) {
+                      onClick={async () => {
+                        if (await confirmAction('La fotografía se eliminará de esta variante.', { title: 'Eliminar fotografía', confirmLabel: 'Eliminar', danger: true })) {
                           updateImage(item.id, img.id, 'delete')
                         }
                       }} className="text-xs text-red-700 underline">Eliminar</button>

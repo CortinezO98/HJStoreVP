@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { authApi, cashApi, locationsApi } from '../services/api'
 import { useAuthStore } from '../store'
 import { Wallet, Landmark, ArrowLeftRight, CheckCircle2, MapPin, ReceiptText, AlertTriangle } from 'lucide-react'
+import { confirmAction } from '../components/ui/ConfirmDialog'
 
 const money = (value) => new Intl.NumberFormat('es-CO', {
   style: 'currency', currency: 'COP', maximumFractionDigits: 0,
@@ -69,9 +70,10 @@ export default function CashPage() {
     },
     onError: (error) => toast.error(errorText(error)),
   })
-  const submit = (event, action, id, payload) => {
+  const submit = async (event, action, id, payload) => {
     event.preventDefault()
-    if (!window.confirm(action === 'close' ? '¿Confirmas el arqueo y cierre definitivo de este turno?' : '¿Confirmas esta operación de caja?')) return
+    const closing = action === 'close'
+    if (!(await confirmAction(closing ? 'Se registrará el arqueo y el turno quedará cerrado. Esta acción no se puede deshacer.' : '¿Confirmas esta operación de caja?', { title: closing ? 'Cerrar turno de caja' : 'Registrar operación', confirmLabel: closing ? 'Cerrar turno' : 'Registrar', danger: closing }))) return
     run.mutate({ action, id, payload })
   }
 

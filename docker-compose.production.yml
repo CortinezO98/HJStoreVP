@@ -86,6 +86,8 @@ services:
       dockerfile: Dockerfile.production
       args:
         VITE_API_URL: "${PROD_API_URL:?Configurar PROD_API_URL_HTTPS}"
+        # El login de la tienda redirige al personal administrativo a este panel.
+        VITE_ADMIN_URL: "${PROD_ADMIN_URL:?Configurar PROD_ADMIN_URL_HTTPS}"
     restart: unless-stopped
     networks: [edge]
     ports:

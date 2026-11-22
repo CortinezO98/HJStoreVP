@@ -57,7 +57,7 @@ function formatDate(d) {
     shipped: {
         label: 'Enviado',
         icon: Truck,
-        badge: 'bg-indigo-100 text-indigo-700',
+        badge: 'bg-zinc-100 text-zinc-700',
     },
     delivered: {
         label: 'Entregado',

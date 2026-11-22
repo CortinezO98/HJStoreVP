@@ -85,7 +85,7 @@ export default function ShipmentManager({ order }) {
   return (
     <section className="admin-shipment-panel" aria-label="Despacho y seguimiento">
       <div className="d-flex align-items-center gap-2 mb-4">
-        <Truck size={20} className="text-indigo-700" aria-hidden="true"/>
+        <Truck size={20} className="text-zinc-700" aria-hidden="true"/>
         <h4 className="h5 fw-bold mb-0">Despacho y seguimiento</h4>
       </div>
       {isLoading && <p role="status" className="text-sm text-slate-500">Consultando guía…</p>}
@@ -131,13 +131,13 @@ export default function ShipmentManager({ order }) {
             <div><p className="text-[11px] uppercase font-bold text-slate-500">Número de guía</p>
               <p className="font-mono text-sm font-bold mt-1 break-all">{shipment.tracking_number}</p></div>
             <div><p className="text-[11px] uppercase font-bold text-slate-500">Estado registrado</p>
-              <p className="font-bold text-indigo-900 mt-1">{LABELS[shipment.status] || shipment.status}</p></div>
+              <p className="font-bold text-zinc-900 mt-1">{LABELS[shipment.status] || shipment.status}</p></div>
             <div><p className="text-[11px] uppercase font-bold text-slate-500">Fecha de despacho</p>
               <p className="text-sm mt-1">{dateText(shipment.dispatched_at)}</p></div>
           </div>
           {canUpdate && (
             <div className="admin-shipment-form">
-              <button type="button" className="text-sm font-semibold text-indigo-700 underline underline-offset-4"
+              <button type="button" className="text-sm font-semibold text-zinc-700 underline underline-offset-4"
                 aria-expanded={showCorrection} onClick={() => setShowCorrection(value => !value)}>
                 {showCorrection ? 'Ocultar corrección de guía' : 'Corregir número de guía'}
               </button>

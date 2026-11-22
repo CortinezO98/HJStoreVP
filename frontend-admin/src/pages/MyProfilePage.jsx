@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store'
+import { confirmAction } from '../components/ui/ConfirmDialog'
 
 function errorText(error) {
   const detail = error?.response?.data?.detail
@@ -191,8 +192,8 @@ export default function MyProfilePage() {
               setMfa(v => ({ ...v, recovery_codes_remaining: data.recovery_codes.length }))
             })}>Regenerar códigos</button>
           <button className="rounded-lg border px-4 py-2 text-sm" disabled={busy || !securityAction.current_password || !securityAction.code}
-            onClick={() => {
-              if (!window.confirm('¿Desactivar 2FA? Tus sesiones anteriores se cerrarán.')) return
+            onClick={async () => {
+              if (!(await confirmAction('Tu cuenta quedará protegida solo con contraseña y se cerrarán tus otras sesiones.', { title: 'Desactivar verificación en dos pasos', confirmLabel: 'Desactivar 2FA', danger: true }))) return
               perform(async () => { await authApi.disableMfa(securityAction); closeSession() })
             }}>Desactivar 2FA</button>
         </div>

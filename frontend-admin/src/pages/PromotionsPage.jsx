@@ -130,8 +130,8 @@ export default function PromotionsPage() {
             <td className="p-3 text-xs">{c.expires_at?new Date(c.expires_at).toLocaleDateString('es-CO'):'Sin vencimiento'}</td>
             <td className="p-3">{c.active?'Activo':'Inactivo'}</td>
             <td className="p-3 space-x-3">
-              <button type="button" className="underline text-indigo-700" onClick={()=>start(c)}>Editar</button>
-              <button type="button" className="underline text-indigo-700" disabled={toggle.isPending} onClick={()=>toggle.mutate(c)}>
+              <button type="button" className="underline text-zinc-700" onClick={()=>start(c)}>Editar</button>
+              <button type="button" className="underline text-zinc-700" disabled={toggle.isPending} onClick={()=>toggle.mutate(c)}>
                 {c.active?'Desactivar':'Activar'}
               </button>
             </td>

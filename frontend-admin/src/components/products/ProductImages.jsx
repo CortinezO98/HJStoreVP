@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Upload, Trash2, Star, StarOff, ImageIcon, X, Loader } from 'lucide-react'
 import { apiClient } from "../../services/api";
 import toast from 'react-hot-toast'
+import { confirmAction } from '../ui/ConfirmDialog'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -195,8 +196,8 @@ const API_URL = import.meta.env.VITE_API_URL || ''
                         </button>
                         )}
                         <button
-                        onClick={() => {
-                            if (confirm('¿Eliminar esta imagen?')) {
+                        onClick={async () => {
+                            if (await confirmAction('La imagen se eliminará del producto.', { title: 'Eliminar imagen', confirmLabel: 'Eliminar', danger: true })) {
                             deleteMutation.mutate(img.id)
                             }
                         }}

@@ -86,7 +86,7 @@ export default function IntegrationsPage() {
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <span className="sr-only">Buscar integraciones</span>
                 <input type="search" value={search} onChange={event => setSearch(event.target.value)}
-                  placeholder="Buscar integración" className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                  placeholder="Buscar integración" className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-200" />
               </label>
               <label>
                 <span className="sr-only">Filtrar por categoría</span>
@@ -106,7 +106,7 @@ export default function IntegrationsPage() {
                   <div key={item.key}>
                     <button type="button" onClick={() => setExpanded(open ? null : item.key)}
                       aria-expanded={open} aria-controls={`integration-detail-${item.key}`}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400">
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400">
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-slate-900">{item.title}</span>
                         <span className="text-xs text-slate-400">{item.group}</span>
@@ -120,7 +120,7 @@ export default function IntegrationsPage() {
                       <div id={`integration-detail-${item.key}`} className="space-y-2 bg-slate-50 px-4 pb-4 pt-1 text-sm text-slate-600">
                         <p>{item.detail}</p>
                         <p className="text-xs text-slate-500">Alcance: {item.stage}</p>
-                        {item.path && <Link to={item.path} className="inline-block font-semibold text-indigo-700 hover:underline">Ir al módulo</Link>}
+                        {item.path && <Link to={item.path} className="inline-block font-semibold text-zinc-700 hover:underline">Ir al módulo</Link>}
                       </div>
                     )}
                   </div>

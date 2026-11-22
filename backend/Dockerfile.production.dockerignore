@@ -1,0 +1,67 @@
+# Contexto de la imagen de PRODUCCIÓN (BuildKit usa este archivo solo con Dockerfile.production).
+# Nada de pruebas, semillas, depuración, documentación interna ni secretos.
+# Verificación automática: python scripts/ci/verify_production_context.py
+
+# Secretos y datos
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+*.crt
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.sql.gz
+*.sha256
+uploads/
+media/
+backups/
+*.log
+
+# Pruebas y herramientas de calidad
+tests/
+**/tests/
+**/test_*.py
+**/*_test.py
+conftest.py
+**/conftest.py
+pytest.ini
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Semillas, datos sintéticos y depuración (solo desarrollo)
+e2e_seed.py
+seed*.py
+**/seed*.py
+debug*.py
+**/debug*.py
+
+# Scripts: solo los operativos que se usan en producción
+scripts/*
+!scripts/bootstrap_admin.py
+!scripts/audit_expired_reservations.py
+!scripts/export_audit_snapshot.py
+!scripts/verify_audit_snapshot.py
+
+# Documentación interna y archivos de desarrollo
+*.md
+Dockerfile
+Dockerfile.*
+.dockerignore
+*.dockerignore
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+.git/
+.github/
+.vscode/
+.idea/

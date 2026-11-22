@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [challenge, setChallenge] = useState(null)
   const [mfaCode, setMfaCode] = useState('')
+  const [error, setError] = useState('')
   const { login, completeLogin } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
     try {
       const data = await login(form.email, form.password)
       if (data.mfa_required) {
@@ -28,7 +30,7 @@ export default function LoginPage() {
       toast.success(`Bienvenido, ${data.full_name}!`)
       navigate(location.state?.from || '/', { replace: true })
     } catch (error) {
-      toast.error(error?.response?.data?.detail || error.message || 'No se pudo iniciar sesión')
+      setError(error?.response?.data?.detail || error.message || 'No se pudo iniciar sesión. Revisa tus datos e inténtalo de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -37,6 +39,7 @@ export default function LoginPage() {
   const handleMfa = async (event) => {
     event.preventDefault()
     setLoading(true)
+    setError('')
     try {
       const { data } = await authApi.mfaVerify({ challenge_token: challenge, code: mfaCode })
       completeLogin(data)
@@ -45,54 +48,80 @@ export default function LoginPage() {
       toast.success('Verificación completada')
       navigate(location.state?.from || '/', { replace: true })
     } catch (error) {
-      toast.error(error?.response?.data?.detail || 'Código inválido o vencido')
+      setError(error?.response?.data?.detail || 'El código no es válido o ya venció. Genera uno nuevo en tu aplicación.')
     } finally {
       setLoading(false)
     }
   }
 
+  const errorBox = error && (
+    <div className="alert alert-danger py-2 px-3 small mb-0" role="alert" id="login-error">{error}</div>
+  )
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-950 to-brand-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <span className="text-4xl font-black text-white">HJ<span className="text-brand-400">Store</span><span className="text-brand-300">VP</span></span>
-          <p className="text-brand-300 mt-2 font-medium">Panel de Administración</p>
+    <div className="hj-login admin-app-shell">
+      <aside className="hj-login-side" aria-hidden="true">
+        <span className="hj-brand-word" style={{ fontSize: 30 }}>HJSTORE<small>VP</small><i>.</i></span>
+        <div>
+          <h1>Centro de<br />operaciones<i>.</i></h1>
+          <p>Catálogo, inventario, ventas web y físicas, caja y reportes en un solo lugar.</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h1 className="text-xl font-bold text-gray-900 mb-6">Iniciar sesión</h1>
+        <p className="small" style={{ color: 'rgba(255,255,255,.45)' }}>Acceso exclusivo para el equipo de HJStoreVP.</p>
+      </aside>
+      <main className="hj-login-main">
+        <div className="hj-login-card">
+          <span className="hj-brand-word d-lg-none mb-4 d-inline-block" style={{ color: '#0A0A0A', fontSize: 28 }}>HJSTORE<small style={{ color: '#6B6B66' }}>VP</small><i>.</i></span>
           {challenge ? (
-            <form onSubmit={handleMfa} className="space-y-4">
-              <p className="text-sm text-gray-600">Introduce el código de tu aplicación autenticadora o uno de tus códigos de recuperación.</p>
-              <label className="block text-sm font-medium" htmlFor="mfa-code">Código de seguridad</label>
-              <input id="mfa-code" className="input" autoComplete="one-time-code" autoFocus required
-                value={mfaCode} maxLength={20} onChange={(e) => setMfaCode(e.target.value.trim())}
-                placeholder="000000" />
-              <button className="btn-primary w-full" type="submit" disabled={loading}>
-                {loading ? 'Validando…' : 'Verificar e ingresar'}
-              </button>
-              <button type="button" className="text-sm text-gray-600 underline"
-                onClick={() => { setChallenge(null); setMfaCode('') }}>Volver al inicio de sesión</button>
-            </form>
-          ) : <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Correo</label>
-              <input type="email" autoComplete="username" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input" placeholder="admin@hjstorevp.com" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <div className="relative">
-                <input type={showPass ? 'text' : 'password'} autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input pr-10" placeholder="••••••••" />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+            <form onSubmit={handleMfa} className="d-grid gap-3" aria-describedby={error ? 'login-error' : undefined}>
+              <div>
+                <h2 className="admin-page-heading mb-1">Verificación en dos pasos</h2>
+                <p className="admin-page-description mb-0">Escribe el código de 6 dígitos de tu aplicación autenticadora o uno de tus códigos de recuperación.</p>
               </div>
-            </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
-              {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><LogIn size={16} /> Ingresar</>}
-            </button>
-          </form>}
+              {errorBox}
+              <div>
+                <label className="form-label" htmlFor="mfa-code">Código de seguridad</label>
+                <input id="mfa-code" className="form-control form-control-lg text-center" autoComplete="one-time-code" inputMode="numeric" autoFocus required
+                  value={mfaCode} maxLength={20} onChange={(e) => setMfaCode(e.target.value.trim())} placeholder="000000"
+                  style={{ letterSpacing: '.3em', fontVariantNumeric: 'tabular-nums' }} />
+              </div>
+              <button className="btn btn-primary btn-lg w-100" type="submit" disabled={loading || mfaCode.length < 6}>
+                {loading ? 'Verificando…' : 'Verificar e ingresar'}
+              </button>
+              <button type="button" className="btn btn-link btn-sm" onClick={() => { setChallenge(null); setMfaCode(''); setError('') }}>
+                Volver al inicio de sesión
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="d-grid gap-3" aria-describedby={error ? 'login-error' : undefined}>
+              <div>
+                <h2 className="admin-page-heading mb-1">Iniciar sesión</h2>
+                <p className="admin-page-description mb-0">Ingresa con tu cuenta de administrador o vendedor.</p>
+              </div>
+              {errorBox}
+              <div>
+                <label className="form-label" htmlFor="login-email">Correo electrónico</label>
+                <input id="login-email" type="email" autoComplete="username" required autoFocus value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })} className="form-control form-control-lg" aria-invalid={Boolean(error)} />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="login-password">Contraseña</label>
+                <div className="position-relative">
+                  <input id="login-password" type={showPass ? 'text' : 'password'} autoComplete="current-password" required value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })} className="form-control form-control-lg" style={{ paddingRight: 48 }} aria-invalid={Boolean(error)} />
+                  <button type="button" onClick={() => setShowPass(!showPass)} className="admin-icon-button position-absolute top-50 end-0 translate-middle-y me-1"
+                    aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={showPass}>
+                    {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-lg w-100">
+                {loading ? <><span className="hj-spinner" style={{ width: 16, height: 16, borderColor: 'rgba(255,255,255,.3)', borderTopColor: '#fff' }} /> Ingresando…</> : <><LogIn size={17} /> Ingresar</>}
+              </button>
+              <p className="form-text text-center mb-0">¿Olvidaste tu contraseña? Pide a un Super Admin que la restablezca desde Usuarios.</p>
+            </form>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

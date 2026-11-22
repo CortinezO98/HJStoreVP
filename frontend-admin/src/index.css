@@ -24,22 +24,22 @@
   :root {
     color-scheme: light;
     font-synthesis: none;
-    --admin-bg: #f5f6f8;
-    --admin-border: #e6e8ee;
-    --admin-dark: #10141c;
-    --admin-dark-muted: #858d9d;
-    --admin-accent: #6478ff;
+    --admin-bg: #f8f8f6;
+    --admin-border: #ebebea;
+    --admin-dark: #111110;
+    --admin-dark-muted: #929291;
+    --admin-accent: #b2b2b2;
   }
-  body { @apply antialiased; background: var(--admin-bg); color: #171b26; min-width: 320px; }
+  body { @apply antialiased; background: var(--admin-bg); color: #171716; min-width: 320px; }
   button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-  :focus-visible { outline: 2px solid #485eed; outline-offset: 3px; }
+  :focus-visible { outline: 2px solid #9c9c9b; outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   }
 }
 @layer components {
   /* General controls: compatible with existing admin forms, tables and modals */
-  .card { @apply bg-white rounded-2xl border shadow-none p-5 sm:p-6; border-color: var(--admin-border); box-shadow: 0 2px 15px rgba(18,29,49,.025); }
+  .card { @apply bg-white rounded-2xl border shadow-none p-5 sm:p-6; border-color: var(--admin-border); box-shadow: 0 2px 15px rgba(25,25,24,.025); }
   .btn-primary { @apply px-4 py-2.5 rounded-xl font-semibold text-sm bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 42px; }
   .btn-secondary { @apply px-4 py-2.5 rounded-xl font-semibold text-sm bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 42px; }
   .btn-danger { @apply px-4 py-2.5 rounded-xl font-semibold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 42px; }
@@ -56,34 +56,34 @@
   .admin-sidebar { @apply flex flex-col shrink-0 text-white; width: 262px; background: var(--admin-dark); }
   .admin-sidebar-desktop { @apply hidden lg:flex sticky top-0 h-screen overflow-y-auto; }
   .admin-sidebar-brand { @apply flex items-center gap-3 px-5 pt-7 pb-7; }
-  .admin-brand-mark { @apply w-11 h-11 flex items-center justify-center rounded-xl font-black text-xl text-white shrink-0; background: linear-gradient(145deg,#7084ff,#3949b3); }
+  .admin-brand-mark { @apply w-11 h-11 flex items-center justify-center rounded-xl font-black text-xl text-white shrink-0; background: linear-gradient(145deg,#b8b8b8,#777776); }
   .admin-brand-name { @apply font-black tracking-tight text-white leading-none; font-size: 19px; }
-  .admin-brand-name span { @apply text-indigo-300; }
+  .admin-brand-name span { @apply text-zinc-300; }
   .admin-brand-subtitle { @apply text-[9px] tracking-[.17em] font-bold mt-1.5; color: var(--admin-dark-muted); }
-  .admin-sidebar-user { @apply mx-4 mb-8 p-3 flex items-center gap-3 rounded-xl border; background: #1c222e; border-color: #2b3342; }
-  .admin-sidebar-avatar { @apply w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-base font-black text-indigo-100; background: #36436f; }
+  .admin-sidebar-user { @apply mx-4 mb-8 p-3 flex items-center gap-3 rounded-xl border; background: #1c1c1b; border-color: #282827; }
+  .admin-sidebar-avatar { @apply w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-base font-black text-zinc-100; background: #3c3c3b; }
   .admin-sidebar-user-name { @apply text-sm font-semibold text-white truncate; }
-  .admin-sidebar-role { @apply flex items-center gap-1.5 mt-1 text-xs text-indigo-300; }
+  .admin-sidebar-role { @apply flex items-center gap-1.5 mt-1 text-xs text-zinc-300; }
   .admin-sidebar-nav { @apply flex-1 px-3 overflow-y-auto pb-6; }
   .admin-sidebar-group-label { @apply block px-3.5 pb-3 text-[10px] font-bold tracking-[.15em]; color: var(--admin-dark-muted); }
-  .admin-sidebar-link { @apply flex items-center gap-3.5 w-full min-h-[46px] px-3.5 py-3 my-1 rounded-xl text-sm font-medium transition-all; color: #abb3c1; }
-  .admin-sidebar-link:hover { @apply text-white; background: #252d3d; }
-  .admin-sidebar-link-active { @apply text-white font-semibold; background: #3e4f98; box-shadow: inset 3px 0 #9eafff; }
-  .admin-sidebar-link-active:hover { background: #4558a5; }
+  .admin-sidebar-link { @apply flex items-center gap-3.5 w-full min-h-[46px] px-3.5 py-3 my-1 rounded-xl text-sm font-medium transition-all; color: #b7b7b6; }
+  .admin-sidebar-link:hover { @apply text-white; background: #242423; }
+  .admin-sidebar-link-active { @apply text-white font-semibold; background: #6c6c6b; box-shadow: inset 3px 0 #d0d0ce; }
+  .admin-sidebar-link-active:hover { background: #767675; }
   .admin-sidebar-arrow { @apply ml-auto opacity-0; }
   .admin-sidebar-link-active .admin-sidebar-arrow { @apply opacity-100; }
-  .admin-sidebar-bottom { @apply p-3 border-t; border-color: #29313e; }
+  .admin-sidebar-bottom { @apply p-3 border-t; border-color: #262625; }
   .admin-sidebar-store-link, .admin-sidebar-logout { @apply flex items-center w-full gap-3 px-3.5 py-3 rounded-xl text-left text-sm font-medium transition-colors; }
-  .admin-sidebar-store-link { @apply text-indigo-200 hover:text-white; }
+  .admin-sidebar-store-link { @apply text-zinc-200 hover:text-white; }
   .admin-sidebar-logout { @apply text-red-300 hover:text-white; }
-  .admin-sidebar-store-link:hover, .admin-sidebar-logout:hover { background: #252d3d; }
-  .admin-sidebar-version { @apply px-3.5 pt-4 pb-1 text-[9px] tracking-widest; color: #657084; }
+  .admin-sidebar-store-link:hover, .admin-sidebar-logout:hover { background: #242423; }
+  .admin-sidebar-version { @apply px-3.5 pt-4 pb-1 text-[9px] tracking-widest; color: #767675; }
   .admin-workspace { @apply flex flex-col min-w-0 min-h-screen flex-1; }
   .admin-topbar { @apply sticky top-0 z-30 flex justify-between items-center gap-4 px-4 sm:px-7 lg:px-9 py-4 bg-white border-b; min-height: 82px; border-color: var(--admin-border); }
   .admin-topbar-main, .admin-topbar-actions { @apply flex items-center gap-3 sm:gap-4 min-w-0; }
   .admin-topbar-eyebrow { @apply inline-flex items-center gap-1 uppercase tracking-[.15em] text-[10px] font-bold text-neutral-400; }
   .admin-topbar-title { @apply text-lg sm:text-xl tracking-tight font-extrabold text-slate-900 truncate; }
-  .admin-topbar-role { @apply hidden md:inline-flex items-center gap-2 text-xs font-semibold rounded-full px-3 py-2; color: #4558a5; background: #f0f2ff; }
+  .admin-topbar-role { @apply hidden md:inline-flex items-center gap-2 text-xs font-semibold rounded-full px-3 py-2; color: #767675; background: #f8f8f8; }
   .admin-topbar-store { @apply hidden sm:inline-flex items-center gap-2 text-xs font-bold rounded-xl border px-3.5 py-2.5 text-slate-700 hover:text-brand-700 hover:bg-slate-50; border-color: var(--admin-border); }
   .admin-icon-button { @apply flex items-center justify-center rounded-xl border border-transparent text-slate-600 hover:bg-slate-100; width: 42px; height: 42px; }
   .admin-main { @apply flex-1 p-4 sm:p-7 lg:p-9; }
@@ -91,9 +91,9 @@
   .admin-main-inner > div { min-width: 0; }
   .admin-mobile-toggle { @apply lg:hidden; }
   .admin-mobile-overlay { @apply fixed inset-0 z-50 lg:hidden; }
-  .admin-mobile-backdrop { @apply absolute inset-0 w-full h-full border-0; background: rgba(5,10,19,.65); }
+  .admin-mobile-backdrop { @apply absolute inset-0 w-full h-full border-0; background: rgba(10,10,9,.65); }
   .admin-sidebar-mobile { @apply absolute top-0 left-0 h-full overflow-y-auto; width: min(300px, 88vw); box-shadow: 15px 0 60px rgba(0,0,0,.2); }
-  .admin-sidebar-close { @apply ml-auto min-w-10 min-h-10 text-indigo-100 flex justify-center items-center; }
+  .admin-sidebar-close { @apply ml-auto min-w-10 min-h-10 text-zinc-100 flex justify-center items-center; }
   .admin-skip-link { @apply fixed z-[100] left-3 top-2 bg-white text-black px-5 py-3 font-bold rounded-xl; transform: translateY(-200%); }
   .admin-skip-link:focus { transform: translateY(0); }
 
@@ -101,7 +101,7 @@
   .admin-dashboard-heading { @apply flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3; }
   .admin-dashboard-overline { @apply uppercase font-bold tracking-[.16em] text-[10px] text-slate-500 mb-2; }
   .admin-dashboard-metric { @apply relative overflow-hidden; }
-  .admin-dashboard-metric::before { content: ''; @apply absolute inset-x-0 top-0 h-[3px]; background: linear-gradient(90deg,#4a5dd5,#b1b9ff); opacity: .8; }
+  .admin-dashboard-metric::before { content: ''; @apply absolute inset-x-0 top-0 h-[3px]; background: linear-gradient(90deg,#909090,#d9d9d8); opacity: .8; }
   .admin-dashboard-metric-label { @apply uppercase tracking-wide font-semibold text-slate-500; font-size: 11px; }
   .admin-dashboard-metric-value { @apply text-2xl sm:text-[28px] tracking-tight font-black text-slate-900 mt-2; }
   .admin-dashboard-metric-icon { @apply w-11 h-11 rounded-xl border flex items-center justify-center; }
@@ -126,7 +126,7 @@
   .admin-main table thead th { @apply text-[11px] uppercase tracking-wide font-bold text-slate-500 whitespace-nowrap; }
   .admin-main table tbody tr { @apply hover:bg-slate-50/70 transition-colors; }
   .admin-main table tbody td { @apply text-slate-700; }
-  .admin-main .overflow-x-auto { overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #b5bfd0 transparent; }
+  .admin-main .overflow-x-auto { overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #c4c4c2 transparent; }
   .admin-main input[type="search"] { @apply min-w-0; }
   .admin-main input, .admin-main select, .admin-main textarea { max-width: 100%; }
   .admin-main input:disabled, .admin-main select:disabled { @apply bg-slate-50 text-slate-500; }
@@ -142,5 +142,5 @@
 
 
 @layer components {
-  .admin-dashboard-no-data { @apply flex flex-col items-center justify-center text-center px-5 py-12 rounded-xl border border-dashed border-slate-200 text-slate-400; min-height: 228px; background: #fafbfe; }
+  .admin-dashboard-no-data { @apply flex flex-col items-center justify-center text-center px-5 py-12 rounded-xl border border-dashed border-slate-200 text-slate-400; min-height: 228px; background: #fdfdfc; }
 }

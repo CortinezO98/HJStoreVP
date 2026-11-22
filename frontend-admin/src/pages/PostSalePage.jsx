@@ -166,7 +166,7 @@ export default function PostSalePage() {
       </button>
     </header>
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div className="card flex items-center gap-3"><ArrowLeftRight size={24} className="text-indigo-600"/>
+      <div className="card flex items-center gap-3"><ArrowLeftRight size={24} className="text-zinc-600"/>
         <div><p className="text-xs text-slate-500">Solicitudes visibles</p><p className="font-black text-2xl">{cases.length}</p></div>
       </div>
       <div className="card flex items-center gap-3"><PackageCheck size={24} className="text-emerald-600"/>

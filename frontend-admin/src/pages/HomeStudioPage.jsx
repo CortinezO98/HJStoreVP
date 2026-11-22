@@ -10,6 +10,7 @@ import { BannerPresentationControls, CarouselPlaybackControls } from '../compone
 import CampaignDestinationEditor from '../components/storefront/CampaignDestinationEditor'
 import ImageCropModal from '../components/products/ImageCropModal'
 import { verifyUploadedImage } from '../utils/verifyUploadedImage'
+import { confirmAction } from '../components/ui/ConfirmDialog'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const imageSrc = url => url?.startsWith('/') ? `${API_URL}${url}` : url
@@ -116,9 +117,9 @@ export default function HomeStudioPage() {
     setSelected('custom:' + id)
     toast('Sección creada en el borrador. Agrega imágenes y actívala antes de publicar.')
   }
-  const removeCustomSection = id => {
+  const removeCustomSection = async id => {
     const block = (draft.homepage_custom_sections || []).find(item => item.id === id)
-    if (!block || !window.confirm('¿Eliminar esta sección del borrador? No se borrarán las imágenes del almacenamiento.')) return
+    if (!block || !(await confirmAction('La sección se quitará del borrador. Las imágenes seguirán guardadas.', { title: 'Eliminar sección', confirmLabel: 'Eliminar', danger: true }))) return
     const key = 'custom:' + id
     setDraft(current => ({
       ...current,
@@ -184,7 +185,7 @@ export default function HomeStudioPage() {
       toast.error('La portada publicada cambió. Revisa el borrador antes de continuar')
       return
     }
-    if (!window.confirm('¿Publicar ahora el diseño visual guardado? Los clientes verán estos cambios.')) return
+    if (!(await confirmAction('Los clientes verán estos cambios de inmediato en la tienda.', { title: 'Publicar diseño', confirmLabel: 'Publicar ahora' }))) return
     setBusy(true)
     try {
       await storefrontSettingsApi.publishHomepageDraft()
@@ -196,7 +197,7 @@ export default function HomeStudioPage() {
     } finally { setBusy(false) }
   }
   const discard = async () => {
-    if (!window.confirm('¿Descartar el borrador privado y recuperar el diseño publicado?')) return
+    if (!(await confirmAction('Perderás los cambios del borrador y volverás al diseño publicado.', { title: 'Descartar borrador', confirmLabel: 'Descartar', danger: true }))) return
     setBusy(true)
     try {
       await storefrontSettingsApi.discardHomepageDraft()
@@ -210,7 +211,7 @@ export default function HomeStudioPage() {
       toast.error('Descarta los cambios o el borrador actual antes de recuperar una versión')
       return
     }
-    if (!window.confirm('¿Recuperar esta versión como borrador privado? La tienda publicada no cambiará.')) return
+    if (!(await confirmAction('Esta versión se cargará como borrador privado. La tienda publicada no cambiará.', { title: 'Recuperar versión', confirmLabel: 'Recuperar' }))) return
     setBusy(true)
     try {
       await storefrontSettingsApi.restoreHomepageVersion(versionId)

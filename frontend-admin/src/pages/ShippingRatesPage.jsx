@@ -163,7 +163,7 @@ export default function ShippingRatesPage() {
                           {rate.active ? 'Activa' : 'Inactiva'}</span></td>
                         <td className="px-3 py-4">
                           <button type="button" onClick={() => openForm(rate)}
-                            className="inline-flex gap-2 items-center text-indigo-700 font-semibold min-h-10">
+                            className="inline-flex gap-2 items-center text-zinc-700 font-semibold min-h-10">
                             <Pencil size={15}/> Editar
                           </button>
                         </td>
