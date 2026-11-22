@@ -175,6 +175,68 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
 .admin-app-shell .admin-main { padding: clamp(16px, 2.4vw, 32px); }
 .admin-app-shell .admin-main-inner { max-width: 1520px; }
 
+/* ---------- Identidad visual v20: referencia DESPUÉS ---------- */
+/* Neutraliza colores heredados del tema azul/violeta sin alterar
+   estados semánticos (éxito, error, advertencia) ni lógica comercial. */
+.admin-app-shell {
+  --bs-primary: #0A0A0A;
+  --bs-primary-rgb: 10,10,10;
+  --bs-btn-focus-box-shadow: 0 0 0 .2rem rgba(10,10,10,.16);
+}
+.admin-app-shell .text-primary,
+.admin-app-shell .text-brand-600,
+.admin-app-shell .text-brand-700,
+.admin-app-shell .hover\\:text-brand-700:hover { color: var(--hj-ink) !important; }
+.admin-app-shell .bg-primary,
+.admin-app-shell .bg-brand-600 { background-color: var(--hj-ink) !important; }
+.admin-app-shell .border-primary,
+.admin-app-shell .border-brand-600 { border-color: var(--hj-ink) !important; }
+.admin-app-shell .admin-main {
+  background: var(--hj-bg);
+}
+.admin-app-shell .admin-main .card,
+.admin-app-shell .admin-main .admin-catalog-stat {
+  background-color: #FFFFFF;
+  border-color: var(--hj-line);
+  box-shadow: 0 1px 2px rgba(10,10,10,.025), 0 4px 12px rgba(10,10,10,.025);
+}
+.admin-app-shell .admin-main .admin-catalog-stat strong {
+  color: var(--hj-ink);
+  font-variant-numeric: tabular-nums;
+}
+.admin-app-shell .admin-page-kicker,
+.admin-app-shell .admin-dashboard-overline {
+  color: var(--hj-muted);
+}
+.admin-app-shell .admin-main .btn-primary,
+.admin-app-shell .admin-main button.btn-primary,
+.admin-app-shell .admin-main .btn-dark,
+.admin-app-shell .admin-main button.btn-dark {
+  background: var(--hj-ink) !important;
+  border-color: var(--hj-ink) !important;
+  color: #FFFFFF !important;
+}
+.admin-app-shell .admin-main .btn-primary:hover:not(:disabled),
+.admin-app-shell .admin-main .btn-dark:hover:not(:disabled) {
+  background: var(--hj-ink-2) !important;
+  border-color: var(--hj-ink-2) !important;
+}
+.admin-app-shell .admin-topbar {
+  background: #FFFFFF;
+  border-bottom-color: var(--hj-line);
+}
+.admin-app-shell .admin-sidebar-link-active::before {
+  background: var(--hj-accent);
+}
+@media (max-width: 767px) {
+  .admin-app-shell .admin-page-heading {
+    font-size: 23px;
+  }
+  .admin-app-shell .admin-page-intro .btn-primary {
+    width: 100%;
+  }
+}
+
 /* ---------- Encabezados de página ---------- */
 .admin-app-shell .admin-page-intro { align-items: flex-end; margin-bottom: 22px; flex-wrap: wrap; }
 .admin-app-shell .admin-page-kicker, .admin-app-shell .admin-dashboard-overline {
