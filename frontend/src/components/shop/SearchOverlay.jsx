@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -7,9 +8,7 @@ import ProductImage from './ProductImage'
 
 const STORAGE_KEY = 'hjstore-recent-searches'
 const API_URL = import.meta.env.VITE_API_URL || ''
-const money = amount => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(amount) || 0)
+const money = formatCOP
 function recentRead() {
   try {
     const values = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]')
