@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, X, ShieldCheck } from 'lucide-react'
@@ -5,9 +6,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore, useCartStore } from '../../store'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
-const money = (amount) => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(amount || 0))
+const money = formatCOP
 const imageUrl = (product) => {
   const path = product?.primary_image
   return path ? (/^https?:\/\//i.test(path) ? path : `${API_URL}${path}`) : null
