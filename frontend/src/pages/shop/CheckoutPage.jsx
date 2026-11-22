@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
@@ -36,13 +37,7 @@ function checkoutIdempotencyKey(payload) {
   return key
 }
 
-function formatCOP(n) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Number(n || 0))
-}
+
 
 const DEPARTAMENTOS = [
   'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bolívar', 'Boyacá',
