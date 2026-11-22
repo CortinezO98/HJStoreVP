@@ -46,16 +46,12 @@ export default function CatalogPage() {
     setDensity(value)
     try { window.localStorage.setItem('hj-catalog-density', value) } catch { /* Navegación privada */ }
   }
-  const { data: categories = [], isError: categoriesError } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ['storefront-categories'],
     queryFn: () => categoriesApi.list().then(r => r.data),
   })
   const activeCategories = categories.filter(c => c.active !== false)
   const category = activeCategories.find(c => c.slug === filters.categoria)
-  const totalCount = activeCategories.reduce((sum, cat) => sum + (cat.product_count || 0), 0)
-  const countByCategory = Object.fromEntries([
-    ['', totalCount], ...activeCategories.map(cat => [cat.slug, cat.product_count || 0]),
-  ])
   const { data: variants = { color: [], talla: [], presentacion: [] } } = useQuery({
     queryKey: ['catalog-variant-filters', filters.categoria, filters.q],
     queryFn: () => productsApi.filters({
@@ -85,6 +81,10 @@ export default function CatalogPage() {
   const resultCount = isLoading ? 0 : visibleProducts.length
   const categoryOptions = [{ name: 'Todo', slug: '' }, ...activeCategories]
   const completePriceCounts = allProductsReady && allProducts.length < 100
+  const countByCategory = Object.fromEntries([
+    ['', allProducts.length],
+    ...activeCategories.map(cat => [cat.slug, allProducts.filter(product => product.category_slug === cat.slug).length]),
+  ])
   const setCategory = values => setMany(values)
   const sidebarProps = { filters, setMany, variants, allProducts, complete: completePriceCounts, categories: activeCategories }
   const noResults = !isLoading && !isError && products.length === 0 && filters.page === 1
@@ -92,7 +92,7 @@ export default function CatalogPage() {
     <div className="hj-catalog-wrap">
       <CategoryHero category={category} featured={filters.featured}/>
       <CategoryChips categories={categoryOptions} selected={filters.categoria}
-        setMany={setCategory} counts={countByCategory} complete={!categoriesError}/>
+        setMany={setCategory} counts={countByCategory} complete={completePriceCounts}/>
     </div>
     <div className="hj-catalog-sticky">
       <div className="hj-catalog-wrap">
