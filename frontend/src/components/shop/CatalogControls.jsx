@@ -25,9 +25,9 @@ export function CategoryChips({ categories, selected, setMany, counts = {}, comp
     </button>)}
   </nav>
 }
-export function FilterFields({ filters, setMany, variants = {}, allProducts = [], complete = false, categories = [] }) {
+export function FilterFields({ filters, setMany, variants = {}, suggestedColors = [], allProducts = [], complete = false, categories = [] }) {
   const priceSelected = `${filters.min_price}:${filters.max_price}`
-  const colors = variants.color || []
+  const colors = Array.from(new Set([...(variants.color || []), ...suggestedColors]))
   const sizes = filters.categoria === 'gorras' ? ['S/M', 'L/XL', 'Ajustable'] : []
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
   const presentations = variants.presentacion || []
@@ -150,7 +150,7 @@ export function CatalogToolbar({
     </div>
   </div>
 }
-export function FilterSheet({ open, onClose, filters, setMany, clear, variants, allProducts, complete, categories, count }) {
+export function FilterSheet({ open, onClose, filters, setMany, clear, variants, suggestedColors, allProducts, complete, categories, count }) {
   const closeRef = useRef(null)
   useEffect(() => {
     if (!open) return undefined
@@ -187,7 +187,7 @@ export function FilterSheet({ open, onClose, filters, setMany, clear, variants, 
             <button type="button" key={option.value} aria-pressed={filters.orden === option.value}
               onClick={() => setMany({ orden: option.value })}>{option.label}</button>)}</div>
         </div>
-        <FilterFields {...{ filters, setMany, variants, allProducts, complete, categories }}/>
+        <FilterFields {...{ filters, setMany, variants, suggestedColors, allProducts, complete, categories }}/>
       </div>
       <footer>
         <button type="button" onClick={clear}>Limpiar</button>
