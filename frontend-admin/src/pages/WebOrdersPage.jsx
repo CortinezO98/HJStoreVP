@@ -255,6 +255,8 @@ function OrderDetailModal({ order, onClose }) {
     )
 }
 
+const normalizeSearch = (value = '') => String(value).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 export default function WebOrdersPage() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState('')
@@ -273,11 +275,11 @@ export default function WebOrdersPage() {
     queryFn: () => ordersApi.list(statusFilter ? { status_filter: statusFilter } : {}).then(r => r.data),
   })
   const filteredOrders = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase('es')
+    const term = normalizeSearch(search.trim())
     return orders.filter(order => {
       const shipping = order.shipping_address || {}
-      const text = [order.order_number, shipping.full_name, shipping.phone,
-        shipping.city, shipping.department].filter(Boolean).join(' ').toLocaleLowerCase('es')
+      const text = normalizeSearch([order.order_number, shipping.full_name, shipping.phone,
+        shipping.city, shipping.department].filter(Boolean).join(' '))
       return !term || text.includes(term)
     }).sort((a,b) => {
       if (sortBy === 'amount_desc') return Number(b.total_amount || 0) - Number(a.total_amount || 0)
@@ -430,11 +432,12 @@ export default function WebOrdersPage() {
           <div><h2 className="h6 fw-bold mb-1">Listado de pedidos</h2>
             <p className="text-secondary small mb-0">Abre un pedido para consultar sus productos, dirección y seguimiento.</p>
           </div>
-          <span className="badge text-bg-light border text-secondary">{filteredOrders.length} resultados</span>
+          <span className="badge text-bg-light border text-secondary">{isError ? "Datos no disponibles" : `${filteredOrders.length.toLocaleString("es-CO")} resultados`}</span>
         </div>
 
-        <div className="table-responsive">
+        <div className="table-responsive admin-list-table-scroll" role="region" aria-label="Tabla de pedidos web" tabIndex={0}>
           <table className="table table-hover align-middle admin-web-orders-table mb-0">
+            <caption className="visually-hidden">Pedidos web, clientes, destino, pagos y acciones de seguimiento</caption>
             <thead><tr>
               <th scope="col">Orden</th><th scope="col">Cliente</th><th scope="col">Destino</th>
               <th scope="col" className="text-end">Total</th><th scope="col">Estado</th>
