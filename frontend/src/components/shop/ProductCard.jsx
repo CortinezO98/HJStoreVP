@@ -1,3 +1,4 @@
+import { formatCOP } from '../../utils/currency'
 import { Link } from 'react-router-dom'
 import { Plus, Heart, ArrowUpRight } from 'lucide-react'
 import { useCartStore, useWishlistStore } from '../../store'
@@ -5,9 +6,7 @@ import toast from 'react-hot-toast'
 import ProductImage from './ProductImage'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
-const formatCOP = (amount) => new Intl.NumberFormat('es-CO', {
-  style: 'currency', currency: 'COP', maximumFractionDigits: 0,
-}).format(Number(amount) || 0)
+
 
 export default function ProductCard({ product, label, catalogMode = false, hideCategory = false, compact = false }) {
   const addItem = useCartStore((state) => state.addItem)
