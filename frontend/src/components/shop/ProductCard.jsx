@@ -55,14 +55,19 @@ export default function ProductCard({ product, label, catalogMode = false, hideC
           <Heart size={18} fill={favorite ? 'currentColor' : 'none'} />
         </button>
         {product.has_variants && !soldOut ? (
-          <Link to={`/producto/${product.slug}`} className="editorial-product-add"
-            aria-label={`Elegir variante de ${product.name}`} title="Elegir variante">
+          <Link to={`/producto/${product.slug}`}
+            className={`editorial-product-add ${catalogMode ? 'hj-catalog-cart-action' : ''}`}
+            aria-label={`Elegir opciones de ${product.name}`} title="Elegir opciones">
             <Plus size={19} strokeWidth={1.8} />
+            {catalogMode && <span>Elegir color y talla</span>}
           </Link>
         ) : !soldOut && (
-          <button type="button" className="editorial-product-add" onClick={addToCart}
+          <button type="button"
+            className={`editorial-product-add ${catalogMode ? 'hj-catalog-cart-action' : ''}`}
+            onClick={addToCart}
             aria-label={`Agregar ${product.name} al carrito`} title="Agregar al carrito">
             <Plus size={19} strokeWidth={1.8}/>
+            {catalogMode && <span>Agregar al carrito</span>}
           </button>
         )}
       </div>
