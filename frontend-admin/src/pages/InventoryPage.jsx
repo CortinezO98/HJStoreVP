@@ -172,7 +172,7 @@ function ReplenishModal({ products, locations, onClose }) {
 
   return (
     <div className="admin-inventory-overlay">
-      <div className="admin-inventory-modal" role="dialog" aria-modal="true" aria-label="Movimiento de inventario">
+      <div className="admin-inventory-modal admin-refined-form" role="dialog" aria-modal="true" aria-label="Movimiento de inventario">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">Ingreso de mercancía</h3>
           <p className="text-sm text-gray-500 mt-1">
@@ -180,10 +180,11 @@ function ReplenishModal({ products, locations, onClose }) {
           </p>
         </div>
 
-        <div className="admin-inventory-form">
+        <div className="admin-inventory-form" aria-busy={mutation.isPending}>
+          <p className="admin-required-hint">Producto, ubicación y cantidad son obligatorios.</p>
           <div>
-            <label className="form-label">Producto</label>
-            <select
+            <label className="form-label" htmlFor="replenish-product-id">Producto *</label>
+            <select id="replenish-product-id" required
               className="form-control"
               value={form.product_id}
               onChange={(e) => setForm((p) => ({ ...p, product_id: e.target.value }))}
@@ -198,8 +199,8 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="form-label">Ubicación</label>
-            <select
+            <label className="form-label" htmlFor="replenish-location-id">Ubicación *</label>
+            <select id="replenish-location-id" required
               className="form-control"
               value={form.location_id}
               onChange={(e) => setForm((p) => ({ ...p, location_id: e.target.value }))}
@@ -214,8 +215,8 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="form-label">Cantidad</label>
-            <input
+            <label className="form-label" htmlFor="replenish-quantity">Cantidad *</label>
+            <input id="replenish-quantity" required step="1"
               type="number"
               min="1"
               className="form-control"
@@ -226,8 +227,8 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="form-label">Notas</label>
-            <input
+            <label className="form-label" htmlFor="replenish-notes">Notas</label>
+            <input id="replenish-notes"
               className="form-control"
               value={form.notes}
               onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
@@ -236,8 +237,8 @@ function ReplenishModal({ products, locations, onClose }) {
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-          <button onClick={onClose} className="btn btn-outline-secondary flex-1">
+        <div className="admin-refined-form-actions px-6 py-4 border-t border-gray-100 flex gap-3">
+          <button type="button" onClick={onClose} className="btn btn-outline-secondary flex-1">
             Cancelar
           </button>
           <button
@@ -299,7 +300,7 @@ function TransferModal({ products, locations, onClose }) {
 
   return (
     <div className="admin-inventory-overlay">
-      <div className="admin-inventory-modal" role="dialog" aria-modal="true" aria-label="Movimiento de inventario">
+      <div className="admin-inventory-modal admin-refined-form" role="dialog" aria-modal="true" aria-label="Movimiento de inventario">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">Transferencia entre puntos</h3>
           <p className="text-sm text-gray-500 mt-1">
@@ -307,10 +308,11 @@ function TransferModal({ products, locations, onClose }) {
           </p>
         </div>
 
-        <div className="p-6 grid grid-cols-1 gap-4">
+        <div className="p-6 grid grid-cols-1 gap-4" aria-busy={mutation.isPending}>
+          <p className="admin-required-hint">Selecciona producto, origen, destino y cantidad antes de transferir.</p>
           <div>
-            <label className="form-label">Producto</label>
-            <select
+            <label className="form-label" htmlFor="transfer-product-id">Producto *</label>
+            <select id="transfer-product-id" required
               className="form-control"
               value={form.product_id}
               onChange={(e) => setForm((p) => ({ ...p, product_id: e.target.value }))}
@@ -326,8 +328,8 @@ function TransferModal({ products, locations, onClose }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="form-label">Desde</label>
-              <select
+              <label className="form-label" htmlFor="transfer-from-location-id">Desde *</label>
+              <select id="transfer-from-location-id" required
                 className="form-control"
                 value={form.from_location_id}
                 onChange={(e) => setForm((p) => ({ ...p, from_location_id: e.target.value }))}
@@ -342,8 +344,8 @@ function TransferModal({ products, locations, onClose }) {
             </div>
 
             <div>
-              <label className="form-label">Hacia</label>
-              <select
+              <label className="form-label" htmlFor="transfer-to-location-id">Hacia *</label>
+              <select id="transfer-to-location-id" required
                 className="form-control"
                 value={form.to_location_id}
                 onChange={(e) => setForm((p) => ({ ...p, to_location_id: e.target.value }))}
@@ -359,8 +361,8 @@ function TransferModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="form-label">Cantidad</label>
-            <input
+            <label className="form-label" htmlFor="transfer-quantity">Cantidad *</label>
+            <input id="transfer-quantity" required step="1"
               type="number"
               min="1"
               className="form-control"
@@ -371,8 +373,8 @@ function TransferModal({ products, locations, onClose }) {
           </div>
 
           <div>
-            <label className="form-label">Notas</label>
-            <input
+            <label className="form-label" htmlFor="transfer-notes">Notas</label>
+            <input id="transfer-notes"
               className="form-control"
               value={form.notes}
               onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
@@ -381,8 +383,8 @@ function TransferModal({ products, locations, onClose }) {
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-          <button onClick={onClose} className="btn btn-outline-secondary flex-1">
+        <div className="admin-refined-form-actions px-6 py-4 border-t border-gray-100 flex gap-3">
+          <button type="button" onClick={onClose} className="btn btn-outline-secondary flex-1">
             Cancelar
           </button>
           <button
