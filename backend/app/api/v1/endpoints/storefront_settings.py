@@ -4,6 +4,7 @@ from urllib.parse import urlsplit, urlencode
 from datetime import datetime
 import hashlib
 import json
+import re
 from copy import deepcopy
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -788,7 +789,7 @@ def restore_homepage_version_as_draft(
 # La biblioteca conserva metadatos privados en la misma fila JSON.
 # No altera campos publicados, borradores, versiones ni archivos físicos.
 MEDIA_KEY = "_media_library_metadata"
-MEDIA_FILENAME_RE = __import__("re").compile(r"^[0-9a-f]{32}\\.(?:webp|png|jpg|jpeg|gif)$", __import__("re").IGNORECASE)
+MEDIA_FILENAME_RE = re.compile(r"^[0-9a-f]{32}\.(?:webp|png|jpg|jpeg|gif)$", re.IGNORECASE)
 IMAGE_FIELDS = frozenset(("image_url", "mobile_image_url", "hero_image_url", "logo_url"))
 
 
