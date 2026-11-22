@@ -248,7 +248,7 @@ export default function StorefrontSettingsPage() {
           <Link to="/estudio-inicio" className="btn btn-primary btn-sm">
             Abrir estudio visual del inicio
           </Link>
-          <a href={import.meta.env.VITE_STORE_URL || 'http://localhost:5173/'}
+          <a href={import.meta.env.VITE_STORE_URL || '/'}
             target="_blank" rel="noopener noreferrer" className="btn btn-outline-secondary btn-sm">
             Ver tienda pública ↗
           </a>
