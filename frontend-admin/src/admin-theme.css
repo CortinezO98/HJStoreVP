@@ -274,6 +274,52 @@ body { background: var(--hj-bg); color: var(--hj-text); font-family: 'Inter Vari
 .admin-app-shell [class*="-overlay"], .admin-app-shell [class*="-backdrop"] { backdrop-filter: blur(2px); }
 .admin-app-shell [class*="-modal"]:not([class*="-modal-"]), .admin-app-shell [class*="-dialog"] { border-radius: 14px; box-shadow: var(--hj-shadow-lg); }
 
+/* Dashboard: mensajes claros cuando una consulta falla. */
+.admin-app-shell .admin-dashboard-data-warning {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid #E9C68B;
+  background: var(--hj-warning-soft);
+  border-radius: var(--hj-radius);
+  padding: 15px 18px;
+  color: #653F0D;
+}
+.admin-app-shell .admin-dashboard-data-warning p {
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+.admin-app-shell .admin-dashboard-data-warning .btn {
+  margin-left: auto;
+  background: white;
+  border-color: #D6B47A;
+  color: #653F0D;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.admin-app-shell .admin-dashboard-metric.is-unavailable .admin-dashboard-metric-value {
+  font-size: clamp(15px, 1.4vw, 20px);
+  color: var(--hj-muted);
+}
+.admin-app-shell .admin-dashboard-inline-error {
+  background: var(--hj-hover);
+  border: 1px dashed var(--hj-line-strong);
+  border-radius: var(--hj-radius-sm);
+  color: var(--hj-muted);
+  padding: 18px;
+  font-size: 13px;
+  margin: 0;
+}
+@media (max-width: 575px) {
+  .admin-app-shell .admin-dashboard-data-warning .btn {
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
+  }
+}
+
 /* ---------- Estados (error de módulo, vacío, carga) ---------- */
 .hj-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 340px; padding: 40px 20px; border: 1px dashed var(--hj-line-strong); border-radius: var(--hj-radius); background: #fff; }
 .hj-state h2 { font-size: 19px; font-weight: 800; color: var(--hj-ink); }
