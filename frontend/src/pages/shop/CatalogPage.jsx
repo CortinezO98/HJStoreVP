@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, CreditCard, PackageCheck, RefreshCw } from 'lucide-react'
@@ -41,8 +41,6 @@ export default function CatalogPage() {
   const [mobileFilters, setMobileFilters] = useState(false)
   const closeMobileFilters = useCallback(() => setMobileFilters(false), [])
   const [density, setDensity] = useState(readDensity)
-  const [searchText, setSearchText] = useState(filters.q)
-  useEffect(() => setSearchText(filters.q), [filters.q])
   const changeDensity = value => {
     setDensity(value)
     try { window.localStorage.setItem('hj-catalog-density', value) } catch { /* Navegación privada */ }
@@ -105,13 +103,6 @@ export default function CatalogPage() {
     </div>
     <div className="hj-catalog-wrap hj-catalog-body">
       {desktopFilters && <aside id="hj-catalog-filters" className="hj-catalog-sidebar" aria-label="Filtros">
-        <form role="search" className="hj-catalog-sidebar-search" onSubmit={event => {
-          event.preventDefault(); setMany({ q: searchText })
-        }}>
-          <input type="search" aria-label="Buscar en el catálogo" placeholder="Buscar productos"
-            value={searchText} onChange={event => setSearchText(event.target.value)}/>
-          <button type="submit" aria-label="Aplicar búsqueda"><ArrowRight size={17}/></button>
-        </form>
         <FilterFields {...sidebarProps}/>
       </aside>}
       <section className="hj-catalog-main" aria-label="Productos del catálogo">
