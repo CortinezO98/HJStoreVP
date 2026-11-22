@@ -279,3 +279,83 @@
 @media (prefers-reduced-motion: reduce) {
   .hj-catalog-page .hj-catalog-product .hj-catalog-cart-action { transition: none; transform: none; }
 }
+
+
+/* Estabilización de catálogo: controles alineados y variantes visibles. */
+.hj-catalog-filter-toggle {
+  height: 43px;
+  min-height: 43px;
+  background: var(--hj-white);
+  border: 1px solid var(--hj-line-dark);
+  border-radius: 2px;
+  padding-inline: 14px;
+  font-weight: 750;
+  line-height: 1;
+}
+.hj-catalog-filter-toggle:hover { background: var(--hj-surface-2); }
+.hj-catalog-sort > span { color: #4A4A46; font-weight: 650; }
+.hj-catalog-size-guide {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: 10px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--hj-ink);
+}
+.hj-catalog-size-options button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  background: var(--hj-surface-2);
+}
+.hj-catalog-variant-colors {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 21px;
+  flex-wrap: wrap;
+}
+.hj-catalog-variant-dot {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid #D9D9D5;
+  background: #AAAAAA;
+}
+.hj-catalog-variant-colors small {
+  color: var(--hj-muted);
+  font-size: 10px;
+}
+.hj-catalog-variant-dot[data-color="negro"] { background: #1D1D1D; }
+.hj-catalog-variant-dot[data-color="blanco"] { background: #EBEAE6; }
+.hj-catalog-variant-dot[data-color="azul"] { background: #23428F; }
+.hj-catalog-variant-dot[data-color="beige"] { background: #CEB99E; }
+.hj-catalog-variant-dot[data-color="rojo"] { background: #B30F17; }
+.hj-catalog-variant-dot[data-color="dorado"] { background: #C59B20; }
+.hj-catalog-variant-dot[data-color="gris"] { background: #8B8B86; }
+.hj-catalog-variant-dot[data-color="verde"] { background: #3E654C; }
+.hj-catalog-variant-dot[data-color="rosado"] { background: #CB8898; }
+.hj-catalog-variant-dot[data-color="cafe"],
+.hj-catalog-variant-dot[data-color="marron"] { background: #78533F; }
+.hj-catalog-page .hj-catalog-product .store-product-quick-link {
+  background: transparent;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 0;
+  color: var(--hj-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+.hj-catalog-page .hj-catalog-product .store-product-quick-link:hover {
+  color: var(--hj-red);
+}
+@media (max-width: 760px) {
+  .hj-catalog-filter-toggle { min-height: 44px; height: 44px; }
+  .hj-catalog-sort > span { display: none; }
+}
