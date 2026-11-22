@@ -382,6 +382,7 @@ export default function ReportsPage() {
 
     const isLoading =
         loadingFinancial || loadingMonth || loadingWeb || loadingPhysical || loadingAccounting
+    const reportDataError = financialError || accountingError || webOrdersError || physicalSalesError
 
     return (
         <div className="admin-reports-page space-y-6">
@@ -400,7 +401,7 @@ export default function ReportsPage() {
         </header>
 
         {/* Filtros */}
-        <section className="card admin-reports-filters">
+        <section className="card admin-reports-filters" aria-label="Filtros de los reportes">
             <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
               <h2 className="h6 fw-bold mb-0 d-flex align-items-center gap-2">
                 <Filter size={18} className="text-primary"/> Filtros de análisis
@@ -416,7 +417,7 @@ export default function ReportsPage() {
             </p>
 
             {dateRangeInvalid && (
-              <p className="alert alert-warning" role="alert">
+              <p id="report-date-range-warning" className="alert alert-warning" role="alert">
                 El rango de fechas no es válido: «Desde» debe ser anterior o igual a «Hasta».
                 Ajusta las fechas antes de exportar información.
               </p>
@@ -428,6 +429,8 @@ export default function ReportsPage() {
                 type="date"
                 id="report-date-from"
                 className="form-control"
+                aria-invalid={dateRangeInvalid}
+                aria-describedby={dateRangeInvalid ? "report-date-range-warning" : undefined}
                 max={filters.date_to || undefined}
                 value={filters.date_from}
                 onChange={(e) => setFilter('date_from', e.target.value)}
@@ -440,6 +443,8 @@ export default function ReportsPage() {
                 type="date"
                 id="report-date-to"
                 className="form-control"
+                aria-invalid={dateRangeInvalid}
+                aria-describedby={dateRangeInvalid ? "report-date-range-warning" : undefined}
                 min={filters.date_from || undefined}
                 value={filters.date_to}
                 onChange={(e) => setFilter('date_to', e.target.value)}
@@ -494,6 +499,7 @@ export default function ReportsPage() {
             </div>
         </section>
 
+        {!isLoading && !reportDataError && <p className="admin-list-result-count" role="status" aria-live="polite">{filteredWebOrders.length.toLocaleString("es-CO")} pedidos web y {filteredPhysicalSales.length.toLocaleString("es-CO")} ventas físicas coinciden con los filtros actuales.</p>}
         {accountingError && (
             <p role="alert" className="text-red-700 font-semibold">
                 No se pudo consultar la contabilidad consolidada. Los importes mostrados no están disponibles.
@@ -1014,7 +1020,7 @@ export default function ReportsPage() {
         </div>
 
         {isLoading && (
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-400" role="status">
             Cargando reportes...
             </div>
         )}
