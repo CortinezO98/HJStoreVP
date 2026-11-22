@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Mail, RefreshCw, Clock, CheckCircle2, AlertCircle, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { confirmAction } from '../components/ui/ConfirmDialog'
 import { notificationsApi } from '../services/api'
 
 const LABELS = {
@@ -126,7 +127,11 @@ export default function NotificationsPage() {
                       <td className="px-3 py-4">{dateText(item.sent_at || item.created_at)}</td>
                       <td className="px-3 py-4">{item.status === 'failed' ?
                         <button type="button" className="btn-secondary"
-                          disabled={retry.isPending} onClick={()=>retry.mutate(item.id)}>Reintentar</button> : '—'}</td>
+                          disabled={retry.isPending} onClick={async () => {
+                            if (await confirmAction('El aviso fallido volverá a la cola de envío. La entrega depende del trabajador de notificaciones.', {
+                              title: 'Reintentar notificación', confirmLabel: 'Volver a la cola',
+                            })) retry.mutate(item.id)
+                          }}>Reintentar</button> : '—'}</td>
                     </tr>
                   })}</tbody>
                 </table>
