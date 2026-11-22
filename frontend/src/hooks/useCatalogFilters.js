@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { normalizeCatalogPage } from '../utils/catalogPagination'
 
 const SORT_VALUES = new Set(['featured', 'newest', 'price_asc', 'price_desc'])
 const ALIASES = { sort: 'orden', in_stock: 'disponible' }
@@ -18,7 +19,7 @@ export function useCatalogFilters() {
     max_price: params.get('max_price') || '',
     disponible: params.get('disponible') === '1' || params.get('in_stock') === 'true',
     featured: params.get('featured') === 'true',
-    page: Math.max(1, Number.parseInt(params.get('page') || '1', 10) || 1),
+    page: normalizeCatalogPage(params.get('page') || '1'),
   }), [params])
   const setMany = updates => {
     const next = new URLSearchParams(params)
