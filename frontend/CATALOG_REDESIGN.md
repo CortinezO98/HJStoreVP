@@ -106,3 +106,13 @@ Las capturas de carga y error interceptan temporalmente la API desde Playwright:
 *no modifican archivos ni registros del backend*. Los archivos resultantes se
 ignoran en Git. El script requiere que `localhost:5173` esté accesible desde
 Windows y que el backend local funcione para las escenas con datos reales.
+
+## Refinamiento final de QA — catálogo público
+
+- La categoría de la URL determina inmediatamente título, descripción de respaldo y migas, sin esperar la consulta de categorías.
+- El header mantiene enlaces primarios independientemente de la API de categorías. La lista dinámica solo alimenta sugerencias de búsqueda.
+- Chips de categorías usan esqueletos durante la carga. Color usa esqueletos hasta tener facetas y catálogo; se oculta en el error del listado y solo muestra estado vacío después de respuesta exitosa.
+- No se muestra «0 productos» cuando falla el listado. Los precios y colores con conteo cero comprobable se deshabilitan.
+- Los chips de filtro muestran categoría humanizada, búsqueda y rangos de precio con formato COP. El panel de búsqueda usa un único botón de limpieza, recientes locales (máximo cinco) y cuenta las sugerencias obtenidas, sin afirmar que sean el total del backend.
+- La captura de filtros activos espera tarjetas reales, utiliza Gorras + color Negro + precio máximo y muestra la URL en la evidencia. Las simulaciones de red de Playwright viven exclusivamente en `tests/e2e`; no son importadas por el frontend de producción.
+- La compilación de producción elimina orígenes de desarrollo del JS antes del cálculo del hash. El despliegue público requiere proxy del mismo origen para `/api` y `/uploads` cuando no se configura una URL pública.
