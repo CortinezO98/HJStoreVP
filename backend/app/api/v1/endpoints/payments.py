@@ -7,6 +7,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pydantic import BaseModel
 from typing import Optional
 
@@ -389,142 +390,117 @@ async def reconcile_wompi(
 
 # ── Webhook: Sistecréditos ────────────────────────────────────────────────────
 
-@router.post("/webhook/sistecreditos", status_code=status.HTTP_200_OK)
-async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db)):
+def _credit_id(value):
+    if not isinstance(value, (str, int)) or isinstance(value, bool):
+        raise ValueError("Identificador inválido")
+    value = str(value)
+    if not (1 <= len(value) <= 180) or not all(c.isascii() and (c.isalnum() or c in "-_") for c in value):
+        raise ValueError("Identificador inválido")
+    return value
+
+
+def _credit_amount(value):
+    if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
+        raise ValueError("Monto inválido")
+    amount = Decimal(str(value))
+    if not amount.is_finite() or amount <= 0 or amount != amount.quantize(Decimal("0.01")):
+        raise ValueError("Monto inválido")
+    return amount
+
+
+async def _credit_webhook(request, db, provider, verify, fetch, signature_header, id_field, amount_field):
     body = await read_bounded_webhook(request)
     try:
-        payload_str = body.decode("utf-8")
+        payload = body.decode("utf-8")
     except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="Codificación de webhook inválida")
-    signature   = request.headers.get("x-signature", "")
-
-    if not verify_sistecreditos_webhook(payload_str, signature):
+        raise HTTPException(status_code=400, detail="Codificación de webhook inválida") from None
+    if not verify(payload, request.headers.get(signature_header, "")):
         raise HTTPException(status_code=401, detail="Firma inválida")
-
     try:
-        event = json.loads(payload_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Payload inválido")
+        event = json.loads(payload)
+        if not isinstance(event, dict):
+            raise ValueError("Evento inválido")
+        reference = event.get("orderId")
+        if not isinstance(reference, str) or not 1 <= len(reference) <= 50:
+            raise ValueError("Pedido inválido")
+        transaction_id = _credit_id(event.get(id_field))
+        event_status = event.get("status")
+        if not isinstance(event_status, str) or not 1 <= len(event_status) <= 40:
+            raise ValueError("Estado inválido")
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Evento inválido o incompleto") from None
 
-    if not isinstance(event, dict):
-        raise HTTPException(status_code=400, detail="Evento inválido")
-    # Sistecréditos envía: orderId, status, transactionId.
-    order_id = event.get("orderId") or event.get("order_id")
-    raw_status = event.get("status")
-    tx_id = event.get("transactionId") or event.get("transaction_id")
-    if not isinstance(raw_status, str) or len(raw_status) > 40:
-        raise HTTPException(status_code=400, detail="Estado de evento inválido")
-    sc_status = raw_status.upper()
-    if not isinstance(order_id, str) or not (1 <= len(order_id) <= 50):
-        raise HTTPException(status_code=400, detail="Identificador de pedido inválido")
-    if tx_id is not None and (not isinstance(tx_id, (str, int)) or isinstance(tx_id, bool)
-                              or not (1 <= len(str(tx_id)) <= 180)):
-        raise HTTPException(status_code=400, detail="Referencia de transacción inválida")
+    # La firma solo autentica el aviso; el estado comercial proviene de la API.
+    try:
+        tx = await fetch(transaction_id)
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError):
+        raise HTTPException(status_code=503, detail="No fue posible verificar la transacción") from None
+    try:
+        if not isinstance(tx, dict):
+            raise ValueError("Respuesta inválida")
+        confirmed_id = _credit_id(tx.get(id_field))
+        confirmed_status = tx.get("status")
+        amount = _credit_amount(tx.get(amount_field))
+        if (confirmed_id != transaction_id or tx.get("orderId") != reference or
+                tx.get("currency") != "COP" or not isinstance(confirmed_status, str) or
+                confirmed_status.upper() != event_status.upper()):
+            raise ValueError("Datos contradictorios")
+    except (ValueError, TypeError, InvalidOperation):
+        raise HTTPException(status_code=409, detail="Datos del proveedor inconsistentes; conciliación requerida") from None
 
-    order = db.query(Order).filter(
-        Order.order_number == order_id, Order.channel == OrderChannel.WEB,
-    ).first()
+    order = db.query(Order).filter(Order.order_number == reference, Order.channel == OrderChannel.WEB).first()
     if not order:
         return {"status": "order_not_found"}
     order = lock_web_order(db, order.id)
+    if order.payment_method != provider or amount != Decimal(str(order.total_amount)):
+        raise HTTPException(status_code=409, detail="Proveedor o monto incompatible; conciliación requerida")
+    if order.payment_ref and order.payment_ref != transaction_id:
+        # Una iniciación Addi incierta solo se vincula con verificación independiente.
+        if not (provider == "addi" and order.payment_ref.startswith("INITIATING-")):
+            raise HTTPException(status_code=409, detail="Referencia incompatible")
+    other = db.query(Order).filter(Order.id != order.id, Order.payment_method == provider,
+                                   Order.payment_ref == transaction_id).first()
+    if other:
+        raise HTTPException(status_code=409, detail="Referencia ya vinculada a otro pedido")
 
-    if order.payment_method not in (None, "sistecreditos"):
-        raise HTTPException(status_code=409, detail="Evento de otro proveedor; requiere conciliación")
-    if sc_status in ["APPROVED", "DISBURSED", "ACTIVE"]:
-        if order.payment_method not in (None, "sistecreditos"):
-            raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
-        if not tx_id:
-            raise HTTPException(status_code=409, detail="Aprobación sin referencia de transacción")
-        if order.payment_ref and str(order.payment_ref) != str(tx_id):
-            raise HTTPException(status_code=409, detail="Referencia Sistecréditos contradictoria")
+    state = confirmed_status.upper()
+    # ACTIVE no demuestra desembolso. Mantener la reserva hasta confirmación final.
+    approved = {"DISBURSED"} if provider == "sistecreditos" else {"PAID"}
+    failed = {"REJECTED", "CANCELLED", "EXPIRED"}
+    if state in approved:
         if order.status == OrderStatus.CANCELLED:
             return {"status": "manual_review", "reason": "late_payment"}
-        mark_paid(db, order, "sistecreditos", str(tx_id) if tx_id else None)
-    elif sc_status in ["REJECTED", "CANCELLED", "EXPIRED"]:
-        if order.status == OrderStatus.PENDING:
-            try:
-                cancel_web_order(db, order, f"Sistecréditos {sc_status}", provider_confirmed_failure=True)
-            except HTTPException as exc:
-                if exc.status_code == 409:
-                    return {"status": "manual_review", "reason": "legacy_reservation"}
-                raise
-        elif order.status != OrderStatus.CANCELLED:
-            return {"status": "ignored", "reason": "final_order"}
+        changed = mark_paid(db, order, provider, transaction_id)
+    elif state in failed:
+        if order.status == OrderStatus.CANCELLED:
+            return {"status": "processed"}
+        if order.status != OrderStatus.PENDING:
+            raise HTTPException(status_code=409, detail="Estado final contradictorio")
+        try:
+            changed = cancel_web_order(db, order, f"{provider} {state}", provider_confirmed_failure=True)
+        except HTTPException as exc:
+            if exc.status_code == 409:
+                db.rollback()
+                return {"status": "manual_review", "reason": "reservation_conflict"}
+            raise
+        order.payment_ref = transaction_id
     else:
-        return {"status": "ignored", "reason": "unhandled_event"}
-    db.commit()
+        return {"status": "ignored", "reason": "unconfirmed_payment"}
+    if changed:
+        db.commit()
     return {"status": "processed"}
 
 
-# ── Webhook: Addi ─────────────────────────────────────────────────────────────
+@router.post("/webhook/sistecreditos", status_code=status.HTTP_200_OK)
+async def sistecreditos_webhook(request: Request, db: Session = Depends(get_db)):
+    return await _credit_webhook(request, db, "sistecreditos", verify_sistecreditos_webhook,
+                                 get_sistecreditos_transaction, "x-signature", "transactionId", "amount")
+
 
 @router.post("/webhook/addi", status_code=status.HTTP_200_OK)
 async def addi_webhook(request: Request, db: Session = Depends(get_db)):
-    body = await read_bounded_webhook(request)
-    try:
-        payload_str = body.decode("utf-8")
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="Codificación de webhook inválida")
-    signature   = request.headers.get("x-addi-signature", "")
-
-    if not verify_addi_webhook(payload_str, signature):
-        raise HTTPException(status_code=401, detail="Firma inválida")
-
-    try:
-        event = json.loads(payload_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-
-    if not isinstance(event, dict):
-        raise HTTPException(status_code=400, detail="Evento inválido")
-    # Addi envía: orderId, status, applicationId.
-    order_id = event.get("orderId") or event.get("order_id")
-    raw_status = event.get("status")
-    app_id = event.get("applicationId") or event.get("id")
-    if not isinstance(raw_status, str) or len(raw_status) > 40:
-        raise HTTPException(status_code=400, detail="Estado de evento inválido")
-    addi_status = raw_status.upper()
-    if not isinstance(order_id, str) or not (1 <= len(order_id) <= 50):
-        raise HTTPException(status_code=400, detail="Identificador de pedido inválido")
-    if app_id is not None and (not isinstance(app_id, (str, int)) or isinstance(app_id, bool)
-                               or not (1 <= len(str(app_id)) <= 180)):
-        raise HTTPException(status_code=400, detail="Identificador de aplicación inválido")
-
-    order = db.query(Order).filter(
-        Order.order_number == order_id, Order.channel == OrderChannel.WEB,
-    ).first()
-    if not order:
-        return {"status": "order_not_found"}
-    order = lock_web_order(db, order.id)
-
-    if order.payment_method not in (None, "addi"):
-        raise HTTPException(status_code=409, detail="Evento de otro proveedor; requiere conciliación")
-    if app_id and order.payment_ref and not str(order.payment_ref).startswith("INITIATING-") and str(order.payment_ref) != str(app_id):
-        raise HTTPException(status_code=409, detail="Solicitud Addi incompatible")
-    if addi_status in ["APPROVED", "PAID", "ACTIVE"]:
-        if order.payment_method not in (None, "addi"):
-            raise HTTPException(status_code=409, detail="Proveedor distinto al asociado al pedido")
-        if not app_id:
-            raise HTTPException(status_code=409, detail="Aprobación Addi sin identificador")
-        if order.payment_ref and not str(order.payment_ref).startswith("INITIATING-") and str(order.payment_ref) != str(app_id):
-            raise HTTPException(status_code=409, detail="Solicitud Addi contradictoria")
-        if order.status == OrderStatus.CANCELLED:
-            return {"status": "manual_review", "reason": "late_payment"}
-        mark_paid(db, order, "addi", str(app_id) if app_id else None)
-    elif addi_status in ["REJECTED", "CANCELLED", "EXPIRED"]:
-        if order.status == OrderStatus.PENDING:
-            try:
-                cancel_web_order(db, order, f"Addi {addi_status}", provider_confirmed_failure=True)
-            except HTTPException as exc:
-                if exc.status_code == 409:
-                    return {"status": "manual_review", "reason": "legacy_reservation"}
-                raise
-        elif order.status != OrderStatus.CANCELLED:
-            return {"status": "ignored", "reason": "final_order"}
-    else:
-        return {"status": "ignored", "reason": "unhandled_event"}
-    db.commit()
-    return {"status": "processed"}
+    return await _credit_webhook(request, db, "addi", verify_addi_webhook,
+                                 get_addi_application, "x-addi-signature", "applicationId", "totalAmount")
 
 
 # ── Consulta de estado ────────────────────────────────────────────────────────

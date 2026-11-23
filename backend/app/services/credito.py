@@ -27,7 +27,8 @@ def addi_enabled() -> bool:
     return bool(settings.ADDI_INTEGRATION_VERIFIED and settings.ADDI_ENV == "sandbox" and
                 settings.ENVIRONMENT in ("development", "test") and
                 _configured(settings.ADDI_BASE_URL, settings.ADDI_CLIENT_ID,
-                            settings.ADDI_CLIENT_SECRET, settings.ADDI_REDIRECT_URL))
+                            settings.ADDI_CLIENT_SECRET, settings.ADDI_WEBHOOK_SECRET, settings.ADDI_REDIRECT_URL) and
+                settings.ADDI_WEBHOOK_SECRET != settings.ADDI_CLIENT_SECRET)
 
 
 def _base(value):
@@ -138,5 +139,5 @@ async def get_addi_application(application_id: str) -> dict:
 def verify_addi_webhook(payload: str, signature: str) -> bool:
     if not addi_enabled():
         return False
-    expected = hmac.new(settings.ADDI_CLIENT_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    expected = hmac.new(settings.ADDI_WEBHOOK_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)

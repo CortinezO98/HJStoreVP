@@ -108,6 +108,7 @@ class Settings(BaseSettings):
     ADDI_INTEGRATION_VERIFIED: bool = False
     ADDI_CLIENT_ID: Optional[str] = None
     ADDI_CLIENT_SECRET: Optional[str] = None
+    ADDI_WEBHOOK_SECRET: Optional[str] = None
     ADDI_ENV: str = "sandbox"   # "sandbox" o "production"
     ADDI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
 
