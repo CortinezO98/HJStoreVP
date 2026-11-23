@@ -117,6 +117,16 @@ class User(Base, TimestampMixin):
         return f"<User {self.email} ({self.role})>"
 
 
+class DataConsent(Base):
+    __tablename__ = "data_consents"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_text: Mapped[str] = mapped_column(Text, nullable=False)
+    accepted_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    ip_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
 class SecurityAuditEvent(Base):
     __tablename__ = "security_audit_events"
 

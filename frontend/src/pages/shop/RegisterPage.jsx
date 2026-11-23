@@ -1,12 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AuthShell from '../../components/shop/AuthShell'
 import { useAuthStore } from '../../store'
+import { apiClient } from '../../services/api'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', password: '', confirm_password: '' })
+  const [policy, setPolicy] = useState(null)
+  const [accepted, setAccepted] = useState(false)
+  const loadPolicy = () => {
+    setAccepted(false)
+    apiClient.get('/auth/registration-policy').then(({ data }) => setPolicy(data)).catch(() => setPolicy({ available: false }))
+  }
+  useEffect(loadPolicy, [])
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const register = useAuthStore((state) => state.register)
@@ -23,23 +31,33 @@ export default function RegisterPage() {
       toast.error('Las contraseñas no coinciden')
       return
     }
-    if (form.password.length < 8 || new TextEncoder().encode(form.password).length > 72) {
-      toast.error('Usa entre 8 y 72 bytes para tu contraseña')
+    if (form.password.length < 12 || new TextEncoder().encode(form.password).length > 72) {
+      toast.error('Usa al menos 12 caracteres y máximo 72 bytes para tu contraseña')
       return
     }
+    if (!accepted || !policy?.available) return
     setLoading(true)
     try {
-      await register({
+      const result = await register({
         full_name: form.full_name.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim() || undefined,
         password: form.password,
+        accepts_data_policy: accepted,
+        data_policy_version: policy.version,
       })
       setForm((previous) => ({ ...previous, password: '', confirm_password: '' }))
+      if (!result.access_token) {
+        toast.success(result.message)
+        navigate('/login', { replace: true })
+        return
+      }
       toast.success('Tu cuenta está lista')
       navigate(next, { replace: true })
     } catch (error) {
-      toast.error(error?.response?.data?.detail || 'No pudimos crear tu cuenta')
+      if (error?.response?.status === 409) loadPolicy()
+      const detail = error?.response?.data?.detail
+      toast.error(typeof detail === 'string' ? detail : 'Revisa los datos del registro')
     } finally {
       setLoading(false)
     }
@@ -55,7 +73,7 @@ export default function RegisterPage() {
         <form onSubmit={submit}>
           <div>
             <label className="store-label" htmlFor="register-name">Nombre completo</label>
-            <input className="store-input" id="register-name" name="name" autoComplete="name" required maxLength={200}
+            <input className="store-input" id="register-name" name="name" autoComplete="name" required minLength={2} maxLength={200}
               value={form.full_name} onChange={(event) => setField('full_name', event.target.value)} placeholder="Tu nombre" />
           </div>
           <div>
@@ -66,15 +84,15 @@ export default function RegisterPage() {
           </div>
           <div>
             <label className="store-label" htmlFor="register-phone">Teléfono (opcional)</label>
-            <input className="store-input" id="register-phone" type="tel" name="tel" autoComplete="tel"
+            <input className="store-input" id="register-phone" type="tel" name="tel" autoComplete="tel" maxLength={20}
               value={form.phone} onChange={(event) => setField('phone', event.target.value)} placeholder="Tu teléfono" />
           </div>
           <div>
             <label className="store-label" htmlFor="register-password">Contraseña</label>
             <div className="relative">
               <input className="store-input pr-14" id="register-password" name="new-password"
-                type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={8} required
-                value={form.password} onChange={(event) => setField('password', event.target.value)} placeholder="Mínimo 8 caracteres" />
+                type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={12} required
+                value={form.password} onChange={(event) => setField('password', event.target.value)} placeholder="Mínimo 12 caracteres" />
               <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 min-w-11 min-h-11 flex items-center justify-center"
                 aria-label={showPassword ? 'Ocultar contraseñas' : 'Mostrar contraseñas'} aria-pressed={showPassword}
                 onClick={() => setShowPassword((previous) => !previous)}>
@@ -92,7 +110,16 @@ export default function RegisterPage() {
             {form.confirm_password && form.password !== form.confirm_password &&
               <p className="text-xs text-red-700 mt-2" role="alert">Las contraseñas no coinciden.</p>}
           </div>
-          <button type="submit" disabled={loading || form.password !== form.confirm_password}
+          {policy?.available ? <div className="space-y-2">
+            <details><summary>Consultar política de tratamiento de datos</summary>
+              <div className="max-h-56 overflow-auto whitespace-pre-wrap text-sm">{policy.text}</div>
+            </details>
+            <label className="flex gap-2 items-start text-sm">
+              <input type="checkbox" required checked={accepted} onChange={event => setAccepted(event.target.checked)} />
+              <span>Acepto el tratamiento de datos según la <Link to="/politicas/privacidad" target="_blank" rel="noopener noreferrer" className="store-inline-link">política de privacidad</Link>.</span>
+            </label>
+          </div> : <p role="status" className="text-sm">Registro no disponible hasta consultar una política publicada. <button type="button" onClick={loadPolicy}>Reintentar</button></p>}
+          <button type="submit" disabled={loading || !accepted || !policy?.available || form.password !== form.confirm_password}
             aria-busy={loading} className="store-button store-button-dark">
             {loading ? 'CREANDO CUENTA…' : 'CREAR CUENTA'}
           </button>

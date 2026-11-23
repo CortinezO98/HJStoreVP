@@ -181,3 +181,31 @@ def consume_mfa_challenge(token: str, expires_at: int) -> None:
         return
     if not claimed:
         raise HTTPException(status_code=401, detail="Desafío ya utilizado; inicia sesión nuevamente")
+
+
+# Ventana fija y comprobación/incremento en una única operación Redis.
+_RATE_LIMIT = """
+local count = tonumber(redis.call('GET', KEYS[1]) or '0')
+if count >= tonumber(ARGV[1]) then return 0 end
+count = redis.call('INCR', KEYS[1])
+if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[2]) end
+return 1
+"""
+
+
+def hit_rate_limit(request, bucket, limit, window, identity=None):
+    if not settings.AUTH_RATE_LIMIT_ENABLED:
+        return
+    key = _key("rate-" + bucket, str(identity) if identity is not None else _client_ip(request))
+    try:
+        allowed = _client().eval(_RATE_LIMIT, 1, key, limit, window)
+    except RedisError as exc:
+        _redis_failure("límite de solicitudes", exc)
+        return
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Demasiadas solicitudes; intenta más tarde",
+                            headers={"Retry-After": str(window)})
+
+
+def consent_ip_hash(request):
+    return _key("consent-ip", _client_ip(request)).rsplit(":", 1)[-1]

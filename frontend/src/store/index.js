@@ -44,6 +44,7 @@ export const useAuthStore = create(
 
       register: async (payload) => {
         const { data } = await authApi.register(payload)
+        if (!data.access_token || !data.refresh_token) return data
 
         sessionStorage.setItem('access_token', data.access_token)
         sessionStorage.setItem('refresh_token', data.refresh_token)
