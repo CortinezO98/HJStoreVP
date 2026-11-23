@@ -17,7 +17,7 @@ test('toolbar sticky y filtros accesibles en desktop y móvil', () => {
   const controls = source('src/components/shop/CatalogControls.jsx')
   assert.match(css, /\.hj-catalog-sticky\s*\{[^}]*position:\s*sticky/)
   assert.ok(controls.includes('aria-label={`Filtrar por color'))
-  assert.ok(controls.includes("filters.categoria === 'gorras' && <section>"))
+  assert.ok(controls.includes("filters.categoria === 'gorras' && (variants.talla || []).length > 0"))
   assert.ok(controls.includes('Guía de tallas'))
   assert.ok(controls.includes('hj-filter-sheet'))
 })
