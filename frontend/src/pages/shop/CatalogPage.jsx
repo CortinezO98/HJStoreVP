@@ -78,7 +78,7 @@ export default function CatalogPage() {
       return mergeCatalogPages(pages)
     },
   })
-  const { data: allProducts = [], isSuccess: allProductsReady } = useQuery({
+  const { data: allProducts = [], isSuccess: allProductsReady, isError: allProductsError } = useQuery({
     queryKey: ['catalog-cross-sell-products'],
     queryFn: () => productsApi.list({ page: 1, per_page: 100, sort: 'featured' }).then(r => r.data),
     staleTime: 60000,
@@ -110,7 +110,7 @@ export default function CatalogPage() {
   const setCategory = values => setMany(values)
   const suggestedColors = colorsFromProductNames(allProducts, filters.categoria)
   const sidebarProps = { filters, setMany, variants, suggestedColors, allProducts, complete: completePriceCounts,
-    categories: activeCategories, facetsLoading: variantsLoading || !allProductsReady,
+    categories: activeCategories, facetsLoading: variantsLoading || (!allProductsReady && !allProductsError),
     facetsError: variantsError, catalogError: isError }
   const noResults = !isLoading && !isError && visibleProducts.length === 0 && !hasNext
   return <div className="hj-catalog-page">
@@ -171,6 +171,6 @@ export default function CatalogPage() {
       filters={filters} setMany={setMany} clear={clear} {...{
         variants, suggestedColors, allProducts, categories: activeCategories,
       }} complete={completePriceCounts} count={resultCount}
-      facetsLoading={variantsLoading || !allProductsReady} facetsError={variantsError} catalogError={isError}/>
+      facetsLoading={variantsLoading || (!allProductsReady && !allProductsError)} facetsError={variantsError} catalogError={isError}/>
   </div>
 }
