@@ -416,3 +416,39 @@
 .hj-catalog-page .hj-catalog-main .store-empty-state button.store-button:hover {
   color: var(--hj-white); background: var(--hj-ink);
 }
+
+
+/* Refinamiento final acotado: chip Todo, colores, tallas y foco del buscador. */
+.hj-catalog-page .hj-category-chip::before,
+.hj-catalog-page .hj-category-chip::after,
+.hj-catalog-page .hj-category-chip > small::before,
+.hj-catalog-page .hj-category-chip > small::after {
+  content: none !important;
+  display: none !important;
+}
+.hj-catalog-page .hj-category-chip,
+.hj-catalog-page .hj-category-chip small {
+  text-decoration: none;
+  background-image: none;
+}
+.hj-catalog-page .hj-catalog-color-options button,
+.hj-catalog-page .hj-catalog-color-options button > span:not(.hj-catalog-color-swatch),
+.hj-filter-sheet .hj-catalog-color-options button > span:not(.hj-catalog-color-swatch) {
+  color: #4A4A46;
+}
+.hj-catalog-page .hj-catalog-size-options button:not([aria-pressed="true"]) {
+  color: #0A0A0A;
+  border-color: #D9D9D5;
+}
+.hj-search-backdrop .hj-search-head input[type="search"] {
+  border: 1px solid #D9D9D5;
+  outline: none;
+  box-shadow: none;
+  background: #F2F2F0;
+}
+.hj-search-backdrop .hj-search-head input[type="search"]:focus-visible {
+  border-color: #0A0A0A;
+  outline: 1px solid #0A0A0A;
+  outline-offset: 0;
+  box-shadow: none;
+}
