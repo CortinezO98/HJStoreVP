@@ -40,9 +40,11 @@ export default function ShopLayout() {
     { slug: 'relojes', name: 'Relojes' },
     { slug: 'bolsos', name: 'Bolsos' },
   ]
-  const navigationCategories = categories.length
-    ? categories.filter((c) => c.active !== false)
-    : primaryCategories
+  // El header siempre conserva los enlaces principales. La API alimenta
+  // las sugerencias del buscador, sin ocultar navegación mientras responde.
+  const navigationCategories = primaryCategories
+  const searchableCategories = categories.length
+    ? categories.filter(c => c.active !== false) : primaryCategories
   const { isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -159,7 +161,7 @@ export default function ShopLayout() {
       </header>
 
       <SearchOverlay open={searchOpen} onClose={closeSearch}
-        categories={navigationCategories} returnFocusRef={searchTriggerRef}/>
+        categories={searchableCategories} returnFocusRef={searchTriggerRef}/>
       <main id="store-main-content" tabIndex={-1} className="flex-1"><Outlet /></main>
 
       <footer className="editorial-footer store-footer-compact">
