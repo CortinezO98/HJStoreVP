@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SlidersHorizontal, X, LayoutGrid, Grid2X2, ChevronDown } from 'lucide-react'
-import { normalizeColor } from '../../utils/catalogColors'
+import { normalizeColor, productNameColor } from '../../utils/catalogColors'
+import { formatCOP } from '../../utils/currency'
 
 export const SORT_OPTIONS = [
   { value: 'featured', label: 'Destacados' },
@@ -16,7 +17,10 @@ export const PRICE_OPTIONS = [
   { value: '200000:', title: 'Más de $200.000', min: '200000', max: '' },
 ]
 
-export function CategoryChips({ categories, selected, setMany, counts = {}, complete = false }) {
+export function CategoryChips({ categories, selected, setMany, counts = {}, complete = false, loading = false }) {
+  if (loading) return <div className="hj-category-chips" aria-label="Cargando categorías" aria-busy="true">
+    {Array.from({ length: 6 }, (_, index) => <span key={index} className="hj-category-chip-skeleton" />)}
+  </div>
   return <nav className="hj-category-chips" aria-label="Categorías del catálogo">
     {categories.map(cat => <button type="button" key={cat.slug || 'all'}
       aria-pressed={selected === cat.slug} className="hj-category-chip"
@@ -26,7 +30,7 @@ export function CategoryChips({ categories, selected, setMany, counts = {}, comp
     </button>)}
   </nav>
 }
-export function FilterFields({ filters, setMany, variants = {}, suggestedColors = [], allProducts = [], complete = false, categories = [] }) {
+export function FilterFields({ filters, setMany, variants = {}, suggestedColors = [], allProducts = [], complete = false, categories = [], facetsLoading = false, facetsError = false, catalogError = false }) {
   const priceSelected = `${filters.min_price}:${filters.max_price}`
   const colors = [...new Map([...(variants.color || []), ...suggestedColors]
     .map(value => [normalizeColor(value), value])).values()]
@@ -54,7 +58,8 @@ export function FilterFields({ filters, setMany, variants = {}, suggestedColors 
               && (!filters.categoria || product.category_slug === filters.categoria ||
                 product.category_name?.toLowerCase() === categoryName.toLowerCase())
           }).length
-          return <button type="button" key={option.value}
+          const empty = complete && matches === 0 && option.value !== ':' && priceSelected !== option.value
+          return <button type="button" key={option.value} disabled={empty}
             aria-pressed={priceSelected === option.value}
             onClick={() => setMany({ min_price: option.min, max_price: option.max })}>
             <span>{option.title}</span>{complete && <small>{matches}</small>}
@@ -62,21 +67,32 @@ export function FilterFields({ filters, setMany, variants = {}, suggestedColors 
         })}
       </div>
     </section>
-    <section>
+    {!catalogError && <section>
       <div className="hj-catalog-filter-title">Color</div>
-      <div className="hj-catalog-color-options">
-        {Array.from(new Set([filters.color, ...colors].filter(Boolean))).map(color => {
-          const normalized = normalizeColor(color)
-          return <button type="button" key={normalized} aria-pressed={normalizeColor(filters.color) === normalized}
-            aria-label={`Filtrar por color ${color}`}
-            onClick={() => setMany({ color: normalizeColor(filters.color) === normalized ? '' : color })}>
-            <span className="hj-catalog-color-swatch" data-color={normalized}/>
-            <span>{color}</span>
-          </button>
-        })}
-      </div>
-      {!colors.length && <p className="hj-filter-help">No hay opciones de color configuradas para esta selección.</p>}
-    </section>
+      {facetsLoading ? <div className="hj-catalog-color-loading" role="status" aria-label="Cargando colores">
+        {Array.from({ length: 4 }, (_, index) => <span key={index}/>)}
+      </div> : facetsError ? null : <>
+        <div className="hj-catalog-color-options">
+          {Array.from(new Map([filters.color, ...colors].filter(Boolean)
+            .map(color => [normalizeColor(color), color])).entries()).map(([normalized, color]) => {
+            const selected = normalizeColor(filters.color) === normalized
+            const count = complete ? allProducts.filter(product => (!filters.categoria || product.category_slug === filters.categoria)
+              && productNameColor(product) === normalized).length : null
+            const hasVariant = (variants.color || []).some(value => normalizeColor(value) === normalized)
+            const disabled = complete && count === 0 && !hasVariant && !selected
+            return <button type="button" key={normalized} aria-pressed={selected} disabled={disabled}
+              aria-label={`Filtrar por color ${color}`}
+              title={disabled ? 'Sin productos de este color' : color}
+              onClick={() => setMany({ color: selected ? '' : color })}>
+              <span className="hj-catalog-color-swatch" data-color={normalized}/>
+              <span>{color}</span>
+              {count !== null && !hasVariant && <small>{count}</small>}
+            </button>
+          })}
+        </div>
+        {!colors.length && <p className="hj-filter-help">No hay opciones de color configuradas para esta selección.</p>}
+      </>}
+    </section>}
     {filters.categoria === 'gorras' && <section>
       <div className="hj-catalog-filter-title">Talla</div>
       <div className="hj-catalog-size-options">
@@ -108,15 +124,19 @@ export function FilterFields({ filters, setMany, variants = {}, suggestedColors 
 }
 export function CatalogToolbar({
   filters, setMany, clear, active, productCount, sort, filtersVisible,
-  onToggleFilters, density, onDensity, isLoading, mobileOpen = false,
+  onToggleFilters, density, onDensity, isLoading, isError = false, categoryName = '', mobileOpen = false,
 }) {
+  const price = filters.min_price && filters.max_price
+    ? `${formatCOP(filters.min_price)} a ${formatCOP(filters.max_price)}`
+    : filters.max_price ? `Hasta ${formatCOP(filters.max_price)}`
+      : filters.min_price ? `Desde ${formatCOP(filters.min_price)}` : ''
   const tokens = [
-    ['categoria', filters.categoria && `Categoría: ${filters.categoria}`],
-    ['q', filters.q && `«${filters.q}»`],
+    ['categoria', filters.categoria && (categoryName || filters.categoria[0].toUpperCase() + filters.categoria.slice(1))],
+    ['q', filters.q && `Búsqueda: ${filters.q}`],
     ['color', filters.color && `Color: ${filters.color}`],
     ['talla', filters.talla && `Talla: ${filters.talla}`],
     ['presentacion', filters.presentacion && `Presentación: ${filters.presentacion}`],
-    ['price', (filters.min_price || filters.max_price) && 'Precio'],
+    ['price', price],
     ['disponible', filters.disponible && 'Disponibles'],
     ['featured', filters.featured && 'Destacados'],
   ].filter(([, value]) => Boolean(value))
@@ -137,7 +157,7 @@ export function CatalogToolbar({
       </button>)}
       {tokens.length > 0 && <button type="button" className="hj-catalog-clear" onClick={clear}>Limpiar todo</button>}
     </div>
-    <span className="hj-catalog-result-count" aria-live="polite">{isLoading ? 'Cargando…' : `${productCount} productos`}</span>
+    {!isError && <span className="hj-catalog-result-count" aria-live="polite">{isLoading ? 'Cargando…' : `${productCount} productos`}</span>}
     <label className="hj-catalog-sort">
       <span>Ordenar</span>
       <select value={sort} onChange={e => setMany({ orden: e.target.value })}>
@@ -153,7 +173,7 @@ export function CatalogToolbar({
     </div>
   </div>
 }
-export function FilterSheet({ open, onClose, filters, setMany, clear, variants, suggestedColors, allProducts, complete, categories, count }) {
+export function FilterSheet({ open, onClose, filters, setMany, clear, variants, suggestedColors, allProducts, complete, categories, count, facetsLoading, facetsError, catalogError }) {
   const closeRef = useRef(null)
   useEffect(() => {
     if (!open) return undefined
@@ -190,7 +210,7 @@ export function FilterSheet({ open, onClose, filters, setMany, clear, variants, 
             <button type="button" key={option.value} aria-pressed={filters.orden === option.value}
               onClick={() => setMany({ orden: option.value })}>{option.label}</button>)}</div>
         </div>
-        <FilterFields {...{ filters, setMany, variants, suggestedColors, allProducts, complete, categories }}/>
+        <FilterFields {...{ filters, setMany, variants, suggestedColors, allProducts, complete, categories, facetsLoading, facetsError, catalogError }}/>
       </div>
       <footer>
         <button type="button" onClick={clear}>Limpiar</button>
