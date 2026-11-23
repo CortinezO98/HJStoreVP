@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     # Rate limiting global por cuenta e IP mediante Redis. Activado por defecto.
     AUTH_RATE_LIMIT_ENABLED: bool = True
+    ADMIN_MFA_REQUIRED: bool = True
     AUTH_LOGIN_PAIR_MAX_FAILURES: int = 5
     AUTH_LOGIN_ACCOUNT_MAX_FAILURES: int = 50
     TRUSTED_PROXY_CIDRS: List[str] = []
@@ -165,6 +166,8 @@ class Settings(BaseSettings):
     def require_safe_production_settings(self):
         if self.ALLOW_DEMO_PAYMENTS and self.ENVIRONMENT not in ("development", "test"):
             raise ValueError("ALLOW_DEMO_PAYMENTS solo se permite en desarrollo y pruebas")
+        if not self.ADMIN_MFA_REQUIRED and self.ENVIRONMENT not in ("development", "test"):
+            raise ValueError("MFA administrativo obligatorio fuera de desarrollo y pruebas")
         if self.ENVIRONMENT in ("staging", "production"):
             if self.DEBUG:
                 raise ValueError("DEBUG debe ser false en producción")

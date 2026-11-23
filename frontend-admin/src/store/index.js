@@ -16,6 +16,8 @@ export const useAuthStore = create(
         }
         sessionStorage.setItem('access_token', data.access_token)
         sessionStorage.setItem('refresh_token', data.refresh_token)
+        if (data.mfa_setup_required) sessionStorage.setItem('mfa_setup_required', 'true')
+        else sessionStorage.removeItem('mfa_setup_required')
         set({
           user: { id: data.user_id, fullName: data.full_name, role: data.user_role },
           accessToken: data.access_token,
@@ -32,6 +34,7 @@ export const useAuthStore = create(
       },
 
       logout: () => {
+        sessionStorage.removeItem('mfa_setup_required')
         sessionStorage.removeItem('access_token')
         sessionStorage.removeItem('refresh_token')
         localStorage.removeItem('access_token')

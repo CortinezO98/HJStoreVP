@@ -25,6 +25,8 @@ os.environ["CART_RECOVERY_DELIVERY_ENABLED"] = "false"
 os.environ["CART_RECOVERY_LIVE_ALLOWED"] = "false"
 os.environ["WOMPI_ALLOW_LIVE_PAYMENTS"] = "false"
 os.environ["ENVIRONMENT"] = "test"
+# Compatibilidad de pruebas históricas; A-05 activa explícitamente la política.
+os.environ["ADMIN_MFA_REQUIRED"] = "false"
 os.environ["ALLOW_DEMO_PAYMENTS"] = "false"
 os.environ["UPLOAD_DIR"] = os.path.join(_directory.name, "uploads")
 

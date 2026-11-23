@@ -24,7 +24,7 @@ export default function LoginPage() {
       setForm((previous) => ({ ...previous, password: '' }))
       toast.success('Sesión iniciada correctamente')
       // Conservar el flujo original: las cuentas administrativas usan su propio panel.
-      if (['super_admin', 'admin', 'seller'].includes(account.user_role)) {
+      if (account.mfa_required || account.mfa_setup_required || ['super_admin', 'admin', 'seller'].includes(account.user_role)) {
         const adminUrl = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'
         window.location.assign(adminUrl)
         return

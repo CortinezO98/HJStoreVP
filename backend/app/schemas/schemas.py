@@ -17,6 +17,7 @@ class LoginRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
+    mfa_setup_required: bool = False
     access_token: str
     refresh_token: str
     token_type: str = "bearer"

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services.auth_protection import (check_login_limit, note_login_failure, clear_login_failures, consume_refresh_token, consume_mfa_challenge)
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, credential_version, credential_version_matches
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_mfa_enrollment_user, admin_mfa_required, mfa_enrollment_error
 from app.models.models import User, UserRole, UserMFASettings
 from app.core.config import settings
 from app.services.security_audit import append_audit, identity_fingerprint
@@ -156,6 +156,14 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     mfa = _mfa_record(db, user.id)
     if mfa and mfa.enabled:
         return _mfa_challenge(user, mfa)
+    if admin_mfa_required(user):
+        extra = {"ver": credential_version(user.hashed_password), "role": user.role.value,
+                 "type": "mfa_enrollment", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)}
+        if mfa and mfa.version:
+            extra["sec_v"] = mfa.version
+        return TokenResponse(access_token=create_access_token(user.id, extra=extra),
+                             refresh_token="", user_role=user.role, user_id=user.id,
+                             full_name=user.full_name, mfa_setup_required=True)
     clear_login_failures(data.email, request)
     append_audit(db, action='auth.login.success', actor_id=user.id, target_id=user.id)
     db.commit()
@@ -191,6 +199,8 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Sesión revocada; inicia sesión nuevamente")
     if mfa and mfa.enabled and payload.get("mfa_v") != mfa.version:
         raise HTTPException(status_code=401, detail="Segundo factor obligatorio; inicia sesión nuevamente")
+    if admin_mfa_required(user) and not (mfa and mfa.enabled):
+        raise mfa_enrollment_error()
     consume_refresh_token(data.refresh_token, expires_at)
     return _token_bundle(user, mfa)
 
@@ -248,16 +258,16 @@ def change_my_password(data: ProfilePasswordChange, request: Request,
 
 
 @router.get("/me/mfa")
-def my_mfa_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def my_mfa_status(db: Session = Depends(get_db), current_user: User = Depends(get_mfa_enrollment_user)):
     _require_mfa_admin(current_user)
     record = _mfa_record(db, current_user.id)
-    return {"enabled": bool(record and record.enabled),
+    return {"enabled": bool(record and record.enabled), "required": admin_mfa_required(current_user),
             "recovery_codes_remaining": len(record.recovery_hashes or []) if record and record.enabled else 0}
 
 
 @router.post("/me/mfa/setup")
 def setup_mfa(data: MFAStart, request: Request, db: Session = Depends(get_db),
-              current_user: User = Depends(get_current_user)):
+              current_user: User = Depends(get_mfa_enrollment_user)):
     _require_mfa_admin(current_user)
     check_login_limit(request, current_user.email)
     if not verify_password(data.current_password, current_user.hashed_password):
@@ -280,7 +290,7 @@ def setup_mfa(data: MFAStart, request: Request, db: Session = Depends(get_db),
 
 @router.post("/me/mfa/confirm")
 def confirm_mfa(data: MFACode, request: Request, db: Session = Depends(get_db),
-                current_user: User = Depends(get_current_user)):
+                current_user: User = Depends(get_mfa_enrollment_user)):
     _require_mfa_admin(current_user)
     check_login_limit(request, current_user.email)
     record = _mfa_record(db, current_user.id, lock=True)
@@ -372,6 +382,8 @@ def disable_mfa(data: MFASensitiveAction, request: Request,
                 db: Session = Depends(get_db),
                 current_user: User = Depends(get_current_user)):
     _require_mfa_admin(current_user)
+    if admin_mfa_required(current_user):
+        raise HTTPException(status_code=403, detail="El segundo factor es obligatorio para tu rol")
     record = _require_recent_factor(db, current_user, request, data.current_password,
                                     data.code, mfa_required=True)
     if not record or not record.enabled:

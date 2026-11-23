@@ -27,6 +27,11 @@ export default function LoginPage() {
         setForm({ email: '', password: '' })
         return
       }
+      if (data.mfa_setup_required) {
+        setForm({ email: '', password: '' })
+        navigate('/configurar-mfa', { replace: true })
+        return
+      }
       toast.success(`Bienvenido, ${data.full_name}!`)
       navigate(location.state?.from || '/', { replace: true })
     } catch (error) {

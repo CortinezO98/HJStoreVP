@@ -4,6 +4,7 @@ import { useAuthStore } from './store'
 
 import AdminLayout from './components/layout/AdminLayout'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
+const MFAEnrollmentPage = lazy(() => import('./pages/MFAEnrollmentPage'))
 const MyProfilePage = lazy(() => import('./pages/MyProfilePage'))
 const SecurityAuditPage = lazy(() => import('./pages/SecurityAuditPage'))
 const OperationsMonitoringPage = lazy(() => import('./pages/OperationsMonitoringPage'))
@@ -42,6 +43,10 @@ function ProtectedAdmin({ roles }) {
     return <Navigate to="/login" replace />
   }
 
+  if (sessionStorage.getItem('mfa_setup_required') === 'true') {
+    return <Navigate to="/configurar-mfa" replace />
+  }
+
   if (roles && !roles.includes(user?.role)) {
     return <Navigate to="/" replace />
   }
@@ -54,6 +59,7 @@ export default function App() {
     <Suspense fallback={<div role="status" aria-live="polite" className="min-h-screen flex items-center justify-center text-gray-600">Cargando módulo…</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/configurar-mfa" element={<MFAEnrollmentPage />} />
 
       {/* Área privada del panel */}
       <Route

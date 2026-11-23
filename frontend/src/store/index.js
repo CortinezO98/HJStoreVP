@@ -20,6 +20,10 @@ export const useAuthStore = create(
 
       login: async (email, password) => {
         const { data } = await authApi.login({ email, password })
+        if (data.mfa_required || data.mfa_setup_required || ['super_admin', 'admin', 'seller'].includes(data.user_role)) {
+          get().logout()
+          return data
+        }
 
         sessionStorage.setItem('access_token', data.access_token)
         sessionStorage.setItem('refresh_token', data.refresh_token)

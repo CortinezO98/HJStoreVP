@@ -40,6 +40,11 @@ apiClient.interceptors.response.use(
       originalRequest?.url?.includes('/auth/mfa/verify')
 
     const status = error.response?.status
+    if (status === 403 && error.response?.headers?.['x-mfa-setup-required'] === 'true') {
+      sessionStorage.setItem('mfa_setup_required', 'true')
+      if (window.location.pathname !== '/configurar-mfa') window.location.replace('/configurar-mfa')
+      return Promise.reject(error)
+    }
     // El catálogo es público para lecturas normales. Una credencial expirada
     // en una solicitud include_inactive se interpreta como anónima y devuelve
     // 403; para el administrador, renovar una sola vez evita un falso bloqueo.
@@ -68,6 +73,7 @@ apiClient.interceptors.response.use(
           error.config.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(error.config)
         } catch {
+          sessionStorage.removeItem('mfa_setup_required')
           sessionStorage.removeItem('access_token')
           sessionStorage.removeItem('refresh_token')
           localStorage.removeItem('access_token')
@@ -77,6 +83,7 @@ apiClient.interceptors.response.use(
           return Promise.reject(error)
         }
       } else if (status === 401) {
+        sessionStorage.removeItem('mfa_setup_required')
         sessionStorage.removeItem('access_token')
         sessionStorage.removeItem('refresh_token')
         localStorage.removeItem('hjstore-auth')
