@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import validator, model_validator
 from typing import List, Literal, Optional
 import secrets
+from ipaddress import ip_network
 from urllib.parse import urlsplit
 
 
@@ -40,7 +41,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     # Rate limiting global por cuenta e IP mediante Redis. Activado por defecto.
     AUTH_RATE_LIMIT_ENABLED: bool = True
-    AUTH_LOGIN_ACCOUNT_MAX_FAILURES: int = 5
+    AUTH_LOGIN_PAIR_MAX_FAILURES: int = 5
+    AUTH_LOGIN_ACCOUNT_MAX_FAILURES: int = 50
+    TRUSTED_PROXY_CIDRS: List[str] = []
     AUTH_LOGIN_IP_MAX_FAILURES: int = 30
     AUTH_LOGIN_WINDOW_SECONDS: int = 900
     # Evita canjear dos veces el mismo refresh token.
@@ -57,6 +60,20 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://localhost:5174",
     ]
+
+    @validator("TRUSTED_PROXY_CIDRS")
+    def validate_trusted_proxies(cls, values):
+        networks = [ip_network(value, strict=True) for value in values]
+        if any(net.prefixlen != net.max_prefixlen for net in networks):
+            raise ValueError("Autorizar únicamente direcciones individuales de proxy")
+        return [str(net) for net in networks]
+
+    @validator("AUTH_LOGIN_PAIR_MAX_FAILURES", "AUTH_LOGIN_ACCOUNT_MAX_FAILURES",
+               "AUTH_LOGIN_IP_MAX_FAILURES", "AUTH_LOGIN_WINDOW_SECONDS")
+    def positive_auth_limit(cls, value):
+        if value <= 0:
+            raise ValueError("Límite de autenticación debe ser positivo")
+        return value
 
     @validator("ALLOWED_ORIGINS", pre=True)
     def parse_origins(cls, v):

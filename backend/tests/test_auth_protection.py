@@ -17,12 +17,13 @@ class FakeRedis:
     def mget(self, keys):
         return [self.values.get(key) for key in keys]
 
-    def eval(self, script, key_count, key, ttl):
-        count = int(self.values.get(key, 0)) + 1
-        self.values[key] = str(count)
-        if count == 1:
-            self.expiry[key] = ttl
-        return count
+    def eval(self, script, key_count, *args):
+        for key in args[:key_count]:
+            count = int(self.values.get(key, 0)) + 1
+            self.values[key] = str(count)
+            if count == 1:
+                self.expiry[key] = args[-1]
+        return 1
 
     def delete(self, key):
         self.values.pop(key, None)
@@ -46,14 +47,14 @@ def fake_redis(monkeypatch):
 
 def test_login_blocked_after_five_failures(fake_redis):
     request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"))
-    for _ in range(protection.settings.AUTH_LOGIN_ACCOUNT_MAX_FAILURES):
+    for _ in range(protection.settings.AUTH_LOGIN_PAIR_MAX_FAILURES):
         protection.check_login_limit(request, "User@Example.org")
         protection.note_login_failure(request, "User@Example.org")
     with pytest.raises(HTTPException) as error:
         protection.check_login_limit(request, "user@example.org")
     assert error.value.status_code == 429
     assert error.value.headers["Retry-After"]
-    protection.clear_login_failures("user@example.org")
+    protection.clear_login_failures("user@example.org", request)
     protection.check_login_limit(request, "User@Example.org")
 
 

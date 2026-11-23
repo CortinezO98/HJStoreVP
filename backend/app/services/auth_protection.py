@@ -1,8 +1,8 @@
 """Controles de autenticación respaldados por Redis.
 
 No registra correos, IPs ni tokens en claves visibles: HMAC irreversibles.
-No confía en X-Forwarded-For: el proxy deberá normalizar la IP del cliente
-solo tras configurar explícitamente sus redes de confianza.
+Solo acepta X-Forwarded-For de un proxy explícitamente autorizado,
+con un único valor normalizado por el proxy.
 """
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import logging
 import time
+from ipaddress import ip_address, ip_network
 
 from fastapi import HTTPException
 from redis import Redis
@@ -22,11 +23,13 @@ _redis_client: Redis | None = None
 
 # Atomicidad: la ventana solo se inicia en el primer fallo, no es deslizante.
 _INCR_WITH_TTL = """
-local current = redis.call('INCR', KEYS[1])
-if current == 1 then
-    redis.call('EXPIRE', KEYS[1], ARGV[1])
+for _, key in ipairs(KEYS) do
+    local current = redis.call('INCR', key)
+    if current == 1 then
+        redis.call('EXPIRE', key, ARGV[1])
+    end
 end
-return current
+return 1
 """
 
 
@@ -60,14 +63,42 @@ def _account_key(email: str) -> str:
     return _key("fail-account", email.strip().casefold())
 
 
+def _pair_key(email: str, ip: str) -> str:
+    return _key("fail-pair", email.strip().casefold() + "\\0" + ip)
+
+
+def _normalized_ip(value):
+    addr = ip_address(value)
+    return getattr(addr, "ipv4_mapped", None) or addr
+
+
 def _client_ip(request) -> str:
-    # No aceptar X-Forwarded-For sin una lista de proxies de confianza.
-    return request.client.host if request.client else "unknown"
+    # Uvicorn no debe reescribir request.client antes de esta comprobación.
+    try:
+        peer = _normalized_ip(request.client.host)
+    except (ValueError, AttributeError, TypeError):
+        return "unknown"
+    if any(peer in ip_network(cidr) for cidr in settings.TRUSTED_PROXY_CIDRS):
+        headers = getattr(request, "headers", None)
+        if headers is None:
+            return str(peer)
+        values = headers.getlist("x-forwarded-for")
+        if len(values) == 1 and "," not in values[0] and "%" not in values[0]:
+            try:
+                return str(_normalized_ip(values[0].strip()))
+            except ValueError:
+                pass
+    return str(peer)
+
+
+def _login_keys(request, email):
+    ip = _client_ip(request)
+    return [_pair_key(email, ip), _account_key(email), _ip_key(ip)]
 
 
 def _redis_failure(operation: str, exc: RedisError) -> None:
     logger.warning("Redis no disponible para protección de autenticación: %s", operation)
-    if settings.ENVIRONMENT.lower() == "production":
+    if settings.ENVIRONMENT in ("production", "staging"):
         raise HTTPException(
             status_code=503,
             detail="Servicio de autenticación temporalmente no disponible",
@@ -79,10 +110,11 @@ def check_login_limit(request, email: str) -> None:
         return
     client = _client()
     try:
-        keys = [_account_key(email), _ip_key(_client_ip(request))]
-        account_attempts, ip_attempts = client.mget(keys)
-        if ((int(account_attempts or 0) >= settings.AUTH_LOGIN_ACCOUNT_MAX_FAILURES)
-                or (int(ip_attempts or 0) >= settings.AUTH_LOGIN_IP_MAX_FAILURES)):
+        keys = _login_keys(request, email)
+        limits = (settings.AUTH_LOGIN_PAIR_MAX_FAILURES, settings.AUTH_LOGIN_ACCOUNT_MAX_FAILURES,
+                  settings.AUTH_LOGIN_IP_MAX_FAILURES)
+        if any(int(value or 0) >= limit for value, limit in zip(client.mget(keys), limits)):
+            logger.warning("Límite de autenticación alcanzado")
             raise HTTPException(
                 status_code=429,
                 detail="Demasiados intentos; intenta nuevamente más tarde",
@@ -97,23 +129,20 @@ def note_login_failure(request, email: str) -> None:
         return
     client = _client()
     try:
-        client.eval(
-            _INCR_WITH_TTL, 1, _account_key(email),
-            settings.AUTH_LOGIN_WINDOW_SECONDS,
-        )
-        client.eval(
-            _INCR_WITH_TTL, 1, _ip_key(_client_ip(request)),
-            settings.AUTH_LOGIN_WINDOW_SECONDS,
-        )
+        keys = _login_keys(request, email)
+        client.eval(_INCR_WITH_TTL, len(keys), *keys, settings.AUTH_LOGIN_WINDOW_SECONDS)
     except RedisError as exc:
         _redis_failure("registrar intento fallido", exc)
 
 
-def clear_login_failures(email: str) -> None:
+def clear_login_failures(email: str, request=None) -> None:
     if not settings.AUTH_RATE_LIMIT_ENABLED:
         return
     try:
-        _client().delete(_account_key(email))
+        # No borrar los contadores globales: un login válido no debe
+        # reiniciar los límites de intentos distribuidos ni de la IP.
+        if request is not None:
+            _client().delete(_pair_key(email, _client_ip(request)))
     except RedisError as exc:
         _redis_failure("limpiar intentos tras login", exc)
 

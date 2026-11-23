@@ -16,6 +16,7 @@ x-backend-env: &backend-env
   STORE_PUBLIC_URL: "${PROD_STORE_URL:?Configurar PROD_STORE_URL_HTTPS}"
   ALLOWED_ORIGINS: '["${PROD_STORE_URL:?Configurar PROD_STORE_URL_HTTPS}","${PROD_ADMIN_URL:?Configurar PROD_ADMIN_URL_HTTPS}"]'
   AUTH_RATE_LIMIT_ENABLED: "true"
+  TRUSTED_PROXY_CIDRS: '["172.30.83.10/32"]'
   AUTH_REFRESH_REPLAY_PROTECTION_ENABLED: "true"
   EMAIL_NOTIFICATIONS_ENABLED: "false"
   EMAIL_LIVE_DELIVERY_ALLOWED: "false"
@@ -81,6 +82,20 @@ services:
     # Sin creación automática de tablas ni migración automática. Requiere migración
     # revisada y restauración comprobada antes de habilitar servicio.
 
+  # Candidato de proxy interno; TLS público requiere configuración aprobada.
+  api-edge:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    restart: unless-stopped
+    volumes:
+      - ./infra/nginx/api-edge.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      edge:
+        ipv4_address: 172.30.83.10
+    ports:
+      - "127.0.0.1:28082:8080"
+    depends_on:
+      backend: {condition: service_healthy}
+
   reservation-worker:
     profiles: ["reservations"]
     build:
@@ -125,7 +140,10 @@ services:
 networks:
   internal:
     internal: true
-  edge: {}
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.83.0/24
 
 volumes:
   prod_db_data: {}

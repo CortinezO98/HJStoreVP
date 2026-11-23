@@ -156,7 +156,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     mfa = _mfa_record(db, user.id)
     if mfa and mfa.enabled:
         return _mfa_challenge(user, mfa)
-    clear_login_failures(data.email)
+    clear_login_failures(data.email, request)
     append_audit(db, action='auth.login.success', actor_id=user.id, target_id=user.id)
     db.commit()
     return _token_bundle(user, mfa)
@@ -229,7 +229,7 @@ def change_my_email(data: ProfileEmailChange, request: Request,
     append_audit(db, action='auth.email.changed', actor_id=current_user.id,
                  resource='users', target_id=current_user.id)
     db.commit()
-    clear_login_failures(previous_email)
+    clear_login_failures(previous_email, request)
     return current_user
 
 
@@ -244,7 +244,7 @@ def change_my_password(data: ProfilePasswordChange, request: Request,
     append_audit(db, action='auth.password.changed', actor_id=current_user.id,
                  resource='users', target_id=current_user.id)
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(current_user.email, request)
 
 
 @router.get("/me/mfa")
@@ -274,7 +274,7 @@ def setup_mfa(data: MFAStart, request: Request, db: Session = Depends(get_db),
     record.pending_secret_ciphertext = encrypt_secret(secret)
     record.updated_at = datetime.utcnow()
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(current_user.email, request)
     return {"secret": secret, "provisioning_uri": provisioning_uri(secret, current_user.email)}
 
 
@@ -301,7 +301,7 @@ def confirm_mfa(data: MFACode, request: Request, db: Session = Depends(get_db),
     record.updated_at = datetime.utcnow()
     append_audit(db, action='auth.mfa.enabled', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(current_user.email, request)
     return {"enabled": True, "recovery_codes": plain,
             "message": "Guarda estos códigos ahora. No volverán a mostrarse."}
 
@@ -333,7 +333,7 @@ def verify_mfa_challenge(data: MFAChallenge, request: Request, db: Session = Dep
     consume_mfa_challenge(data.challenge_token, int(payload["exp"]))
     append_audit(db, action='auth.mfa.success', actor_id=user.id, target_id=user.id)
     db.commit()
-    clear_login_failures(user.email)
+    clear_login_failures(user.email, request)
     return _token_bundle(user, record)
 
 
@@ -346,7 +346,7 @@ def revoke_my_sessions(data: MFASensitiveAction, request: Request,
     _bump_session_version(db, current_user.id)
     append_audit(db, action='auth.sessions.revoked', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(current_user.email, request)
 
 
 @router.post("/me/mfa/recovery/rotate")
@@ -363,7 +363,7 @@ def rotate_mfa_recovery_codes(data: MFARotateCodes, request: Request,
     record.updated_at = datetime.utcnow()
     append_audit(db, action='auth.mfa.recovery_rotated', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(current_user.email, request)
     return {"recovery_codes": plain, "message": "Sustituye los códigos anteriores; no se mostrarán de nuevo"}
 
 
@@ -385,4 +385,4 @@ def disable_mfa(data: MFASensitiveAction, request: Request,
     record.updated_at = datetime.utcnow()
     append_audit(db, action='auth.mfa.disabled', actor_id=current_user.id, target_id=current_user.id)
     db.commit()
-    clear_login_failures(current_user.email)
+    clear_login_failures(current_user.email, request)
