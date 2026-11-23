@@ -39,10 +39,30 @@ try {
   assert.ok(sticky.top < 180, 'la toolbar debería mantenerse bajo el header')
   await capture(desktop, '01-toolbar-sticky.png')
 
-  await ensureCatalog(desktop, '/catalogo?categoria=gorras&disponible=1&max_price=100000&orden=price_asc')
-  assert.equal(new URL(desktop.url()).searchParams.get('disponible'), '1')
-  assert.ok(await desktop.locator('.hj-catalog-active-token').count() >= 2)
+  await ensureCatalog(desktop, '/catalogo?categoria=gorras&color=negro&max_price=100000&orden=price_asc')
+  const query = new URL(desktop.url()).searchParams
+  assert.equal(query.get('categoria'), 'gorras')
+  assert.equal(query.get('color'), 'negro')
+  assert.equal(query.get('max_price'), '100000')
+  await desktop.locator('.hj-catalog-grid .hj-catalog-product').first().waitFor({ timeout: 20000 })
+  await desktop.locator('.hj-catalog-result-count').getByText(/productos/).waitFor()
+  assert.ok(await desktop.locator('.hj-catalog-active-token').count() >= 3)
+  const activeURL = desktop.url()
+  await desktop.evaluate(url => {
+    // Etiqueta de evidencia solo en esta captura de Playwright (no en aplicación).
+    const label = document.createElement('aside')
+    label.setAttribute('data-qa-url', '')
+    label.textContent = url
+    Object.assign(label.style, {
+      position: 'fixed', top: '143px', right: '24px', zIndex: '9999',
+      background: '#0A0A0A', color: '#FFFFFF', padding: '10px 14px',
+      fontSize: '12px', fontFamily: 'monospace', maxWidth: '90vw',
+      overflowWrap: 'anywhere', boxShadow: '0 2px 8px #0002',
+    })
+    document.body.appendChild(label)
+  }, activeURL)
   await capture(desktop, '02-filtros-chips-url.png')
+  await desktop.locator('[data-qa-url]').evaluate(node => node.remove())
 
   await ensureCatalog(desktop, '/catalogo?q=sinresultadoshjstorevp2026')
   await desktop.locator('.hj-catalog-empty').waitFor({ timeout: 15000 })
@@ -76,7 +96,7 @@ try {
   await desktop.waitForTimeout(600)
   await capture(desktop, '07-buscador-abierto.png')
   await writeFile(resolve(output, 'resultado.json'), JSON.stringify({
-    completed: checks, sticky, catalogUrl: desktop.url(),
+    completed: checks, sticky, filtersUrl: activeURL, catalogUrl: desktop.url(),
     loadingAndError: 'Simulados únicamente con interceptación local de Playwright',
   }, null, 2))
   process.stdout.write(`Capturas guardadas en: ${output}\n${checks.join('\n')}\n`)
