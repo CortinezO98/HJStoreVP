@@ -23,7 +23,27 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const candidate = process.env.VITE_API_URL ?? env.VITE_API_URL ?? ''
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'reject-local-api-origins-in-production-assets',
+        apply: 'build',
+        generateBundle(_options, bundle) {
+          // Cualquier URL de localhost incrustada por Vite o una dependencia se
+          // transforma en ruta relativa al origen público. No se modifica dev.
+          const localOrigin = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]):\d+/gi
+          for (const file of Object.values(bundle)) {
+            if (file.type !== 'chunk') continue
+            if (localOrigin.test(file.code)) {
+              localOrigin.lastIndex = 0
+              file.code = file.code.replace(localOrigin, '')
+              this.warn(`Se eliminó un origen local del JS de producción: ${file.fileName}. Configura un proxy /api y /uploads en el despliegue.`)
+            }
+            localOrigin.lastIndex = 0
+          }
+        },
+      },
+    ],
     // No modificar la URL del servidor local. Solo sanear el bundle de producción.
     ...(command === 'build' ? {
       define: {
