@@ -27,9 +27,9 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="API REST para HJStoreVP — Tienda E-Commerce Multi-Canal",
-    docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
-    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
-    openapi_url="/openapi.json" if settings.ENVIRONMENT != "production" else None,
+    docs_url="/docs" if settings.ENVIRONMENT not in ("staging", "production") else None,
+    redoc_url="/redoc" if settings.ENVIRONMENT not in ("staging", "production") else None,
+    openapi_url="/openapi.json" if settings.ENVIRONMENT not in ("staging", "production") else None,
     lifespan=lifespan,
 )
 
@@ -68,7 +68,7 @@ async def security_headers(request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     # La app sirve la API; el contenido HTML de Vite tiene su propia política.
     # HSTS solo se anuncia en el entorno productivo, donde debe usarse HTTPS.
-    if settings.ENVIRONMENT.lower() == "production":
+    if settings.ENVIRONMENT in ("staging", "production"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000"
     if (
         request.method not in ("GET", "HEAD")

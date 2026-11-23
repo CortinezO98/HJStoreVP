@@ -551,14 +551,18 @@ async def payment_status(
 
 # ── Demo: confirmar sin pago real (solo desarrollo) ───────────────────────────
 
-@router.post("/confirm-demo")
+def require_demo_payments():
+    if not (settings.ALLOW_DEMO_PAYMENTS and settings.ENVIRONMENT in ("development", "test")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+@router.post("/confirm-demo", include_in_schema=False, dependencies=[Depends(require_demo_payments)])
 async def confirm_demo(
     data: InitiatePaymentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if settings.ENVIRONMENT != "development":
-        raise HTTPException(status_code=404, detail="Not found")
+    require_demo_payments()
 
     order = db.query(Order).filter(
         Order.order_number == data.order_number,

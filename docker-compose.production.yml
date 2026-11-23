@@ -6,6 +6,7 @@ name: hjstorevp-prod-candidate
 x-backend-env: &backend-env
   ENVIRONMENT: production
   DEBUG: "false"
+  ALLOW_DEMO_PAYMENTS: "false"
   DATABASE_URL: "mysql+pymysql://hjstore_app:${PROD_DB_PASSWORD:?Configurar PROD_DB_PASSWORD URL-safe}@db:3306/hjstore_prod"
   REDIS_URL: redis://redis:6379/0
   SECRET_KEY: "${PROD_SECRET_KEY:?Configurar PROD_SECRET_KEY}"

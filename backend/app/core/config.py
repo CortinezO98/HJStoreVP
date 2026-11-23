@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import validator, model_validator
-from typing import List, Optional
+from typing import List, Literal, Optional
 import secrets
 
 
@@ -12,8 +12,9 @@ class Settings(BaseSettings):
     # ─── App ───────────────────────────────────────────────────
     APP_NAME: str = "HJStoreVP API"
     APP_VERSION: str = "1.0.0"
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    ENVIRONMENT: Literal["development", "test", "staging", "production"] = "production"
+    DEBUG: bool = False
+    ALLOW_DEMO_PAYMENTS: bool = False
     API_V1_STR: str = "/api/v1"
     API_BASE_URL: str = "http://localhost:8000"
 
@@ -113,7 +114,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def require_safe_production_settings(self):
-        if self.ENVIRONMENT.lower() == "production":
+        if self.ALLOW_DEMO_PAYMENTS and self.ENVIRONMENT not in ("development", "test"):
+            raise ValueError("ALLOW_DEMO_PAYMENTS solo se permite en desarrollo y pruebas")
+        if self.ENVIRONMENT in ("staging", "production"):
             if self.DEBUG:
                 raise ValueError("DEBUG debe ser false en producción")
             if not self.AUTH_RATE_LIMIT_ENABLED or not self.AUTH_REFRESH_REPLAY_PROTECTION_ENABLED:

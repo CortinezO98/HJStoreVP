@@ -65,6 +65,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-changeme_in_production_use_long_random_string}
       - ENVIRONMENT=development
+      - ALLOW_DEMO_PAYMENTS=true
     volumes:
       - ./backend:/app
       - uploads_data:/app/uploads

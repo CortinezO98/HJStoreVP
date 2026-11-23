@@ -45,7 +45,8 @@ def setup_db(monkeypatch):
     # Los pagos demo solo son accesibles en esta fixture SQLite de tests.
     # La aplicación desplegada conserva su propio ENVIRONMENT y rechaza
     # confirmaciones ficticias fuera de desarrollo.
-    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(settings, "ENVIRONMENT", "test")
+    monkeypatch.setattr(settings, "ALLOW_DEMO_PAYMENTS", True)
     # Cada prueba reinstala su dependencia, incluso si otro archivo creó
     # clientes FastAPI con overrides propios. No dejar sesiones reales activas.
     previous_overrides = dict(app.dependency_overrides)
