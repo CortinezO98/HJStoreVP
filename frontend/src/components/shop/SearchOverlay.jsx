@@ -115,10 +115,12 @@ export default function SearchOverlay({ open, onClose, categories = [], returnFo
             onClose(); navigate('/catalogo?categoria=' + encodeURIComponent(cat.slug))
           }}>{cat.name} <small>{cat.product_count} productos</small></button>)}
           {!matches.length && <p>Busca una categoría o producto.</p>}
-          <h3>BÚSQUEDAS RECIENTES</h3>
-          {recent.length ? recent.map(item => <button key={item} type="button" onClick={() => {
-            setText(item); goToProducts(item)
-          }}><Clock size={14}/>{item}</button>) : <p>Aún no tienes búsquedas recientes.</p>}
+          {recent.length > 0 && <>
+            <h3>BÚSQUEDAS RECIENTES</h3>
+            {recent.map(item => <button key={item} type="button" onClick={() => {
+              setText(item); goToProducts(item)
+            }}><Clock size={14}/>{item}</button>)}
+          </>}
         </aside>
         <div className="hj-search-products">
           <h3>PRODUCTOS</h3>
