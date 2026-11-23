@@ -9,16 +9,18 @@ const DESCRIPTIONS = {
 }
 const API_URL = import.meta.env.VITE_API_URL || ''
 function src(url) { return url?.startsWith('/') ? API_URL + url : url }
-export default function CategoryHero({ category, featured = false }) {
-  const name = category?.name || (featured ? 'Destacados' : 'Catálogo')
-  const description = category?.description?.trim() || DESCRIPTIONS[category?.slug] ||
+export default function CategoryHero({ category, categorySlug = '', featured = false }) {
+  const slug = category?.slug || categorySlug
+  const FALLBACK_NAMES = { gorras: 'Gorras', perfumes: 'Perfumes', relojes: 'Relojes', bolsos: 'Bolsos', canguros: 'Canguros' }
+  const name = category?.name || FALLBACK_NAMES[slug] || (slug ? slug.replace(/-/g, ' ') : featured ? 'Destacados' : 'Catálogo')
+  const description = category?.description?.trim() || DESCRIPTIONS[slug] ||
     'Descubre gorras, perfumes, relojes, bolsos y accesorios disponibles en HJStoreVP.'
   const image = category?.image_url || category?.image || ''
   return <section className="hj-catalog-hero" aria-label={`Colección ${name}`}>
     <div className="hj-catalog-hero-copy">
       <nav aria-label="Ruta de navegación" className="hj-catalog-breadcrumb">
         <Link to="/">Inicio</Link><span aria-hidden="true">/</span>
-        {category ? <><Link to="/catalogo">Catálogo</Link><span aria-hidden="true">/</span><strong>{name}</strong></> : <strong>Catálogo</strong>}
+        {slug ? <><Link to="/catalogo">Catálogo</Link><span aria-hidden="true">/</span><strong>{name}</strong></> : <strong>Catálogo</strong>}
       </nav>
       <h1>{name.toUpperCase()}<span>.</span></h1>
       <p>{description}</p>
