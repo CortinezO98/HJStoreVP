@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { SlidersHorizontal, X, LayoutGrid, Grid2X2, ChevronDown } from 'lucide-react'
 import { normalizeColor, productNameColor } from '../../utils/catalogColors'
-import { formatCOP } from '../../utils/currency'
 import { PRICE_OPTIONS, canonicalPriceRange } from '../../utils/catalogPriceRanges'
 import { formatCatalogCount } from '../../utils/catalogCount'
 
