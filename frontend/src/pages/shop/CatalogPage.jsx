@@ -29,7 +29,7 @@ function CrossSell({ category, collection }) {
   if (!choices.length) return null
   return <section className="hj-catalog-crosssell" aria-labelledby="hj-crosssell-title">
     <div className="hj-catalog-crosssell-heading"><div>
-      <span>COMBÍNALA CON</span><h2 id="hj-crosssell-title">COMPLETA TU ESTILO<span>.</span></h2>
+      <h2 id="hj-crosssell-title">COMPLETA TU ESTILO<span>.</span></h2>
     </div><Link to="/catalogo">VER CATÁLOGO <ArrowRight size={15}/></Link></div>
     <div className="hj-catalog-crosssell-grid">
       {choices.map(product => <ProductCard key={product.id} product={product} catalogMode compact/>)}
@@ -46,13 +46,13 @@ export default function CatalogPage() {
     setDensity(value)
     try { window.localStorage.setItem('hj-catalog-density', value) } catch { /* Navegación privada */ }
   }
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isPending: categoriesLoading } = useQuery({
     queryKey: ['storefront-categories'],
     queryFn: () => categoriesApi.list().then(r => r.data),
   })
   const activeCategories = categories.filter(c => c.active !== false)
   const category = activeCategories.find(c => c.slug === filters.categoria)
-  const { data: variants = { color: [], talla: [], presentacion: [] }, isSuccess: variantsReady, isError: variantsError } = useQuery({
+  const { data: variants = { color: [], talla: [], presentacion: [] }, isSuccess: variantsReady, isPending: variantsLoading, isError: variantsError } = useQuery({
     queryKey: ['catalog-variant-filters', filters.categoria, filters.q],
     queryFn: () => productsApi.filters({
       category: filters.categoria || undefined, search: filters.q || undefined,
@@ -109,18 +109,21 @@ export default function CatalogPage() {
   ])
   const setCategory = values => setMany(values)
   const suggestedColors = colorsFromProductNames(allProducts, filters.categoria)
-  const sidebarProps = { filters, setMany, variants, suggestedColors, allProducts, complete: completePriceCounts, categories: activeCategories }
+  const sidebarProps = { filters, setMany, variants, suggestedColors, allProducts, complete: completePriceCounts,
+    categories: activeCategories, facetsLoading: variantsLoading || !allProductsReady,
+    facetsError: variantsError, catalogError: isError }
   const noResults = !isLoading && !isError && visibleProducts.length === 0 && !hasNext
   return <div className="hj-catalog-page">
     <div className="hj-catalog-wrap">
-      <CategoryHero category={categoryWithImage} featured={filters.featured}/>
+      <CategoryHero category={categoryWithImage} categorySlug={filters.categoria} featured={filters.featured}/>
       <CategoryChips categories={categoryOptions} selected={filters.categoria}
-        setMany={setCategory} counts={countByCategory} complete={completePriceCounts}/>
+        setMany={setCategory} counts={countByCategory} complete={completePriceCounts} loading={categoriesLoading}/>
     </div>
     <div className="hj-catalog-sticky">
       <div className="hj-catalog-wrap">
         <CatalogToolbar filters={filters} setMany={setMany} clear={clear} active={active}
           productCount={resultCount} sort={filters.orden} filtersVisible={desktopFilters}
+          isError={isError} categoryName={category?.name || ''}
           onToggleFilters={() => window.matchMedia('(max-width: 1023px)').matches
             ? setMobileFilters(true) : setDesktopFilters(v => !v)}
           density={density} onDensity={changeDensity} isLoading={isLoading || isFetching} mobileOpen={mobileFilters}/>
@@ -137,7 +140,7 @@ export default function CatalogPage() {
             <h2>No hay {category?.name?.toLowerCase() || 'productos'} con estos filtros</h2>
             <p>Prueba otra categoría o elimina alguno de los filtros seleccionados.</p>
             <button type="button" onClick={clear}>LIMPIAR FILTROS</button>
-            <nav aria-label="Otras categorías">{activeCategories.filter(c => c.slug !== filters.categoria).slice(0, 4).map(c =>
+            <nav aria-label="Otras categorías" className="hj-catalog-empty-categories">{activeCategories.filter(c => c.slug !== filters.categoria).map(c =>
               <button type="button" key={c.slug} onClick={() => setMany({ categoria: c.slug,
                 color: '', talla: '', presentacion: '', min_price: '', max_price: '' })}>{c.name}</button>)}</nav>
           </div> :
@@ -167,6 +170,7 @@ export default function CatalogPage() {
     <FilterSheet open={mobileFilters} onClose={closeMobileFilters}
       filters={filters} setMany={setMany} clear={clear} {...{
         variants, suggestedColors, allProducts, categories: activeCategories,
-      }} complete={completePriceCounts} count={resultCount}/>
+      }} complete={completePriceCounts} count={resultCount}
+      facetsLoading={variantsLoading || !allProductsReady} facetsError={variantsError} catalogError={isError}/>
   </div>
 }
