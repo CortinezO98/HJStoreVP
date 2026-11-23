@@ -154,13 +154,14 @@ async def initiate_payment(
 
     amount = float(order.total_amount)
     amount_cents = int(order.total_amount * 100)
-    redirect_base = "http://localhost:5173/pago-confirmado"
     method = data.method
 
     # ── Wompi ─────────────────────────────────────────────────
     if method == "wompi":
         is_wompi_enabled = wompi_enabled()
-        redirect = settings.WOMPI_REDIRECT_URL or redirect_base
+        redirect = settings.WOMPI_REDIRECT_URL
+        if not redirect:
+            raise HTTPException(status_code=503, detail="Redirección Wompi no configurada")
 
         if not is_wompi_enabled:
             raise HTTPException(status_code=503, detail="Wompi no está configurado")
@@ -185,15 +186,17 @@ async def initiate_payment(
     elif method == "sistecreditos":
         if not sistecreditos_enabled():
             raise HTTPException(status_code=503, detail="Sistecréditos no está configurado")
-        redirect = settings.SISTECREDITOS_REDIRECT_URL or redirect_base
-        url = build_sistecreditos_url(
+        try:
+            url = await build_sistecreditos_url(
             order_number=order.order_number,
             amount=amount,
             customer_email=current_user.email,
             customer_name=current_user.full_name,
             customer_phone=data.customer_phone or current_user.phone or "",
             customer_id=data.customer_id or "",
-        )
+            )
+        except (httpx.HTTPError, ValueError, KeyError, AttributeError, TypeError):
+            raise HTTPException(status_code=502, detail="No fue posible iniciar Sistecréditos") from None
         if sistecreditos_enabled():
             order.payment_method = "sistecreditos"
             db.commit()
@@ -233,14 +236,17 @@ async def initiate_payment(
             }
             for oi in order.items
         ]
-        result = await create_addi_application(
+        try:
+            result = await create_addi_application(
             order_number=order.order_number,
             amount=amount,
             customer_email=current_user.email,
             customer_name=current_user.full_name,
             customer_phone=data.customer_phone or current_user.phone or "",
             items=items,
-        )
+            )
+        except (httpx.HTTPError, ValueError, KeyError, AttributeError, TypeError):
+            raise HTTPException(status_code=502, detail="No fue posible iniciar Addi") from None
         # Guardar el ID de la aplicación Addi en la orden para seguimiento
         if not result.get("applicationId") or not result.get("url"):
             raise HTTPException(status_code=502, detail="Addi no devolvió una solicitud válida")

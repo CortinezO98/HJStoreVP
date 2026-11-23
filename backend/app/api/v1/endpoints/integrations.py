@@ -5,6 +5,7 @@ No ejecuta solicitudes a proveedores ni expone credenciales. Exclusivo Admin.
 from fastapi import APIRouter, Depends
 from app.core.config import settings
 from app.core.deps import require_admin
+from app.services.credito import addi_enabled, sistecreditos_enabled
 
 router = APIRouter(prefix="/integrations", tags=["Centro de integraciones"])
 
@@ -34,11 +35,11 @@ def overview(_=Depends(require_admin)):
                "habilitado_por_configuracion" if wompi_keys and (settings.WOMPI_ENV != "production" or wompi_live) else "pendiente_configuracion",
                "Llaves presentes y ambiente permitido (no acredita conexión ni cobros)" if wompi_keys and (settings.WOMPI_ENV != "production" or wompi_live) else "Completar llaves y habilitación apropiada antes de cobrar", "/pedidos-web"),
         record("addi", "Addi", "Pagos", "integración sujeta a proveedor",
-               "credenciales_presentes" if settings.ADDI_CLIENT_ID and settings.ADDI_CLIENT_SECRET else "pendiente_configuracion",
-               "Solo presencia de credenciales; requiere validación con proveedor" if settings.ADDI_CLIENT_ID and settings.ADDI_CLIENT_SECRET else "Sin credenciales completas", "/pedidos-web"),
+               "habilitado_por_configuracion" if addi_enabled() else "pendiente_configuracion",
+               "Sandbox autorizado; no acredita conexión" if addi_enabled() else "Integración no verificada o deshabilitada", "/pedidos-web"),
         record("sistecreditos", "Sistecréditos", "Pagos", "integración sujeta a proveedor",
-               "credenciales_presentes" if all((settings.SISTECREDITOS_API_KEY, settings.SISTECREDITOS_STORE_ID, settings.SISTECREDITOS_SECRET)) else "pendiente_configuracion",
-               "Solo presencia de credenciales; requiere validación con proveedor" if all((settings.SISTECREDITOS_API_KEY, settings.SISTECREDITOS_STORE_ID, settings.SISTECREDITOS_SECRET)) else "Sin credenciales completas", "/pedidos-web"),
+               "habilitado_por_configuracion" if sistecreditos_enabled() else "pendiente_configuracion",
+               "Sandbox autorizado; no acredita conexión" if sistecreditos_enabled() else "Integración no verificada o deshabilitada", "/pedidos-web"),
         record("shipping", "Envíos y tarifas", "Logística", "tarifario manual",
                "modulo_disponible", "Cotizaciones manuales; sin conexión automática con transportadora", "/envios"),
         record("tracking", "Seguimiento", "Logística", "registro manual",

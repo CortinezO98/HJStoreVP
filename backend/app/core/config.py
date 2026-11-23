@@ -2,10 +2,25 @@ from pydantic_settings import BaseSettings
 from pydantic import validator, model_validator
 from typing import List, Literal, Optional
 import secrets
+from urllib.parse import urlsplit
 
 
 # La clave generada automáticamente es útil solo en desarrollo local.
 _DEFAULT_DEV_SECRET_KEY = secrets.token_urlsafe(32)
+
+
+def require_https_provider_url(value: str) -> str:
+    """Solo URL HTTPS explícita, sin credenciales ni caracteres ambiguos."""
+    if not isinstance(value, str) or not value.isascii() or any(ord(c) <= 32 or ord(c) == 127 for c in value) or "\\" in value:
+        raise ValueError("URL de proveedor inválida")
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or not parsed.hostname or
+            parsed.username is not None or parsed.password is not None or
+            "%" in parsed.netloc or parsed.fragment or
+            any(not (c.isalnum() or c in ".-") for c in parsed.hostname)):
+        raise ValueError("URL HTTPS de proveedor sin credenciales requerida")
+    _ = parsed.port
+    return value
 
 
 class Settings(BaseSettings):
@@ -76,6 +91,8 @@ class Settings(BaseSettings):
     #   SISTECREDITOS_API_KEY  → Llave de API
     #   SISTECREDITOS_STORE_ID → ID de tu tienda
     #   SISTECREDITOS_SECRET   → Secreto para verificar webhooks
+    SISTECREDITO_BASE_URL: Optional[str] = None
+    SISTECREDITO_INTEGRATION_VERIFIED: bool = False
     SISTECREDITOS_API_KEY: Optional[str] = None
     SISTECREDITOS_STORE_ID: Optional[str] = None
     SISTECREDITOS_SECRET: Optional[str] = None
@@ -87,6 +104,8 @@ class Settings(BaseSettings):
     # Variables que te pasarán:
     #   ADDI_CLIENT_ID     → Client ID de OAuth2
     #   ADDI_CLIENT_SECRET → Client Secret de OAuth2
+    ADDI_BASE_URL: Optional[str] = None
+    ADDI_INTEGRATION_VERIFIED: bool = False
     ADDI_CLIENT_ID: Optional[str] = None
     ADDI_CLIENT_SECRET: Optional[str] = None
     ADDI_ENV: str = "sandbox"   # "sandbox" o "production"
@@ -111,6 +130,15 @@ class Settings(BaseSettings):
     # ─── Primer admin ──────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@hjstorevp.com"
     FIRST_ADMIN_PASSWORD: str = "Admin123!"
+
+    @validator("SISTECREDITO_BASE_URL", "ADDI_BASE_URL")
+    def validate_provider_url(cls, value):
+        if value is None:
+            return value
+        value = require_https_provider_url(value)
+        if urlsplit(value).query:
+            raise ValueError("La URL base no admite parámetros")
+        return value.rstrip("/")
 
     @model_validator(mode="after")
     def require_safe_production_settings(self):
