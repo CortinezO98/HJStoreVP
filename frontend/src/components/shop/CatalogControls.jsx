@@ -2,19 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { SlidersHorizontal, X, LayoutGrid, Grid2X2, ChevronDown } from 'lucide-react'
 import { normalizeColor, productNameColor } from '../../utils/catalogColors'
 import { formatCOP } from '../../utils/currency'
+import { PRICE_OPTIONS, canonicalPriceRange } from '../../utils/catalogPriceRanges'
+import { formatCatalogCount } from '../../utils/catalogCount'
 
 export const SORT_OPTIONS = [
   { value: 'featured', label: 'Destacados' },
   { value: 'newest', label: 'Más recientes' },
   { value: 'price_asc', label: 'Precio menor a mayor' },
   { value: 'price_desc', label: 'Precio mayor a menor' },
-]
-export const PRICE_OPTIONS = [
-  { value: ':', title: 'Todos los precios', min: '', max: '' },
-  { value: ':40000', title: 'Hasta $40.000', min: '', max: '40000' },
-  { value: '40000:100000', title: '$40.000 a $100.000', min: '40000', max: '100000' },
-  { value: '100000:200000', title: '$100.000 a $200.000', min: '100000', max: '200000' },
-  { value: '200000:', title: 'Más de $200.000', min: '200000', max: '' },
 ]
 
 export function CategoryChips({ categories, selected, setMany, counts = {}, complete = false, loading = false }) {
@@ -31,10 +26,11 @@ export function CategoryChips({ categories, selected, setMany, counts = {}, comp
   </nav>
 }
 export function FilterFields({ filters, setMany, variants = {}, suggestedColors = [], allProducts = [], complete = false, categories = [], facetsLoading = false, facetsError = false, catalogError = false }) {
-  const priceSelected = `${filters.min_price}:${filters.max_price}`
+  const priceSelected = canonicalPriceRange(filters.min_price, filters.max_price).value
   const colors = [...new Map([...(variants.color || []), ...suggestedColors]
     .map(value => [normalizeColor(value), value])).values()]
-  const sizes = filters.categoria === 'gorras' ? ['S/M', 'L/XL', 'Ajustable'] : []
+  const sizes = filters.categoria === 'gorras' && (variants.talla || []).length > 0
+    ? ['S/M', 'L/XL', 'Ajustable'] : []
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
   const presentations = variants.presentacion || []
   const categoryName = categories.find(c => c.slug === filters.categoria)?.name || ''
@@ -93,7 +89,7 @@ export function FilterFields({ filters, setMany, variants = {}, suggestedColors 
         {!colors.length && <p className="hj-filter-help">No hay opciones de color configuradas para esta selección.</p>}
       </>}
     </section>}
-    {filters.categoria === 'gorras' && <section>
+    {sizes.length > 0 && <section>
       <div className="hj-catalog-filter-title">Talla</div>
       <div className="hj-catalog-size-options">
         {sizes.map(size => {
@@ -126,10 +122,8 @@ export function CatalogToolbar({
   filters, setMany, clear, active, productCount, sort, filtersVisible,
   onToggleFilters, density, onDensity, isLoading, isError = false, categoryName = '', mobileOpen = false,
 }) {
-  const price = filters.min_price && filters.max_price
-    ? `${formatCOP(filters.min_price)} a ${formatCOP(filters.max_price)}`
-    : filters.max_price ? `Hasta ${formatCOP(filters.max_price)}`
-      : filters.min_price ? `Desde ${formatCOP(filters.min_price)}` : ''
+  const priceRange = canonicalPriceRange(filters.min_price, filters.max_price)
+  const price = priceRange.value === ':' ? '' : priceRange.title
   const tokens = [
     ['categoria', filters.categoria && (categoryName || filters.categoria[0].toUpperCase() + filters.categoria.slice(1))],
     ['q', filters.q && `Búsqueda: ${filters.q}`],
@@ -157,7 +151,7 @@ export function CatalogToolbar({
       </button>)}
       {tokens.length > 0 && <button type="button" className="hj-catalog-clear" onClick={clear}>Limpiar todo</button>}
     </div>
-    {!isError && <span className="hj-catalog-result-count" aria-live="polite">{isLoading ? 'Cargando…' : `${productCount} productos`}</span>}
+    {!isError && <span className="hj-catalog-result-count" aria-live="polite">{isLoading ? 'Cargando…' : formatCatalogCount(productCount, filters.categoria)}</span>}
     <label className="hj-catalog-sort">
       <span>Ordenar</span>
       <select value={sort} onChange={e => setMany({ orden: e.target.value })}>
@@ -214,7 +208,7 @@ export function FilterSheet({ open, onClose, filters, setMany, clear, variants, 
       </div>
       <footer>
         <button type="button" onClick={clear}>Limpiar</button>
-        <button type="button" onClick={onClose}>Ver {count} productos</button>
+        <button type="button" onClick={onClose}>Ver {formatCatalogCount(count, filters.categoria)}</button>
       </footer>
     </section>
   </div>
