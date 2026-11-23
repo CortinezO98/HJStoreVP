@@ -13,8 +13,11 @@ export default function CategoryHero({ category, categorySlug = '', featured = f
   const slug = category?.slug || categorySlug
   const FALLBACK_NAMES = { gorras: 'Gorras', perfumes: 'Perfumes', relojes: 'Relojes', bolsos: 'Bolsos', canguros: 'Canguros' }
   const name = category?.name || FALLBACK_NAMES[slug] || (slug ? slug.replace(/-/g, ' ') : featured ? 'Destacados' : 'Catálogo')
-  const description = category?.description?.trim() || DESCRIPTIONS[slug] ||
-    'Descubre gorras, perfumes, relojes, bolsos y accesorios disponibles en HJStoreVP.'
+  // Descripciones que solo repiten el nombre no son contenido editorial útil.
+  const storedDescription = typeof category?.description === 'string' ? category.description.trim() : ''
+  const description = storedDescription && storedDescription.toLocaleLowerCase('es') !== name.toLocaleLowerCase('es')
+    ? storedDescription : DESCRIPTIONS[slug] ||
+      'Descubre gorras, perfumes, relojes, bolsos y accesorios disponibles en HJStoreVP.'
   const image = category?.image_url || category?.image || ''
   return <section className="hj-catalog-hero" aria-label={`Colección ${name}`}>
     <div className="hj-catalog-hero-copy">
