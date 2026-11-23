@@ -1,0 +1,6 @@
+# A-04 — Encabezados de seguridad HTTP
+
+Las dos SPA comparten el patrón de inclusión explícita en servidor y cada location, incluido assets y errores mediante always. Cache-Control de assets no anula las cabeceras. El origen de API se valida y renderiza durante el build; no se permite un origen arbitrario con rutas, credenciales o directivas. No se permite unsafe-inline en scripts ni unsafe-eval. Los estilos inline de React siguen permitidos. La tienda permite Google Fonts y el destino de formularios de Wompi; el checkout actual usa navegación externa, no scripts ni iframe de Wompi.
+HSTS se entrega también por el servidor HTTP interno, pero el navegador solo lo aplica al recibirlo mediante HTTPS. El proxy público debe terminar TLS, redirigir HTTP y conservar estos encabezados sin duplicarlos. includeSubDomains requiere validar todos los subdominios antes de desplegar.
+Las imágenes externas no autorizadas serán bloqueadas; las imágenes de la API, data y blob se mantienen. Validar fuentes, imágenes, checkout sandbox, carga/recorte, rutas SPA y errores en navegador con CSP aplicada. No activar pagos reales ni ejecutar compose de producción.
+Pruebas: node scripts/test-security-headers.mjs en cada frontend, npm run build, pytest completo y nginx -t en imágenes aisladas. El build de producción requiere VITE_API_URL HTTPS válido.
