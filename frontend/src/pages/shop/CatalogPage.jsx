@@ -10,6 +10,7 @@ import { CategoryChips, CatalogToolbar, FilterFields, FilterSheet } from '../../
 import { ErrorState } from '../../components/shop/StoreUI'
 import { mergeCatalogPages } from '../../utils/catalogPagination'
 import { colorsFromProductNames, hasProductNameColor, normalizeColor } from '../../utils/catalogColors'
+import { formatCatalogCount } from '../../utils/catalogCount'
 
 function readDensity() {
   try { return window.localStorage.getItem('hj-catalog-density') === 'compact' ? 'compact' : 'large' }
@@ -97,7 +98,9 @@ export default function CatalogPage() {
     staleTime: 5 * 60 * 1000,
   })
   const categoryWithImage = category
-    ? { ...category, image_url: categoryDetails?.image_url || category.image_url || '' }
+    ? { ...category,
+        description: categoryDetails?.description || category.description,
+        image_url: categoryDetails?.image_url || category.image_url || '' }
     : null
   const hasNext = listing?.hasNext || false
   const resultCount = visibleProducts.length
@@ -150,7 +153,7 @@ export default function CatalogPage() {
           </div>}
         {!isError && !isLoading && (visibleProducts.length > 0 || hasNext) &&
           <div className="hj-catalog-pagination">
-            <p>{visibleProducts.length > 0 ? `Viste ${visibleProducts.length} productos${filters.categoria ? ` de ${category?.name || filters.categoria}` : ''}.` : 'Todavía hay más productos por revisar para este color.'}</p>
+            <p>{visibleProducts.length > 0 ? `Viste ${formatCatalogCount(visibleProducts.length, filters.categoria)}.` : 'Todavía hay más productos por revisar para este color.'}</p>
             {hasNext && <button type="button" onClick={() => setMany({ page: filters.page + 1 })}>
               CARGAR MÁS PRODUCTOS <ArrowRight size={16}/>
             </button>}
