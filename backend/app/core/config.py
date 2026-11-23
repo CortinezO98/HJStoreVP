@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import validator, model_validator
+from pydantic import validator, field_validator, model_validator
 from typing import List, Literal, Optional
 import secrets
 from ipaddress import ip_network
@@ -61,16 +61,18 @@ class Settings(BaseSettings):
         "http://localhost:5174",
     ]
 
-    @validator("TRUSTED_PROXY_CIDRS")
-    def validate_trusted_proxies(cls, values):
-        networks = [ip_network(value, strict=True) for value in values]
+    @field_validator("TRUSTED_PROXY_CIDRS")
+    @classmethod
+    def validate_trusted_proxies(cls, value: List[str]) -> List[str]:
+        networks = [ip_network(cidr, strict=True) for cidr in value]
         if any(net.prefixlen != net.max_prefixlen for net in networks):
             raise ValueError("Autorizar únicamente direcciones individuales de proxy")
         return [str(net) for net in networks]
 
-    @validator("AUTH_LOGIN_PAIR_MAX_FAILURES", "AUTH_LOGIN_ACCOUNT_MAX_FAILURES",
-               "AUTH_LOGIN_IP_MAX_FAILURES", "AUTH_LOGIN_WINDOW_SECONDS")
-    def positive_auth_limit(cls, value):
+    @field_validator("AUTH_LOGIN_PAIR_MAX_FAILURES", "AUTH_LOGIN_ACCOUNT_MAX_FAILURES",
+                     "AUTH_LOGIN_IP_MAX_FAILURES", "AUTH_LOGIN_WINDOW_SECONDS")
+    @classmethod
+    def positive_auth_limit(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("Límite de autenticación debe ser positivo")
         return value

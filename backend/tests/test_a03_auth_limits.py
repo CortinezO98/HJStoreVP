@@ -60,3 +60,31 @@ def test_redis_fail_closed(fake_redis, monkeypatch, environment):
     with pytest.raises(HTTPException) as exc:
         p.check_login_limit(req("198.51.100.1"), "a@example.org")
     assert exc.value.status_code == 503
+
+
+def test_configuracion_proxy_vacia():
+    from app.core.config import Settings
+    assert Settings(ENVIRONMENT="test", TRUSTED_PROXY_CIDRS=[]).TRUSTED_PROXY_CIDRS == []
+
+
+def test_configuracion_proxy_individual():
+    from app.core.config import Settings
+    config = Settings(ENVIRONMENT="test", TRUSTED_PROXY_CIDRS=["172.30.83.10/32", "2001:db8::1/128"])
+    assert config.TRUSTED_PROXY_CIDRS == ["172.30.83.10/32", "2001:db8::1/128"]
+
+
+@pytest.mark.parametrize("cidr", ["0.0.0.0/0", "::/0", "172.30.83.0/24", "invalido"])
+def test_configuracion_rechaza_proxy_amplio_o_invalido(cidr):
+    from app.core.config import Settings
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        Settings(ENVIRONMENT="test", TRUSTED_PROXY_CIDRS=[cidr])
+
+
+@pytest.mark.parametrize("field", ["AUTH_LOGIN_PAIR_MAX_FAILURES", "AUTH_LOGIN_ACCOUNT_MAX_FAILURES",
+                                    "AUTH_LOGIN_IP_MAX_FAILURES", "AUTH_LOGIN_WINDOW_SECONDS"])
+def test_configuracion_rechaza_limites_no_positivos(field):
+    from app.core.config import Settings
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        Settings(ENVIRONMENT="test", **{field: 0})
