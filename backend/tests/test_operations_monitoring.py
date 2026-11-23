@@ -12,6 +12,12 @@ from app.models.models import UserRole
 from tests.test_main import TestingSession, client, auth_headers, setup_db  # noqa: F401
 
 
+@pytest.fixture(autouse=True)
+def local_monitor_environment(setup_db, monkeypatch):
+    """Simular desarrollo solo en las pruebas del monitor local."""
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+
+
 def report():
     at = datetime.now(timezone.utc).isoformat()
     checks = {k: {"status": "ok", "metrics": {"latency_ms": 30, "token": "SENTINEL"}}
@@ -55,11 +61,12 @@ def test_anonymous_and_non_superadmin_denied(client, auth_headers, tmp_path, mon
     assert denied.status_code in (401, 403)
 
 
-def test_production_blocks_report_even_for_superadmin(client, auth_headers, tmp_path, monkeypatch):
+@pytest.mark.parametrize("environment", ["production", "staging", "test"])
+def test_production_blocks_report_even_for_superadmin(client, auth_headers, tmp_path, monkeypatch, environment):
     filename = tmp_path / "summary.json"
     filename.write_text(json.dumps(report()), encoding="utf-8")
     monkeypatch.setattr(monitor_api, "_REPORT", filename)
-    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "ENVIRONMENT", environment)
     response = client.get("/api/v1/operations-monitoring", headers=auth_headers)
     assert response.status_code == 503
 
