@@ -104,7 +104,7 @@ export default function SearchOverlay({ open, onClose, categories = [], returnFo
               if (e.key === 'ArrowUp' && choices.length) { e.preventDefault(); setActive(i => Math.max(-1, i - 1)) }
               if (e.key === 'Enter' && active >= 0 && choices[active]) { e.preventDefault(); goToProduct(choices[active]) }
             }}/>
-          {text && <button type="button" aria-label="Borrar búsqueda" onClick={() => { setText(''); setActive(-1); inputRef.current?.focus() }}><X size={20}/></button>}
+          {text && <button type="button" className="hj-search-clear" aria-label="Borrar búsqueda" onClick={() => { setText(''); setActive(-1); inputRef.current?.focus() }}><X size={20}/></button>}
         </form>
         <button className="hj-search-close" type="button" onClick={onClose}>CERRAR <kbd>Esc</kbd></button>
       </div>
@@ -115,10 +115,10 @@ export default function SearchOverlay({ open, onClose, categories = [], returnFo
             onClose(); navigate('/catalogo?categoria=' + encodeURIComponent(cat.slug))
           }}>{cat.name} <small>{cat.product_count} productos</small></button>)}
           {!matches.length && <p>Busca una categoría o producto.</p>}
-          {recent.length > 0 && <><h3>BÚSQUEDAS RECIENTES</h3>
-            {recent.map(item => <button key={item} type="button" onClick={() => {
-              setText(item); goToProducts(item)
-            }}><Clock size={14}/>{item}</button>)}</>}
+          <h3>BÚSQUEDAS RECIENTES</h3>
+          {recent.length ? recent.map(item => <button key={item} type="button" onClick={() => {
+            setText(item); goToProducts(item)
+          }}><Clock size={14}/>{item}</button>) : <p>Aún no tienes búsquedas recientes.</p>}
         </aside>
         <div className="hj-search-products">
           <h3>PRODUCTOS</h3>
@@ -144,7 +144,7 @@ export default function SearchOverlay({ open, onClose, categories = [], returnFo
               }) : <p>No encontramos coincidencias.</p>}
           </div>
           {debounced.length >= 2 && <button className="hj-search-view-all" type="button" onClick={() => goToProducts()}>
-            VER RESULTADOS DE «{debounced}» <ArrowRight size={16}/>
+            VER LOS {choices.length} RESULTADOS DE «{debounced}» <ArrowRight size={16}/>
           </button>}
         </div>
       </div>
