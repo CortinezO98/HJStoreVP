@@ -113,7 +113,8 @@ class Settings(BaseSettings):
     ADDI_REDIRECT_URL: Optional[str] = "http://localhost:5173/pago-confirmado"
 
     # ─── Reservas de pedidos web ──────────────────────────────
-    # La expiración NO cancela automáticamente pagos: requiere conciliación.
+    # Solo se liberan automáticamente reservas sin indicio de pago iniciado.
+    ORDER_EXPIRATION_WORKER_ENABLED: bool = False
     ORDER_RESERVATION_MINUTES: int = 30
 
     # ─── Email ─────────────────────────────────────────────────

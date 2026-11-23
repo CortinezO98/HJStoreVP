@@ -32,7 +32,7 @@ router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 
 class OrderItemIn(BaseModel):
     product_id: int = Field(gt=0)
-    qty: int = Field(gt=0)
+    qty: int = Field(gt=0, le=20)
 
 
 class ShippingAddress(BaseModel):
@@ -46,7 +46,7 @@ class ShippingAddress(BaseModel):
 
 
 class WebOrderCreate(BaseModel):
-    items: List[OrderItemIn] = Field(min_length=1)
+    items: List[OrderItemIn] = Field(min_length=1, max_length=50)
     shipping_address: ShippingAddress
     shipping_rate_id: int = Field(gt=0)
     shipping_price_confirmed: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
@@ -170,7 +170,7 @@ def _replayed_order(db: Session, *, customer_id: int, key: str, digest: str):
         Order.customer_id == customer_id,
         Order.channel == OrderChannel.WEB,
         Order.idempotency_key == key,
-    ).options(joinedload(Order.items)).first())
+    ).options(joinedload(Order.items)).populate_existing().with_for_update().first())
     if order is None:
         return None
     if order.idempotency_hash != digest:
@@ -196,11 +196,22 @@ def create_web_order(
         sort_keys=True, separators=(",", ":"),
     )
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    # Serializar checkout por cliente. Las lecturas con bloqueo son actuales
+    # incluso bajo REPEATABLE READ de MariaDB (la autenticación ya leyó la BD).
+    db.query(User.id).filter(User.id == current_user.id).with_for_update().one()
     replayed = _replayed_order(
         db, customer_id=current_user.id, key=idempotency_key, digest=digest,
     )
     if replayed is not None:
         return replayed
+
+    pending = db.query(Order.id).filter(
+        Order.customer_id == current_user.id,
+        Order.channel == OrderChannel.WEB,
+        Order.status == OrderStatus.PENDING,
+    ).order_by(Order.id).limit(3).with_for_update().all()
+    if len(pending) >= 3:
+        raise HTTPException(status_code=429, detail="Tienes tres pedidos pendientes; completa o cancela uno antes de continuar")
 
     # Tomar la clave de manera atómica antes de validar cupones y precios.
     # Concurrencia: el INSERT único espera al primer intento y, si este

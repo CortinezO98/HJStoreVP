@@ -25,7 +25,7 @@ def lock_web_order(db: Session, order_id: int) -> Order:
     """Bloquea una orden; serializa cambios de estado en MariaDB/InnoDB."""
     order = db.query(Order).filter(
         Order.id == order_id, Order.channel == OrderChannel.WEB
-    ).with_for_update().first()
+    ).populate_existing().with_for_update().first()
     if order is None:
         raise HTTPException(status_code=404, detail="Pedido web no encontrado")
     return order

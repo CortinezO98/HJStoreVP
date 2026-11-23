@@ -81,6 +81,20 @@ services:
     # Sin creación automática de tablas ni migración automática. Requiere migración
     # revisada y restauración comprobada antes de habilitar servicio.
 
+  reservation-worker:
+    profiles: ["reservations"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.production
+    restart: on-failure
+    environment:
+      <<: *backend-env
+      ORDER_EXPIRATION_WORKER_ENABLED: "${ORDER_EXPIRATION_WORKER_ENABLED:-false}"
+    networks: [internal]
+    depends_on:
+      backend: {condition: service_healthy}
+    command: ["python", "-m", "app.services.reservation_worker", "--loop"]
+
   frontend:
     build:
       context: ./frontend
