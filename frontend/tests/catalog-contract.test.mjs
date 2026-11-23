@@ -54,3 +54,33 @@ test('banner omite imagen si falta y reutiliza detalle público cuando existe', 
   assert.ok(hero.includes('{image && <div'))
   assert.ok(page.includes('categoryDetails?.image_url'))
 })
+
+test('la categoría proviene de URL aunque la API siga cargando', () => {
+  const hero = source('src/components/shop/CategoryHero.jsx')
+  const page = source('src/pages/shop/CatalogPage.jsx')
+  assert.ok(hero.includes('categorySlug'))
+  assert.ok(hero.includes('FALLBACK_NAMES'))
+  assert.ok(page.includes('loading={categoriesLoading}'))
+  assert.ok(page.includes('categorySlug={filters.categoria}'))
+})
+
+test('la UI distingue errores del listado, espera facetas y evita conteos falsos', () => {
+  const page = source('src/pages/shop/CatalogPage.jsx')
+  const controls = source('src/components/shop/CatalogControls.jsx')
+  assert.ok(page.includes('isError={isError}'))
+  assert.ok(page.includes('catalogError: isError'))
+  assert.ok(controls.includes('!isError && <span className="hj-catalog-result-count"'))
+  assert.ok(controls.includes("facetsLoading ? <div className=\"hj-catalog-color-loading\""))
+  assert.ok(controls.includes('disabled={empty}'))
+})
+
+test('historial y captura de filtros están aislados de código público', () => {
+  const overlay = source('src/components/shop/SearchOverlay.jsx')
+  const playwright = source('tests/e2e/capture-catalog.mjs')
+  const packageJSON = JSON.parse(source('package.json'))
+  assert.ok(overlay.includes('BÚSQUEDAS RECIENTES'))
+  assert.ok(overlay.includes('VER LOS {choices.length} RESULTADOS'))
+  assert.ok(playwright.includes('color=negro'))
+  assert.ok(playwright.includes('activeURL'))
+  assert.equal(packageJSON.scripts['capture:catalog'], 'node tests/e2e/capture-catalog.mjs')
+})
