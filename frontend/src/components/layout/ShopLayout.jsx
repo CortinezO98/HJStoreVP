@@ -32,7 +32,17 @@ export default function ShopLayout() {
     queryKey: ['storefront-categories'],
     queryFn: () => categoriesApi.list().then((r) => r.data),
   })
-  const navigationCategories = categories.filter((c) => c.active !== false)
+  // La navegación principal no debe desaparecer mientras categorías se consultan.
+  // Los enlaces conocidos no dependen de la consulta del catálogo.
+  const primaryCategories = [
+    { slug: 'gorras', name: 'Gorras' },
+    { slug: 'perfumes', name: 'Perfumes' },
+    { slug: 'relojes', name: 'Relojes' },
+    { slug: 'bolsos', name: 'Bolsos' },
+  ]
+  const navigationCategories = categories.length
+    ? categories.filter((c) => c.active !== false)
+    : primaryCategories
   const { isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
