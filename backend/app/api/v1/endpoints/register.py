@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel, EmailStr, Field, StrictBool, field_validator
 from app.db.session import get_db
-from app.core.security import hash_password, create_access_token, create_refresh_token, credential_version
+from app.core.security import hash_password, create_access_token, create_refresh_token, credential_version, new_session_claims
 from app.models.models import User, UserRole, DataConsent, StorefrontSettings
 from app.services.auth_protection import hit_rate_limit, consent_ip_hash
 
@@ -88,7 +88,7 @@ def register(data: RegisterRequest, request: Request, response: Response, db: Se
             return {"message": MESSAGE}
         raise
     db.refresh(user)
-    extra = {"role": user.role.value, "ver": credential_version(user.hashed_password)}
+    extra = {**new_session_claims(), "role": user.role.value, "ver": credential_version(user.hashed_password)}
     return {"message": MESSAGE, "access_token": create_access_token(user.id, extra=extra),
             "refresh_token": create_refresh_token(user.id, extra=extra), "token_type": "bearer",
             "user_role": user.role, "user_id": user.id, "full_name": user.full_name}

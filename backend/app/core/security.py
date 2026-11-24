@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import time
 import hashlib
 import hmac
 import uuid
@@ -42,17 +43,26 @@ def credential_version_matches(payload: dict, hashed_password: str) -> bool:
     )
 
 
+def new_session_claims():
+    return {"sid": uuid.uuid4().hex, "session_exp": int(time.time()) + max(
+        settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)}
+
+
 def create_access_token(subject: Union[str, int], extra: Optional[dict] = None) -> str:
     expire = datetime.utcnow() + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    payload = {"sub": str(subject), "exp": expire, "type": "access", **(extra or {})}
+    payload = {"sub": str(subject), "exp": expire, "type": "access", "jti": uuid.uuid4().hex, **(extra or {})}
+    if "session_exp" in payload:
+        payload["exp"] = min(int(expire.replace(tzinfo=timezone.utc).timestamp()), payload["session_exp"])
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(subject: Union[str, int], extra: Optional[dict] = None) -> str:
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {"sub": str(subject), "exp": expire, "type": "refresh", "jti": uuid.uuid4().hex, **(extra or {})}
+    if "session_exp" in payload:
+        payload["exp"] = min(int(expire.replace(tzinfo=timezone.utc).timestamp()), payload["session_exp"])
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 

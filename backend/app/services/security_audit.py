@@ -22,7 +22,7 @@ _ALLOWED_ACTIONS = frozenset({
     "auth.login.success", "auth.login.failure", "auth.mfa.success",
     "auth.mfa.failure", "auth.password.changed", "auth.email.changed",
     "auth.profile.changed", "auth.mfa.enabled", "auth.mfa.disabled",
-    "auth.mfa.recovery_rotated", "auth.sessions.revoked",
+    "auth.mfa.recovery_rotated", "auth.sessions.revoked", "auth.logout",
     "users.created", "users.updated", "users.status_changed",
     "users.password_reset", "users.deleted",
     "catalog.prices.changed", "orders.status.changed",

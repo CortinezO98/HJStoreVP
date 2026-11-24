@@ -6,8 +6,8 @@ import jwt
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.services.auth_protection import (check_login_limit, note_login_failure, clear_login_failures, consume_refresh_token, consume_mfa_challenge)
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, credential_version, credential_version_matches
+from app.services.auth_protection import (check_login_limit, note_login_failure, clear_login_failures, consume_refresh_token, consume_mfa_challenge, check_session, revoke_session)
+from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, credential_version, credential_version_matches, new_session_claims
 from app.core.deps import get_current_user, get_mfa_enrollment_user, admin_mfa_required, mfa_enrollment_error
 from app.models.models import User, UserRole, UserMFASettings
 from app.core.config import settings
@@ -64,8 +64,8 @@ def _mfa_record(db: Session, user_id: int, lock: bool = False):
     return (q.with_for_update() if lock else q).first()
 
 
-def _token_bundle(user: User, mfa: UserMFASettings | None = None):
-    extra = {"ver": credential_version(user.hashed_password), "role": user.role.value}
+def _token_bundle(user: User, mfa: UserMFASettings | None = None, session=None):
+    extra = {**(session or new_session_claims()), "ver": credential_version(user.hashed_password), "role": user.role.value}
     if mfa and mfa.version:
         extra["sec_v"] = mfa.version
     if mfa and mfa.enabled:
@@ -157,7 +157,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if mfa and mfa.enabled:
         return _mfa_challenge(user, mfa)
     if admin_mfa_required(user):
-        extra = {"ver": credential_version(user.hashed_password), "role": user.role.value,
+        extra = {**new_session_claims(), "ver": credential_version(user.hashed_password), "role": user.role.value,
                  "type": "mfa_enrollment", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)}
         if mfa and mfa.version:
             extra["sec_v"] = mfa.version
@@ -201,8 +201,31 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Segundo factor obligatorio; inicia sesión nuevamente")
     if admin_mfa_required(user) and not (mfa and mfa.enabled):
         raise mfa_enrollment_error()
+    check_session(payload)
     consume_refresh_token(data.refresh_token, expires_at)
-    return _token_bundle(user, mfa)
+    check_session(payload)
+    session = {"sid": payload["sid"], "session_exp": payload["session_exp"]} if "sid" in payload else None
+    return _token_bundle(user, mfa, session)
+
+
+class LogoutRequest(BaseModel):
+    token: str = Field(min_length=1, max_length=8192)
+
+
+@router.post("/logout", status_code=204)
+def logout(data: LogoutRequest, db: Session = Depends(get_db)):
+    # El JWT firmado es la credencial; no depende de un access token vigente.
+    payload = decode_token(data.token)
+    if not payload or payload.get("type") not in ("access", "refresh", "mfa_enrollment"):
+        raise HTTPException(status_code=401, detail="Credencial de sesión inválida")
+    try:
+        user_id = int(payload["sub"])
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Credencial inválida")
+    changed = revoke_session(payload)
+    if changed and db.get(User, user_id):
+        append_audit(db, action="auth.logout", actor_id=user_id, target_id=user_id)
+        db.commit()
 
 
 @router.get("/me", response_model=UserOut)

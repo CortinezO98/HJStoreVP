@@ -62,6 +62,7 @@ apiClient.interceptors.response.use(
             refreshPromise = axios.post(`${API_URL}/api/v1/auth/refresh`, {
               refresh_token: refresh,
             }).then(({ data }) => {
+              if (sessionStorage.getItem('refresh_token') !== refresh) throw new Error('Sesión cambiada')
               sessionStorage.setItem('access_token', data.access_token)
               sessionStorage.setItem('refresh_token', data.refresh_token)
               return data.access_token
@@ -70,9 +71,11 @@ apiClient.interceptors.response.use(
             })
           }
           const accessToken = await refreshPromise
+          if (sessionStorage.getItem('access_token') !== accessToken) return Promise.reject(error)
           error.config.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(error.config)
         } catch {
+          if (sessionStorage.getItem('refresh_token') !== refresh) return Promise.reject(error)
           sessionStorage.removeItem('mfa_setup_required')
           sessionStorage.removeItem('access_token')
           sessionStorage.removeItem('refresh_token')
@@ -111,6 +114,7 @@ export const securityAuditApi = {
 }
 
 export const authApi = {
+  logout: (token) => axios.post(`${API_URL}/api/v1/auth/logout`, { token }, { timeout: 10000 }),
   login: (data) => apiClient.post('/auth/login', data),
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refresh_token: refreshToken }),
   me: () => apiClient.get('/auth/me'),

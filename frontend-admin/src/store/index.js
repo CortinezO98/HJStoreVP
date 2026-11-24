@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '../services/api'
+import toast from 'react-hot-toast'
 
 export const useAuthStore = create(
   persist(
@@ -34,6 +35,9 @@ export const useAuthStore = create(
       },
 
       logout: () => {
+        const token = sessionStorage.getItem('refresh_token') || sessionStorage.getItem('access_token')
+        // La revocación usa la credencial capturada, sin interceptores de refresh.
+        if (token) authApi.logout(token).catch(() => toast.error('Sesión local cerrada; no se pudo confirmar la revocación en el servidor.'))
         sessionStorage.removeItem('mfa_setup_required')
         sessionStorage.removeItem('access_token')
         sessionStorage.removeItem('refresh_token')

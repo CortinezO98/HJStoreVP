@@ -39,6 +39,7 @@ apiClient.interceptors.response.use(
             refreshPromise = axios.post(`${API_URL}/api/v1/auth/refresh`, {
               refresh_token: refresh,
             }).then(({ data }) => {
+              if (sessionStorage.getItem('refresh_token') !== refresh) throw new Error('Sesión cambiada')
               sessionStorage.setItem('access_token', data.access_token)
               sessionStorage.setItem('refresh_token', data.refresh_token)
               return data.access_token
@@ -47,9 +48,11 @@ apiClient.interceptors.response.use(
             })
           }
           const accessToken = await refreshPromise
+          if (sessionStorage.getItem('access_token') !== accessToken) return Promise.reject(error)
           original.headers.Authorization = `Bearer ${accessToken}`
           return apiClient(original)
         } catch {
+          if (sessionStorage.getItem('refresh_token') !== refresh) return Promise.reject(error)
           sessionStorage.removeItem('access_token')
           sessionStorage.removeItem('refresh_token')
           localStorage.removeItem('access_token')
@@ -96,6 +99,7 @@ export const categoriesApi = {
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 export const authApi = {
+  logout: (token) => axios.post(`${API_URL}/api/v1/auth/logout`, { token }, { timeout: 10000 }),
   login: (data) => apiClient.post('/auth/login', data),
   refresh: (data) => apiClient.post('/auth/refresh', data),
   me: () => apiClient.get('/auth/me'),

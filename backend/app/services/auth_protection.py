@@ -209,3 +209,39 @@ def hit_rate_limit(request, bucket, limit, window, identity=None):
 
 def consent_ip_hash(request):
     return _key("consent-ip", _client_ip(request)).rsplit(":", 1)[-1]
+
+
+def session_key(payload):
+    sid, deadline = payload.get("sid"), payload.get("session_exp")
+    if (not isinstance(sid, str) or len(sid) != 32 or
+            any(c not in "0123456789abcdef" for c in sid) or
+            type(deadline) is not int or deadline <= time.time() or
+            payload["exp"] > deadline):
+        raise HTTPException(status_code=401, detail="Sesión anterior o vencida; inicia sesión nuevamente")
+    return _key("revoked-session", payload["sub"] + ":" + sid)
+
+
+def _session_unavailable(exc):
+    raise HTTPException(status_code=503, detail="No se puede comprobar la seguridad de la sesión") from exc
+
+
+def check_session(payload):
+    # La misma política obligatoria de protección de refresh en staging/producción.
+    if not settings.AUTH_REFRESH_REPLAY_PROTECTION_ENABLED:
+        return
+    key = session_key(payload)
+    try:
+        revoked = _client().get(key)
+    except RedisError as exc:
+        _session_unavailable(exc)
+    if revoked:
+        raise HTTPException(status_code=401, detail="Sesión cerrada; inicia sesión nuevamente")
+
+
+def revoke_session(payload):
+    key = session_key(payload)
+    seconds = max(1, int(payload["session_exp"] - time.time()) + 1)
+    try:
+        return bool(_client().set(key, "1", ex=seconds, nx=True))
+    except RedisError as exc:
+        _session_unavailable(exc)

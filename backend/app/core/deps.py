@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.config import settings
 from app.core.security import decode_token, credential_version_matches
+from app.services.auth_protection import check_session
 from app.models.models import User, UserRole, UserMFASettings
 
 bearer_scheme = HTTPBearer()
@@ -46,6 +47,7 @@ def _authenticated_user(credentials, db, *, allow_enrollment=False) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    check_session(payload)
     try:
         user_id = int(payload.get("sub", ""))
     except (TypeError, ValueError):
@@ -112,6 +114,10 @@ def get_optional_user(
         return None
     payload = decode_token(credentials.credentials)
     if not payload or payload.get("type") != "access":
+        return None
+    try:
+        check_session(payload)
+    except HTTPException:
         return None
     try:
         user_id = int(payload.get("sub", ""))
