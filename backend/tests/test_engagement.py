@@ -13,10 +13,14 @@ from tests.test_main import (
 )
 
 
+from tests.registration_fixture import registration_consent
+
+
 def create_customer(client, email="cliente.engagement@example.com"):
     r = client.post("/api/v1/auth/register", json={
         "full_name": "Cliente Ejemplo",
         "email": email, "password": "SecureTest123!",
+        **registration_consent(client),
     })
     assert r.status_code == 201, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}

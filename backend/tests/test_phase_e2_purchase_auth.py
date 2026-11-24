@@ -6,7 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.models.models import Inventory, Order, OrderStockReservation, User, UserRole
+from app.models.models import Inventory, Order, OrderStockReservation, User, UserRole, DataConsent
+from tests.registration_fixture import registration_consent
 from app.core.security import verify_password
 from tests.test_main import (
     TestingSession, TestWebOrderStockReservations as StockFixture,
@@ -49,6 +50,7 @@ def test_customer_register_creates_customer_and_usable_session(client):
     payload = {
         "full_name": "Cliente E2", "email": email,
         "password": "Safe-Pass-12345", "phone": "3000000000",
+        **registration_consent(client),
     }
     registered = client.post("/api/v1/auth/register", json=payload)
     assert registered.status_code == 201, registered.text
@@ -77,14 +79,18 @@ def test_customer_register_creates_customer_and_usable_session(client):
 
 def test_register_rejects_weak_password_and_duplicate_email(client):
     email = "phase-e2-dup-" + uuid4().hex[:10] + "@example.com"
-    request = {"full_name": "Cliente Registro", "email": email, "password": "bad"}
-    assert client.post("/api/v1/auth/register", json=request).status_code == 400
+    request = {"full_name": "Cliente Registro", "email": email, "password": "bad", **registration_consent(client)}
+    assert client.post("/api/v1/auth/register", json=request).status_code == 422
     request["password"] = "Safe-Pass-12345"
-    assert client.post("/api/v1/auth/register", json=request).status_code == 201
-    assert client.post("/api/v1/auth/register", json=request).status_code == 400
+    first = client.post("/api/v1/auth/register", json=request)
+    assert first.status_code == 201 and first.json()["access_token"]
+    duplicate = client.post("/api/v1/auth/register", json=request)
+    assert duplicate.status_code == 201
+    assert duplicate.json() == {"message": first.json()["message"]}
     db = TestingSession()
     try:
-        assert db.query(User).filter_by(email=email).count() == 1
+        user = db.query(User).filter_by(email=email).one()
+        assert db.query(DataConsent).filter_by(user_id=user.id).count() == 1
     finally:
         db.close()
 

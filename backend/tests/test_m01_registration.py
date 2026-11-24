@@ -7,6 +7,7 @@ from app.api.v1.endpoints.register import RegisterRequest, register, policy_snap
 from app.models.models import StorefrontSettings, DataConsent, User
 from app.services import auth_protection as protection
 from tests.test_profile_mfa import mfa_db
+from tests.test_main import client, setup_db
 
 
 @pytest.fixture
@@ -72,3 +73,12 @@ def test_atomic_limit(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         protection.hit_rate_limit(request, "register", 5, 3600)
     assert exc.value.status_code == 429
+
+
+def test_http_rejects_missing_consent(client):
+    response = client.post("/api/v1/auth/register", json={
+        "full_name": "Cliente Prueba", "email": "sin-consentimiento@example.org",
+        "password": "PasswordSeguro123!"})
+    assert response.status_code == 422
+    assert {"accepts_data_policy", "data_policy_version"} <= {
+        item["loc"][-1] for item in response.json()["detail"]}
