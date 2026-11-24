@@ -49,7 +49,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
     volumes:
       - prod_redis_data:/data
     networks: [internal]

@@ -30,6 +30,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
     container_name: hjstorevp_redis
     restart: unless-stopped
     logging:

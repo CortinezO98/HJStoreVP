@@ -244,9 +244,9 @@ export default function AdminLayout() {
   const toggleGroup = (label) => setOpenGroups((current) =>
     current.includes(label) ? current.filter((group) => group !== label) : [...current, label])
 
-  const handleLogout = () => {
-    logout()
-    toast.success('Sesión cerrada')
+  const handleLogout = async () => {
+    const confirmed = await logout()
+    if (confirmed) toast.success('Sesión cerrada')
     navigate('/login', { replace: true })
   }
 
