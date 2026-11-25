@@ -39,7 +39,12 @@ class OrderItemIn(BaseModel):
 
 class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
-    phone: str = Field(max_length=20, pattern=r'^\+?[0-9][0-9 ()-]{5,19}
+    phone: str = Field(max_length=20, pattern=r"^\+?[0-9][0-9 ()-]{5,19}$")
+    address_line1: str = Field(min_length=3, max_length=200)
+    address_line2: Optional[str] = Field(default=None, max_length=200)
+    city: str = Field(min_length=2, max_length=80)
+    department: str = Field(min_length=2, max_length=80)
+    postal_code: Optional[str] = Field(default=None, max_length=20)
 
 
 class WebOrderCreate(BaseModel):
