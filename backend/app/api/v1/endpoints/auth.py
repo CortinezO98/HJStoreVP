@@ -12,7 +12,7 @@ from app.core.deps import get_current_user, get_mfa_enrollment_user, admin_mfa_r
 from app.models.models import User, UserRole, UserMFASettings
 from app.core.config import settings
 from app.services.security_audit import append_audit, identity_fingerprint
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_and_update_password
 from app.services.mfa import (new_secret, encrypt_secret, decrypt_secret,
     match_totp_step, provisioning_uri, generate_recovery_codes, recovery_candidates)
 from app.schemas.schemas import LoginRequest, TokenResponse, RefreshRequest, UserOut
@@ -142,7 +142,8 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     check_login_limit(request, data.email)
     user = db.query(User).filter(User.email == data.email, User.active.is_(True), User.deleted.is_(False)).first()
 
-    if not user or not verify_password(data.password, user.hashed_password):
+    valid, replacement = verify_and_update_password(data.password, user.hashed_password) if user else (False, None)
+    if not valid:
         note_login_failure(request, data.email)
         append_audit(db, action='auth.login.failure', outcome='failure',
                      target_id=identity_fingerprint(data.email),
@@ -152,6 +153,20 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
         )
+
+    if replacement is not None:
+        # Compare-and-swap: no sobrescribir un cambio concurrente de contraseña.
+        previous = user.hashed_password
+        changed = db.query(User).filter(User.id == user.id, User.hashed_password == previous,
+                                        User.active.is_(True), User.deleted.is_(False)).update(
+            {User.hashed_password: replacement}, synchronize_session=False)
+        if changed != 1:
+            db.rollback()
+            raise HTTPException(status_code=401, detail="Credenciales cambiaron; inicia sesión nuevamente")
+        db.commit()
+        db.refresh(user)
+        if user.hashed_password != replacement or not user.active or user.deleted:
+            raise HTTPException(status_code=401, detail="Credenciales cambiaron; inicia sesión nuevamente")
 
     mfa = _mfa_record(db, user.id)
     if mfa and mfa.enabled:

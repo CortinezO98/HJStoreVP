@@ -6,17 +6,13 @@ import uuid
 from typing import Optional, Union
 import jwt
 from jwt.exceptions import InvalidTokenError
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
+from pwdlib.hashers.bcrypt import BcryptHasher
+from pwdlib.exceptions import UnknownHashError, HashVerificationError
 from app.core.config import settings
 
-# Fix compatibilidad passlib 1.7.4 + bcrypt 4.x
-import bcrypt as _bcrypt_module
-if not hasattr(_bcrypt_module, '__about__'):
-    class _FakeAbout:
-        __version__ = '4.0.1'
-    _bcrypt_module.__about__ = _FakeAbout()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = PasswordHash((Argon2Hasher(memory_cost=65536, time_cost=3, parallelism=4), BcryptHasher()))
 
 
 def hash_password(password: str) -> str:
@@ -24,7 +20,20 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except (UnknownHashError, HashVerificationError, ValueError, TypeError):
+        return False
+
+
+def verify_and_update_password(plain_password: str, hashed_password: str) -> tuple[bool, str | None]:
+    # bcrypt histórico trunca a 72 bytes. No fijar un sufijo ambiguo en Argon2.
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$")) and len(plain_password.encode("utf-8")) > 72:
+        return verify_password(plain_password, hashed_password), None
+    try:
+        return pwd_context.verify_and_update(plain_password, hashed_password)
+    except (UnknownHashError, HashVerificationError, ValueError, TypeError):
+        return False, None
 
 
 def credential_version(hashed_password: str) -> str:
