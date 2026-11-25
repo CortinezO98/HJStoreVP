@@ -2,7 +2,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Request, APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,8 @@ from app.core.deps import require_admin
 from app.db.session import get_db
 from app.models.models import ShippingRate, User
 from app.services.shipping import location_key, quote_rates
+
+from app.services.auth_protection import hit_rate_limit
 
 router = APIRouter(prefix="/shipping", tags=["Envíos"])
 
@@ -72,11 +74,13 @@ def _apply(rate: ShippingRate, data: ShippingRateIn):
 
 @router.get("/quote", response_model=list[ShippingQuoteOut])
 def quote_shipping(
+    request: Request,
     department: str = Query(min_length=2, max_length=100),
     city: str = Query(min_length=2, max_length=100),
     db: Session = Depends(get_db),
 ):
     """Lista tarifas reales configuradas para una dirección (no modifica pedidos)."""
+    hit_rate_limit(request, "shipping-quote", 60, 60)
     return quote_rates(db, department, city)
 
 

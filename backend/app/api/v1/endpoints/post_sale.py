@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import Request, APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, update
 from sqlalchemy.orm import Session
@@ -24,6 +24,8 @@ from app.models.models import (
 from app.services.stock_reservations import lock_web_order
 from app.services.notifications import enqueue_order_notification
 from app.services.engagement import reverse_refunded_items
+
+from app.services.auth_protection import hit_rate_limit
 
 router = APIRouter(prefix="/post-sale", tags=["Posventa"])
 
@@ -192,9 +194,11 @@ def _lock_case_and_order(db: Session, case_id: int) -> tuple[PostSaleCase, Order
 @router.post("", response_model=CaseOut, status_code=201)
 def create_case(
     data: CaseCreate,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    hit_rate_limit(request, "post-sale", 10, 86400, identity=user.id)
     order = lock_web_order(db, data.order_id)
     if order.customer_id != user.id:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")

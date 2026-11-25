@@ -2,7 +2,7 @@
 Endpoint de órdenes web (checkout de la tienda pública).
 Crea la orden, reserva el stock y espera confirmación de pago.
 """
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import Request, APIRouter, Depends, HTTPException, Header, status
 from pydantic import Field, model_validator
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +24,8 @@ from app.core.config import settings
 from app.services.shipping import get_selected_rate, shipping_snapshot
 from app.services.notifications import enqueue_order_notification
 from app.services.coupons import evaluate_coupon
+
+from app.services.auth_protection import hit_rate_limit
 
 router = APIRouter(prefix="/orders", tags=["Órdenes Web"])
 
@@ -184,6 +186,7 @@ def _replayed_order(db: Session, *, customer_id: int, key: str, digest: str):
 @router.post("/web", response_model=WebOrderOut, status_code=status.HTTP_201_CREATED)
 def create_web_order(
     data: WebOrderCreate,
+    request: Request,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -205,6 +208,8 @@ def create_web_order(
     if replayed is not None:
         return replayed
 
+    # Los reintentos idempotentes confirmados no consumen otra cuota.
+    hit_rate_limit(request, "web-orders", 10, 3600, identity=current_user.id)
     pending = db.query(Order.id).filter(
         Order.customer_id == current_user.id,
         Order.channel == OrderChannel.WEB,

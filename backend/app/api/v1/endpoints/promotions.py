@@ -2,13 +2,15 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Request, APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, model_validator, field_validator
 from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, require_admin
 from app.db.session import get_db
 from app.models.models import PromotionCoupon, CouponRedemption, Order, OrderStatus, User
 from app.services.coupons import normalize_code, evaluate_coupon
+
+from app.services.auth_protection import hit_rate_limit
 
 router = APIRouter(prefix="/promotions", tags=["Promociones"])
 
@@ -113,8 +115,9 @@ def update_coupon(coupon_id: int, data: CouponIn,
 
 
 @router.post("/quote")
-def quote_coupon(data: CouponQuoteIn, db: Session = Depends(get_db),
+def quote_coupon(data: CouponQuoteIn, request: Request, db: Session = Depends(get_db),
                  user: User = Depends(get_current_user)):
+    hit_rate_limit(request, "promotion-quote", 20, 600, identity=user.id)
     from app.models.models import Product
     if len({x.product_id for x in data.items}) != len(data.items):
         raise HTTPException(status_code=422, detail="Productos repetidos")
