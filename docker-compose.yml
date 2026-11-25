@@ -65,6 +65,8 @@ services:
       - DATABASE_URL=mysql+pymysql://${DB_USER:-hjstore}:${DB_PASSWORD:-hjstore123}@db:3306/${DB_NAME:-hjstorevp}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-changeme_in_production_use_long_random_string}
+      - MFA_ENCRYPTION_KEYS=${MFA_ENCRYPTION_KEYS:-}
+      - MFA_RECOVERY_PEPPER=${MFA_RECOVERY_PEPPER:-}
       - ENVIRONMENT=development
       - ALLOW_DEMO_PAYMENTS=true
     volumes:

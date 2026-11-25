@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 from pydantic import validator, field_validator, model_validator
 from typing import List, Literal, Optional
 import secrets
+import base64
+import hashlib
+from cryptography.fernet import Fernet
 from ipaddress import ip_network
 from urllib.parse import urlsplit
 
@@ -36,6 +39,8 @@ class Settings(BaseSettings):
 
     # ─── Seguridad ─────────────────────────────────────────────
     SECRET_KEY: str = _DEFAULT_DEV_SECRET_KEY
+    MFA_ENCRYPTION_KEYS: str = ""
+    MFA_RECOVERY_PEPPER: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -191,11 +196,28 @@ class Settings(BaseSettings):
                 raise ValueError("STORE_PUBLIC_URL debe usar HTTPS en producción")
             if self.WOMPI_ENV == "production" and not self.WOMPI_ALLOW_LIVE_PAYMENTS:
                 raise ValueError("WOMPI_ENV=production requiere opt-in de pagos reales")
+        keys = [key.strip() for key in self.MFA_ENCRYPTION_KEYS.split(',')] if self.MFA_ENCRYPTION_KEYS else []
+        legacy = base64.urlsafe_b64encode(hashlib.sha256(('hjstore-mfa-v1:' + self.SECRET_KEY).encode()).digest()).decode()
+        try:
+            for key in keys:
+                Fernet(key.encode('ascii'))
+                if base64.urlsafe_b64encode(base64.urlsafe_b64decode(key)).decode() != key:
+                    raise ValueError()
+        except (ValueError, TypeError):
+            raise ValueError('MFA_ENCRYPTION_KEYS contiene una llave inválida') from None
+        if len(set(keys)) != len(keys) or legacy in keys or self.SECRET_KEY in keys:
+            raise ValueError('MFA_ENCRYPTION_KEYS debe contener llaves independientes y únicas')
+        pepper = self.MFA_RECOVERY_PEPPER
+        if pepper and (len(pepper.encode()) < 32 or pepper in [self.SECRET_KEY, legacy, *keys]):
+            raise ValueError('MFA_RECOVERY_PEPPER debe ser independiente y de al menos 32 bytes')
+        if self.ENVIRONMENT in ('production', 'staging') and (not keys or not pepper):
+            raise ValueError('MFA_ENCRYPTION_KEYS y MFA_RECOVERY_PEPPER son obligatorios')
         return self
 
     class Config:
         env_file = ".env"
         case_sensitive = True
+        hide_input_in_errors = True
 
 
 settings = Settings()

@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.services.security_audit import append_audit, identity_fingerprint
 from app.core.security import hash_password
 from app.services.mfa import (new_secret, encrypt_secret, decrypt_secret,
-    match_totp_step, provisioning_uri, generate_recovery_codes, recovery_hash)
+    match_totp_step, provisioning_uri, generate_recovery_codes, recovery_candidates)
 from app.schemas.schemas import LoginRequest, TokenResponse, RefreshRequest, UserOut
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -127,9 +127,9 @@ def _verify_mfa_code(record: UserMFASettings, code: str):
                 return False
             record.last_totp_step = step
             return True
-    hashed = recovery_hash(code)
+    candidates = recovery_candidates(code)
     for index, known in enumerate(record.recovery_hashes or []):
-        if hmac.compare_digest(known, hashed):
+        if any(hmac.compare_digest(known, candidate) for candidate in candidates):
             remaining = list(record.recovery_hashes)
             remaining.pop(index)
             record.recovery_hashes = remaining

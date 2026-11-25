@@ -5,14 +5,35 @@ import hmac
 import secrets
 import time
 from urllib.parse import quote
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, MultiFernet, InvalidToken
 from app.core.config import settings
 
-def _cipher():
+def _legacy_cipher():
     key = base64.urlsafe_b64encode(hashlib.sha256(
         ("hjstore-mfa-v1:" + settings.SECRET_KEY).encode()
     ).digest())
     return Fernet(key)
+
+def _configured_ciphers():
+    return [Fernet(key.strip().encode('ascii')) for key in settings.MFA_ENCRYPTION_KEYS.split(',') if key.strip()]
+
+
+def _cipher():
+    return MultiFernet([*_configured_ciphers(), _legacy_cipher()])
+
+
+def rotate_ciphertext(ciphertext: str) -> str:
+    """Conserva la fecha Fernet y evita reescribir tokens ya cifrados con la primaria."""
+    configured = _configured_ciphers()
+    if not configured:
+        raise ValueError('Configura MFA_ENCRYPTION_KEYS antes de rotar')
+    token = ciphertext.encode()
+    try:
+        configured[0].decrypt(token)
+        return ciphertext
+    except InvalidToken:
+        return _cipher().rotate(token).decode()
+
 
 def encrypt_secret(secret: str) -> str:
     return _cipher().encrypt(secret.encode()).decode()
@@ -41,7 +62,16 @@ def match_totp_step(secret: str, code: str, now: int | None = None) -> int | Non
 
 def recovery_hash(code: str) -> str:
     normalized = code.strip().replace("-", "").upper()
-    return hmac.new(settings.SECRET_KEY.encode(), ("mfa-recovery:" + normalized).encode(), hashlib.sha256).hexdigest()
+    key = settings.MFA_RECOVERY_PEPPER or settings.SECRET_KEY
+    prefix = 'mfa-recovery-v2:' if settings.MFA_RECOVERY_PEPPER else 'mfa-recovery:'
+    digest = hmac.new(key.encode(), (prefix + normalized).encode(), hashlib.sha256).hexdigest()
+    return 'v2:' + digest if settings.MFA_RECOVERY_PEPPER else digest
+
+
+def recovery_candidates(code: str) -> tuple[str, ...]:
+    normalized = code.strip().replace('-', '').upper()
+    legacy = hmac.new(settings.SECRET_KEY.encode(), ('mfa-recovery:' + normalized).encode(), hashlib.sha256).hexdigest()
+    return (recovery_hash(code), legacy) if settings.MFA_RECOVERY_PEPPER else (legacy,)
 
 def generate_recovery_codes() -> tuple[list[str], list[str]]:
     codes = [secrets.token_hex(5).upper() for _ in range(10)]
