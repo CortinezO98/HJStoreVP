@@ -3,6 +3,7 @@ import time
 import hashlib
 import hmac
 import uuid
+import secrets
 from typing import Optional, Union
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -24,6 +25,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return pwd_context.verify(plain_password, hashed_password)
     except (UnknownHashError, HashVerificationError, ValueError, TypeError):
         return False
+
+
+# Generado una sola vez por proceso con los mismos parámetros que los hashes nuevos.
+# No corresponde a ninguna cuenta ni se utiliza para emitir credenciales.
+_DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
+
+
+def verify_dummy_password(password: str) -> None:
+    """Consumir el trabajo criptográfico habitual sin conceder autenticación."""
+    verify_password(password, _DUMMY_PASSWORD_HASH)
 
 
 def verify_and_update_password(plain_password: str, hashed_password: str) -> tuple[bool, str | None]:

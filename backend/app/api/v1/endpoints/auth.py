@@ -12,7 +12,7 @@ from app.core.deps import get_current_user, get_mfa_enrollment_user, admin_mfa_r
 from app.models.models import User, UserRole, UserMFASettings
 from app.core.config import settings
 from app.services.security_audit import append_audit, identity_fingerprint
-from app.core.security import hash_password, verify_and_update_password
+from app.core.security import hash_password, verify_and_update_password, verify_dummy_password
 from app.services.mfa import (new_secret, encrypt_secret, decrypt_secret,
     match_totp_step, provisioning_uri, generate_recovery_codes, recovery_candidates)
 from app.schemas.schemas import LoginRequest, TokenResponse, RefreshRequest, UserOut
@@ -142,7 +142,11 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     check_login_limit(request, data.email)
     user = db.query(User).filter(User.email == data.email, User.active.is_(True), User.deleted.is_(False)).first()
 
-    valid, replacement = verify_and_update_password(data.password, user.hashed_password) if user else (False, None)
+    if user is None:
+        verify_dummy_password(data.password)
+        valid, replacement = False, None
+    else:
+        valid, replacement = verify_and_update_password(data.password, user.hashed_password)
     if not valid:
         note_login_failure(request, data.email)
         append_audit(db, action='auth.login.failure', outcome='failure',
