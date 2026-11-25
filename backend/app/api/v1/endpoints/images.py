@@ -6,6 +6,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from PIL import Image, ImageOps, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -143,6 +144,12 @@ async def upload_images(
 ):
     if not files or len(files) > 10:
         raise HTTPException(status_code=400, detail="Debes enviar entre 1 y 10 imágenes")
+    # No mantener el bloqueo del producto durante la decodificación.
+    prepared = []
+    for upload in files:
+        raw = await upload.read(MAX_SIZE_BYTES + 1)
+        prepared.append(await run_in_threadpool(normalize_image, raw))
+
     product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
@@ -155,12 +162,7 @@ async def upload_images(
         ProductImage.product_id == product_id, ProductImage.is_primary.is_(True)
     ).first() is not None
 
-    # Primero validar todas las imágenes; un lote inválido no deja archivos parciales.
-    prepared = []
-    for upload in files:
-        raw = await upload.read(MAX_SIZE_BYTES + 1)
-        prepared.append(normalize_image(raw))
-
+    # Todas las imágenes ya están validadas; no dejar archivos parciales.
     saved_paths = []
     rows = []
     try:

@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
@@ -947,7 +948,7 @@ async def upload_brand_image(
     if settings.STORAGE_BACKEND != "local":
         raise HTTPException(status_code=409, detail="Configura almacenamiento de imágenes antes de subir")
     raw = await file.read(MAX_SIZE_BYTES + 1)
-    data, ext = normalize_image(raw)
+    data, ext = await run_in_threadpool(normalize_image, raw)
     folder = Path(settings.UPLOAD_DIR).resolve() / "branding"
     folder.mkdir(parents=True, exist_ok=True)
     name = f"{uuid4().hex}.{ext}"
