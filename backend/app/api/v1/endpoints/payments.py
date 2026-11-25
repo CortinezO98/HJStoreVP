@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Literal
 
 from app.db.session import get_db
 from app.core.deps import get_current_user
@@ -62,10 +62,16 @@ async def read_bounded_webhook(request: Request) -> bytes:
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class InitiatePaymentRequest(BaseModel):
-    order_number: str
-    method: str = "wompi"   # "wompi" | "sistecreditos" | "addi"
-    customer_phone: Optional[str] = None
-    customer_id: Optional[str] = None   # Cédula — requerida por Sistecréditos
+    order_number: str = Field(min_length=1, max_length=50)
+    method: Literal["wompi", "sistecreditos", "addi"] = "wompi"
+    customer_phone: Optional[str] = Field(default=None, max_length=20, pattern=r"^\+?[0-9][0-9 ()-]{5,19}$")
+    customer_id: Optional[str] = Field(default=None, pattern=r"^[0-9]{5,15}$")
+
+    @field_validator("customer_id", "customer_phone", mode="before")
+    @classmethod
+    def empty_optional(cls, value):
+        # Compatibilidad con clientes anteriores que enviaban campos opcionales vacíos.
+        return None if value == "" else value
 
 
 class PaymentMethodInfo(BaseModel):

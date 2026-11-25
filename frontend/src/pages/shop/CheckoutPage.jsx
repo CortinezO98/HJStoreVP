@@ -433,7 +433,7 @@ export default function CheckoutPage() {
         order_number: order.order_number,
         method: selectedMethod,
         customer_phone: extraFields.customer_phone || form.phone,
-        customer_id: extraFields.customer_id || '',
+        customer_id: extraFields.customer_id || null,
       }
 
       const { data: checkout } = await apiClient.post(
