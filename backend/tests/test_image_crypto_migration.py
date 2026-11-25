@@ -6,7 +6,7 @@ import io
 from importlib.metadata import version
 
 import pytest
-from cryptography.fernet import InvalidToken
+from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
 from PIL import Image
 
@@ -64,11 +64,29 @@ def test_mfa_fernet_round_trip_and_ciphertext_not_plaintext():
 
 
 def test_mfa_decryption_rejects_tampering_and_wrong_secret_key(monkeypatch):
+    # Aislar la modalidad histórica de las variables reales del contenedor.
+    monkeypatch.setattr(settings, "MFA_ENCRYPTION_KEYS", "")
+    monkeypatch.setattr(settings, "SECRET_KEY", "fixture-legacy-signing-key-not-for-production")
     secret = new_secret()
     ciphertext = encrypt_secret(secret)
     with pytest.raises(InvalidToken):
         decrypt_secret("AAAA" + ciphertext[4:])
     monkeypatch.setattr(settings, "SECRET_KEY", "different-test-secret-key-which-is-not-production")
+    with pytest.raises(InvalidToken):
+        decrypt_secret(ciphertext)
+
+
+def test_mfa_independent_key_survives_signing_key_change(monkeypatch):
+    monkeypatch.setattr(settings, "SECRET_KEY", "fixture-legacy-signing-key-not-for-production")
+    primary = Fernet.generate_key().decode()
+    monkeypatch.setattr(settings, "MFA_ENCRYPTION_KEYS", primary)
+    secret = new_secret()
+    ciphertext = encrypt_secret(secret)
+    with pytest.raises(InvalidToken):
+        decrypt_secret("AAAA" + ciphertext[4:])
+    monkeypatch.setattr(settings, "SECRET_KEY", "different-test-secret-key-which-is-not-production")
+    assert decrypt_secret(ciphertext) == secret
+    monkeypatch.setattr(settings, "MFA_ENCRYPTION_KEYS", Fernet.generate_key().decode())
     with pytest.raises(InvalidToken):
         decrypt_secret(ciphertext)
 
